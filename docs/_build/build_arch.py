@@ -37,23 +37,26 @@ BODY = '''
 <tr><td rowspan="6"><b>Sudo Atlas</b><br>企业私有化<br>（原 Server+MOSS）<br>owner 铁锋<br>repo ''' + repo('sudoatlas') + '''</td>
     <td>''' + repo('sudocode') + ''' · Agent 引擎</td><td>Ethan</td><td>独立 CLI 引擎稳定；对齐 AgentSpec/ACP/matrix；PTY 门禁</td></tr>
 <tr><td>''' + repo('nexus','nexi-lab') + ''' + nexus-vfs · 基座</td><td>Ethan</td><td>VFS/身份/session 存储 SSOT；跨节点一致；不可伪造 from</td></tr>
-<tr><td>''' + repo('nova-gateway') + ''' = SudoRouter</td><td>张帅</td><td>模型/工具/凭证统一出口；内网 DLP；多模型可路由</td></tr>
-<tr><td>''' + repo('moss') + ''' · 中控（给人用）</td><td>待定</td><td>中控体验丝滑；registry/session <b>client</b>（不复制 nexus SSOT）</td></tr>
-<tr><td>''' + repo('hydra') + ''' · 编排/调度</td><td>待定</td><td>spawn agent + setup sessions；A2A；与 moss 职责不重合</td></tr>
+<tr><td>''' + repo('nova-gateway') + ''' = SudoRouter</td><td>张帅</td><td>模型/工具/凭证统一出口；<b>核心域只接内部算力，办公/支撑域可接外部，且支撑域 router 可级联核心域 router 借内部算力</b>；每域独占 Key</td></tr>
+<tr><td>''' + repo('moss') + ''' · 中控+容器执行面</td><td><b>武鹏</b></td><td>中控体验丝滑；容器执行/配额稳定；registry/session <b>client</b>（不复制 nexus SSOT）</td></tr>
+<tr><td>''' + repo('hydra') + ''' · 编排/调度</td><td><b>Ethan</b></td><td>spawn agent + setup sessions/派单；与 moss 职责不重合</td></tr>
 <tr><td>''' + repo('shareone') + ''' · 协同/验收</td><td>孙文龙</td><td>standalone + 在 sudowork/sudocode 内嵌端到端丝滑；签名交付</td></tr>
-<tr><td rowspan="2"><b>Sudo SaaS</b><br>公有云·Atlas 同源<br>owner 铁锋<br>repo ''' + repo('sudosaas') + '''</td>
-    <td>= Atlas 全部 base（同源装配）</td><td>—</td><td><b>先在腾讯云跑通</b>完整搭建演练，立即可 demo</td></tr>
-<tr><td>+ 编排脑 / 三方接入 connectors</td><td>待定</td><td>锐锢/中资等投标可接入；三方连接器可插拔</td></tr>
-<tr><td rowspan="2"><b>SudoEdge</b><br>盒子/离线<br>owner Joe<br>repo ''' + repo('sudoedge') + '''</td>
+<tr><td rowspan="3"><b>Sudo SaaS</b><br>公有云·Atlas 同源<br>owner 铁锋<br>repo ''' + repo('sudosaas') + '''</td>
+    <td>= Atlas 全部 base（同源装配：sudocode/nexus/moss/hydra/shareone）</td><td>—</td><td><b>先在腾讯云跑通</b>完整搭建演练，立即可 demo</td></tr>
+<tr><td>SudoRouter：公有云<b>直接用 sudorouter.ai</b></td><td>张帅</td><td>公有云模型出口；更强模型 / 三方数据</td></tr>
+<tr><td>+ ''' + repo('sudochat') + ''' 多租户 · ''' + repo('sudoevolve') + ''' 验收</td><td>待定</td><td>多租户会话隔离；Rubric 打分与验收裁决</td></tr>
+<tr><td rowspan="3"><b>SudoEdge</b><br>盒子/离线<br>owner Joe<br>repo ''' + repo('sudoedge') + '''</td>
     <td>Atlas（整体，盒内）</td><td>铁锋</td><td>air-gap 完整交付；SudoFDE 盒内不对外</td></tr>
 <tr><td>''' + repo('sudowork') + '''（盒内 UI）</td><td>Joe</td><td>盒内 UI 可用</td></tr>
+<tr><td>本域 SudoRouter（''' + repo('nova-gateway') + '''）</td><td>张帅</td><td>盒内模型出口，随盒子所在域策略</td></tr>
 <tr><td rowspan="2"><b>横向层</b></td>
-    <td>''' + repo('sudowork') + ''' · SudoWork 纯 UI</td><td>Joe</td><td>纯 UI（任务/Team/Trace）；Harness=sudocode</td></tr>
+    <td>''' + repo('sudowork') + ''' · SudoWork 纯 UI</td><td>Joe</td><td>纯 UI（任务/Team/Trace）；Harness=sudocode；内置 ai-dev-browser 工具</td></tr>
 <tr><td>SudoGenius · Agent 集</td><td>各作者（FDE=雪涛）</td><td>领域包：本体/规则/资产/eval + 可跑的 eval</td></tr>
-<tr><td rowspan="2"><b>可选 base</b><br>（按 Agent 需要挂载）</td>
-    <td>''' + repo('ai-dev-browser') + '''</td><td>待定</td><td>中等 agent 驱动中等难度网页探索；探索后写 script 丝滑（tools↔cores 1:1）</td></tr>
-<tr><td>''' + repo('password-agent') + '''</td><td>梁燕芝</td><td>凭证/秘钥 vault；plaintext 不进 LLM</td></tr>
+<tr><td rowspan="2"><b>内置工具 / 服务</b></td>
+    <td>''' + repo('ai-dev-browser') + '''（<b>sudowork 内置工具，未来 sudocode 内置</b>）</td><td>待定</td><td>中等 agent 驱动中等难度网页探索；tools↔cores 1:1</td></tr>
+<tr><td>''' + repo('password-agent') + '''（凭证/秘钥 vault）</td><td>梁燕芝</td><td>plaintext 不进 LLM</td></tr>
 </table>
+<p class="meta">「三方接入」不单列——它是 Agent（sudocode）的 tools/MCP 能力；「编排」= hydra，不再叫「编排脑」（原 SaaS 口径里的编排脑即 hydra + SudoGenius 领域 Planner）。</p>
 <div class="align">
 <b>最重要的产品边界</b>
 <ul>
@@ -97,6 +100,9 @@ interface TaskExecutionResolution {
 </table>
 
 <h3>AgentSpec 字段 → matrix 物理落点</h3>
+<div class="align">
+<b>这不是两份存储（回应 SSOT 顾虑）</b>：AgentSpec 是<b>逻辑视图</b>，matrix 路径是<b>唯一物理存储</b>。AgentSpec 的字段<b>就存在这些路径上</b>（<code>config.toml</code> / <code>prompts/</code> / <code>skills/</code> / <code>memory/</code>）——读/写 AgentSpec ＝ 直接读/写这些路径的投影，<b>不另存一份</b>。下表是「字段 ↔ 它存在哪」，不是「复制到第二处」。
+</div>
 <table>
 <tr><th>AgentSpec 字段</th><th>matrix 物理落点</th><th>说明</th></tr>
 <tr><td><code>id / version / displayName</code></td><td><code>/agents/{name}/</code> + <code>config.toml</code></td><td><code>agent-name</code> = 目录名 = 持久 principal</td></tr>
