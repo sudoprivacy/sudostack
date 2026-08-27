@@ -9,9 +9,10 @@
   <rect x="30" y="34" width="120" height="22" rx="11" fill="#0b1017" stroke="#3b5a86"/>
   <text x="90" y="49" fill="#6ea8fe" font-size="12" font-weight="700" text-anchor="middle">IMAGE（持久）</text>
   <text x="164" y="50" class="pth" font-size="14" font-weight="700">/agents/{name}/</text>
-  <text x="30" y="76" fill="#dbe8fb" font-size="12.5">agent-name · 持久 principal · 可寻址身份</text>
-  <text x="30" y="96" fill="#e0a94b" font-size="12.5" font-weight="700">≡ AgentSpec（制品声明）</text>
-  <line x1="30" y1="106" x2="298" y2="106" stroke="#2a3644"/>
+  <text x="30" y="74" fill="#dbe8fb" font-size="12.5">agent-name · 持久 principal · 不可伪造身份</text>
+  <text x="30" y="89" fill="#7f93ab" font-size="10">= CA cert（SAN nexus://agent/{name}）= governance.did</text>
+  <text x="30" y="104" fill="#e0a94b" font-size="12.5" font-weight="700">≡ AgentSpec（制品声明）</text>
+  <line x1="30" y1="112" x2="298" y2="112" stroke="#2a3644"/>
   <g font-size="11.5">
     <text x="30" y="128" fill="#d7f5e1" font-family="Consolas,monospace">config.toml</text>
     <text x="46" y="146" fill="#9fb0c3">id·version·owner·requires{skills,</text>
