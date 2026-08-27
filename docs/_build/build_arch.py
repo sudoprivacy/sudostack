@@ -43,12 +43,13 @@ BODY = '''
 <tr><td>''' + repo('shareone') + ''' · 协同/验收</td><td>孙文龙</td><td>standalone + 在 sudowork/sudocode 内嵌端到端丝滑；签名交付</td></tr>
 <tr><td rowspan="3"><b>Sudo SaaS</b><br>公有云·Atlas 同源<br>owner 铁锋<br>repo ''' + repo('sudosaas') + '''</td>
     <td>= Atlas 全部 base（同源装配：sudocode/nexus/moss/hydra/shareone）</td><td>—</td><td><b>先在腾讯云跑通</b>完整搭建演练，立即可 demo</td></tr>
-<tr><td>SudoRouter：公有云<b>直接用 sudorouter.ai</b></td><td>张帅</td><td>公有云模型出口；更强模型 / 三方数据</td></tr>
+<tr><td>SudoRouter：公有云<b>直接用 <a href="https://sudorouter.ai/">sudorouter.ai</a></b></td><td>张帅</td><td>公有云模型出口；更强模型 / 三方数据</td></tr>
 <tr><td>+ ''' + repo('sudochat') + ''' 多租户 · ''' + repo('sudoevolve') + ''' 验收</td><td>待定</td><td>多租户会话隔离；Rubric 打分与验收裁决</td></tr>
-<tr><td rowspan="3"><b>SudoEdge</b><br>盒子/离线<br>owner Joe<br>repo ''' + repo('sudoedge') + '''</td>
+<tr><td rowspan="4"><b>SudoEdge</b><br>盒子/离线<br>owner Joe<br>repo ''' + repo('sudoedge') + '''</td>
     <td>Atlas（整体，盒内）</td><td>铁锋</td><td>air-gap 完整交付；SudoFDE 盒内不对外</td></tr>
 <tr><td>''' + repo('sudowork') + '''（盒内 UI）</td><td>Joe</td><td>盒内 UI 可用</td></tr>
 <tr><td>本域 SudoRouter（''' + repo('nova-gateway') + '''）</td><td>张帅</td><td>盒内模型出口，随盒子所在域策略</td></tr>
+<tr><td><b>GPU stack · 本地 GPU 算力</b>（盒内自带 DGX/推理卡；SudoRouter 路由到它用内部算力）</td><td>待定</td><td>本地推理吞吐/利用率；断网可跑本地模型</td></tr>
 <tr><td rowspan="2"><b>横向层</b></td>
     <td>''' + repo('sudowork') + ''' · SudoWork 纯 UI</td><td>Joe</td><td>纯 UI（任务/Team/Trace）；Harness=sudocode；内置 ai-dev-browser 工具</td></tr>
 <tr><td>SudoGenius · Agent 集</td><td>各作者（FDE=雪涛）</td><td>领域包：本体/规则/资产/eval + 可跑的 eval</td></tr>
