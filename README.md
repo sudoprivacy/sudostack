@@ -1,4 +1,4 @@
-# sudo-stack
+# sudostack
 
 顶层装配 repo：以 submodule 引用各 **Base product** 与 **Mega-product**，并作为**跨全家族技术架构 SSOT** 的落位。
 
@@ -26,7 +26,7 @@ Mega-product 由 Base product 装配复用；Atlas 与 SaaS 共享本 repo 的 s
 ```
 base/sudocode        base/nova-gateway    base/moss        base/hydra
 base/shareone        base/ai-dev-browser  base/password-agent
-mega/sudo-atlas      mega/sudo-saas       mega/sudoedge
+mega/sudoatlas      mega/sudosaas       mega/sudoedge
 ui/sudowork
 ```
 
