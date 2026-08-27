@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-CN"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sudo 产品架构说明书（订正版 v2.1）</title><base target="_blank">
+<title>Sudo 系统架构说明书 v2.2</title><base target="_blank">
 <style>
 :root{--bg:#0f141b;--panel:#161d27;--panel2:#1b2430;--text:#e6edf5;--muted:#9fb0c3;--line:#2a3644;--accent:#6ea8fe;--green:#4ade80;--gold:#e0a94b;}
 *{box-sizing:border-box;}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;font-size:16px;}
@@ -29,9 +29,9 @@ ul,ol{padding-left:22px;}li{margin:6px 0;}
 </style></head>
 <body><main class="page">
 
-<span class="badge">Sudo 产品架构说明书 · 订正版 v2.1</span>
-<h1>Sudo 新一代产品架构说明书（订正版）</h1>
-<p class="meta">在武鹏 v1.4 基础上订正命名口径、合并 Atlas、把 <b>AgentSpec 与 agent-context-storage-matrix consolidate 成同一套模型</b>，并补齐顶层架构图。本文是跨全家族技术架构 SSOT，落 <a href="https://github.com/sudoprivacy/sudostack"><code>sudostack</code></a>。开发（PRD + 伪代码）以本文与 matrix 为准。</p>
+<span class="badge">Sudo 系统架构说明书 · v2.2</span>
+<h1>Sudo 系统架构说明书</h1>
+<p class="meta">在武鹏 v1.4 基础上订正命名口径、合并 Atlas、把 <b>AgentSpec 与 agent-context-storage-matrix consolidate 成同一套模型</b>，并按三种部署位置画顶层架构。本文是跨全家族技术架构 SSOT，落 <a href="https://github.com/sudoprivacy/sudostack"><code>sudostack</code></a>。开发（PRD + 伪代码）以本文与 matrix 为准。</p>
 
 <div class="align">
 <b>本版订正重点（相对武鹏 v1.4）</b>
@@ -43,123 +43,105 @@ ul,ol{padding-left:22px;}li{margin:6px 0;}
 </ul>
 </div>
 
-<h2>一、顶层架构（模块关系）</h2>
-<p>五层：<b>入口</b>（SudoWork UI / IM 渠道 / WebUI）→ <b>中控·编排</b>（moss 中控给人用 · hydra 编排调度 · shareone 协同验收）→ <b>引擎</b>（sudocode，一次运行 = pid + session）→ <b>出口</b>（SudoRouter 模型/工具/凭证收口）→ <b>基座</b>（nexus：VFS 命名空间 + 不可伪造身份 + A2A + AgentRegistry + vault + sandbox）。Mega-product（Atlas/SaaS/SudoEdge）是这些模块的<b>同源装配</b>，部署形态不同。</p>
-<div class="dia"><svg viewBox="0 0 1000 680" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,PingFang SC,Microsoft YaHei,sans-serif">
+<h2>一、顶层架构（三种部署位置 · 一份底座）</h2>
+<p>按<b>三种部署位置、一份底座</b>组织，不是几个产品，是同一个东西的不同部署位置：<b>① 本地环境（个人端）</b>SudoWork UI + 内嵌 sudocode，断网可独立跑；<b>② Sudo Atlas（企业内网）</b>服务端，部署两次（办公域用户自管 / 核心域 IT 管控），差异靠配置不分叉代码；<b>③ Sudo SaaS（公有云）</b>与 Atlas 同源的最强部署。三处跑的是<b>同一份底座</b>（sudocode + nexus）二进制、逐格一致。<b>Phase 1 先跑通 本地 SudoWork → Sudo SaaS</b>（腾讯云 dogfood，立即可 demo）。</p>
+<div class="dia"><svg viewBox="0 0 1020 660" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,PingFang SC,Microsoft YaHei,sans-serif">
   <defs>
-    <marker id="mA" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" fill="#6ea8fe"/></marker>
-    <marker id="mG" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" fill="#4ade80"/></marker>
+    <marker id="dA" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#6ea8fe"/></marker>
+    <marker id="dG" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#e0a94b"/></marker>
   </defs>
-  <style>.ln{fill:#7f93ab;font-size:11px;font-weight:700;}.bx{font-size:12.5px;font-weight:700;}.sm{font-size:10.5px;}.el{fill:#8aa0bb;font-size:10px;}</style>
+  <style>.h{font-weight:700;}.sm{font-size:10.5px;fill:#9fb0c3;}.bx{font-size:12px;font-weight:700;}.mut{font-size:10px;fill:#7f93ab;}</style>
 
-  <!-- lane guides -->
-  <text x="14" y="70" class="ln">入口</text>
-  <text x="14" y="168" class="ln">中控·编排</text>
-  <text x="14" y="262" class="ln">引擎</text>
-  <text x="14" y="360" class="ln">出口</text>
-  <text x="14" y="470" class="ln">基座</text>
+  <!-- Phase 1 arc: 本地 -> SaaS -->
+  <path d="M170,66 C 360,14 760,14 852,66" fill="none" stroke="#e0a94b" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#dG)"/>
+  <rect x="404" y="8" width="230" height="22" rx="11" fill="#2a2620" stroke="#e0a94b"/>
+  <text x="519" y="23" fill="#f5e6c8" font-size="11.5" text-anchor="middle" class="h">Phase 1：先跑通 sudowork → sudosaas</text>
 
-  <!-- Lane1 入口 -->
+  <!-- Block 1 本地环境 -->
+  <rect x="16" y="70" width="306" height="450" rx="13" fill="#191526" stroke="#b48ce0" stroke-width="1.6"/>
+  <text x="34" y="96" fill="#e9ddf7" font-size="14" class="h">① 本地环境（个人端）</text>
+  <text x="34" y="113" class="sm">管控：员工个人 · 断网可独立跑</text>
   <g>
-    <rect x="90" y="40" width="230" height="60" rx="9" fill="#22202f" stroke="#b48ce0"/>
-    <text x="205" y="66" class="bx" fill="#e9ddf7" text-anchor="middle">SudoWork · 纯 UI</text>
-    <text x="205" y="84" class="sm" fill="#a99bc0" text-anchor="middle">sudowork · 任务/Team/Trace</text>
-    <rect x="340" y="40" width="270" height="60" rx="9" fill="#1c2733" stroke="#3b5a86"/>
-    <text x="475" y="66" class="bx" fill="#cfe0f6" text-anchor="middle">IM Channels</text>
-    <text x="475" y="84" class="sm" fill="#9fb0c3" text-anchor="middle">Telegram / Lark / 钉钉 / WeChat</text>
-    <rect x="630" y="40" width="270" height="60" rx="9" fill="#1c2733" stroke="#3b5a86"/>
-    <text x="765" y="66" class="bx" fill="#cfe0f6" text-anchor="middle">WebUI / 远程</text>
-    <text x="765" y="84" class="sm" fill="#9fb0c3" text-anchor="middle">Express + WS · 自托管</text>
+    <rect x="30" y="126" width="278" height="52" rx="8" fill="#22202f" stroke="#8b6db0"/>
+    <text x="169" y="147" fill="#e9ddf7" class="bx" text-anchor="middle">SudoWork · UI（sudowork）</text>
+    <text x="169" y="166" class="sm" text-anchor="middle">人在环工作台 · 任务看板</text>
+    <rect x="30" y="186" width="278" height="52" rx="8" fill="#16211a" stroke="#3b7a52"/>
+    <text x="169" y="207" fill="#d7f5e1" class="bx" text-anchor="middle">sudocode · 内嵌 Harness 引擎</text>
+    <text x="169" y="226" class="sm" text-anchor="middle">断网可独立跑通完整任务闭环</text>
+    <rect x="30" y="246" width="278" height="52" rx="8" fill="#141b24" stroke="#3b5a86"/>
+    <text x="169" y="267" fill="#cfe0f6" class="bx" text-anchor="middle">本机 Runtime</text>
+    <text x="169" y="286" class="sm" text-anchor="middle">文件 / shell / browser / 本地凭证</text>
+    <rect x="30" y="306" width="278" height="42" rx="8" fill="#0e1620" stroke="#2a3644"/>
+    <text x="169" y="332" class="mut" text-anchor="middle" font-size="10.5">个人办公数据 · 不接核心业务数据</text>
   </g>
+  <text x="34" y="372" class="mut">本地任务默认在此执行</text>
 
-  <!-- Lane2 中控·编排 -->
+  <!-- Block 2 Sudo Atlas -->
+  <rect x="346" y="70" width="330" height="450" rx="13" fill="#141d2b" stroke="#6ea8fe" stroke-width="1.6"/>
+  <text x="364" y="96" fill="#dbe8fb" font-size="14" class="h">② Sudo Atlas（企业内网 · sudoatlas 🆕）</text>
+  <text x="364" y="113" class="sm">部署两次：办公域（用户自管）/ 核心域（IT 管控）· 不分叉代码</text>
   <g>
-    <rect x="90" y="140" width="250" height="58" rx="9" fill="#231f2e" stroke="#c9a6ef"/>
-    <text x="215" y="164" class="bx" fill="#e9ddf7" text-anchor="middle">moss · 中控（给人用）</text>
-    <text x="215" y="182" class="sm" fill="#a99bc0" text-anchor="middle">registry client · session UI · 派活</text>
-    <rect x="360" y="140" width="250" height="58" rx="9" fill="#2a2620" stroke="#e0a94b"/>
-    <text x="485" y="164" class="bx" fill="#f5e6c8" text-anchor="middle">hydra · 编排/调度</text>
-    <text x="485" y="182" class="sm" fill="#c9bda0" text-anchor="middle">spawn agent · setup sessions · A2A</text>
-    <rect x="630" y="140" width="270" height="58" rx="9" fill="#12191b" stroke="#3b7a52"/>
-    <text x="765" y="164" class="bx" fill="#d7f5e1" text-anchor="middle">shareone · 协同/验收</text>
-    <text x="765" y="182" class="sm" fill="#9fb0c3" text-anchor="middle">白板 · 评论 · 签名交付</text>
+    <rect x="360" y="126" width="302" height="50" rx="8" fill="#16222f" stroke="#3b5a86"/>
+    <text x="511" y="146" fill="#cfe0f6" class="bx" text-anchor="middle">接入与任务</text>
+    <text x="511" y="164" class="sm" text-anchor="middle">IM / API / 定时触发 · 任务队列 · 执行裁决</text>
+    <rect x="360" y="184" width="302" height="50" rx="8" fill="#1b2430" stroke="#4a6ea0"/>
+    <text x="511" y="204" fill="#cfe0f6" class="bx" text-anchor="middle">Agent 治理</text>
+    <text x="511" y="222" class="sm" text-anchor="middle">注册中心 · 委派身份 ∩ 权限 · 审计/回滚闸门</text>
+    <rect x="360" y="242" width="302" height="60" rx="8" fill="#16211a" stroke="#4ade80"/>
+    <text x="511" y="262" fill="#d7f5e1" class="bx" text-anchor="middle">底座运行（容器）</text>
+    <text x="511" y="280" class="sm" text-anchor="middle">sudocode 引擎 · moss 容器执行面 · hydra 编排</text>
+    <text x="511" y="296" class="sm" text-anchor="middle">SudoRouter（nova-gateway）本域独占 Key</text>
+    <rect x="360" y="310" width="302" height="44" rx="8" fill="#12191b" stroke="#3b7a52"/>
+    <text x="511" y="337" fill="#9fd0c0" class="sm" text-anchor="middle">shareone 验收留痕 · trace 全量落盘（后训练）</text>
   </g>
+  <text x="364" y="380" class="mut">云端任务在此执行 · 企业交付形态</text>
 
-  <!-- Lane3 引擎 -->
-  <rect x="90" y="234" width="810" height="66" rx="10" fill="#16211a" stroke="#4ade80" stroke-width="1.5"/>
-  <text x="112" y="260" class="bx" fill="#d7f5e1">sudocode · Agent 引擎（Harness）</text>
-  <text x="112" y="282" class="sm" fill="#9fb0c3">一次运行 = pid · session-id（--resume）· transcript.jsonl · tool loop · subagent · memory</text>
-  <text x="770" y="272" class="sm" fill="#7f93ab" text-anchor="middle">SudoWork 内嵌此引擎</text>
-
-  <!-- Lane4 出口 -->
+  <!-- Block 3 Sudo SaaS -->
+  <rect x="700" y="70" width="304" height="450" rx="13" fill="#101a20" stroke="#4ade80" stroke-width="1.6"/>
+  <text x="718" y="96" fill="#d7f5e1" font-size="14" class="h">③ Sudo SaaS（公有云 · sudosaas 🆕）</text>
+  <text x="718" y="113" class="sm">数牍腾讯云 · 与 Atlas 同源「最强部署」</text>
   <g>
-    <rect x="90" y="334" width="270" height="58" rx="9" fill="#1b2a3f" stroke="#6ea8fe"/>
-    <text x="225" y="358" class="bx" fill="#dbe8fb" text-anchor="middle">nova-gateway · SudoRouter</text>
-    <text x="225" y="376" class="sm" fill="#9fb0c3" text-anchor="middle">模型/工具/凭证出口 · 内网 DLP</text>
-    <rect x="380" y="334" width="230" height="58" rx="9" fill="#1c2733" stroke="#3b5a86"/>
-    <text x="495" y="358" class="bx" fill="#cfe0f6" text-anchor="middle">MCP Gateway</text>
-    <text x="495" y="376" class="sm" fill="#9fb0c3" text-anchor="middle">工具暴露/策略</text>
-    <rect x="630" y="334" width="270" height="58" rx="9" fill="#1c2733" stroke="#3b5a86"/>
-    <text x="765" y="358" class="bx" fill="#cfe0f6" text-anchor="middle">Credential Broker</text>
-    <text x="765" y="376" class="sm" fill="#9fb0c3" text-anchor="middle">短期凭证 · 委派身份</text>
+    <rect x="714" y="126" width="276" height="50" rx="8" fill="#13211b" stroke="#3b7a52"/>
+    <text x="852" y="146" fill="#d7f5e1" class="bx" text-anchor="middle">服务端本体（Atlas 同源）</text>
+    <text x="852" y="164" class="sm" text-anchor="middle">接入 · 任务 · Agent 管控治理</text>
+    <rect x="714" y="184" width="276" height="50" rx="8" fill="#16211a" stroke="#4ade80"/>
+    <text x="852" y="204" fill="#d7f5e1" class="bx" text-anchor="middle">hydra 编排/派单 · moss 容器执行面</text>
+    <text x="852" y="222" class="sm" text-anchor="middle">跨域调度 · 执行状态汇聚</text>
+    <rect x="714" y="242" width="276" height="60" rx="8" fill="#1a1420" stroke="#b48ce0"/>
+    <text x="852" y="262" fill="#e9ddf7" class="bx" text-anchor="middle">sudoevolve 验收 · shareone 协同</text>
+    <text x="852" y="280" class="sm" text-anchor="middle">sudochat 多租户（每租户一 worker）</text>
+    <text x="852" y="296" class="sm" text-anchor="middle">Rubric 打分 · 失败模式归集</text>
+    <rect x="714" y="310" width="276" height="44" rx="8" fill="#0e1620" stroke="#2a3644"/>
+    <text x="852" y="337" class="mut" text-anchor="middle" font-size="10.5">三方接入 connectors · 更强模型 · C端/低敏</text>
   </g>
+  <text x="718" y="380" class="mut">盒子交付后取出，在此迭代</text>
 
-  <!-- Lane5 基座 nexus -->
-  <rect x="90" y="426" width="810" height="150" rx="12" fill="#101a20" stroke="#5a86a8" stroke-width="1.6"/>
-  <text x="112" y="450" class="bx" fill="#9fd0f0">nexus + nexus-vfs · 协作基座（nexi-lab，跨 org）</text>
-  <g>
-    <rect x="112" y="462" width="230" height="46" rx="8" fill="#16222b" stroke="#3b5a86"/>
-    <text x="227" y="480" class="sm" fill="#cfe0f6" text-anchor="middle" font-weight="700">VFS 命名空间</text>
-    <text x="227" y="498" class="sm" fill="#9fb0c3" text-anchor="middle">/agents /sessions /proc /tools</text>
-    <rect x="356" y="462" width="250" height="46" rx="8" fill="#16222b" stroke="#3b5a86"/>
-    <text x="481" y="480" class="sm" fill="#cfe0f6" text-anchor="middle" font-weight="700">identity（不可伪造）</text>
-    <text x="481" y="498" class="sm" fill="#9fb0c3" text-anchor="middle">CA cert · nexus://agent/{name} = agent-name</text>
-    <rect x="620" y="462" width="266" height="46" rx="8" fill="#16222b" stroke="#3b5a86"/>
-    <text x="753" y="480" class="sm" fill="#cfe0f6" text-anchor="middle" font-weight="700">A2A stamp hook</text>
-    <text x="753" y="498" class="sm" fill="#9fb0c3" text-anchor="middle">盖不可伪造 from · raft 复制 · 跨 CA 可验</text>
-    <rect x="112" y="516" width="230" height="46" rx="8" fill="#16222b" stroke="#3b5a86"/>
-    <text x="227" y="534" class="sm" fill="#cfe0f6" text-anchor="middle" font-weight="700">AgentRegistry / MAS</text>
-    <text x="227" y="552" class="sm" fill="#9fb0c3" text-anchor="middle">pid FSM · start_session · 存储 SSOT</text>
-    <rect x="356" y="516" width="250" height="46" rx="8" fill="#16222b" stroke="#3b5a86"/>
-    <text x="481" y="534" class="sm" fill="#cfe0f6" text-anchor="middle" font-weight="700">vault · rebac · delegation</text>
-    <text x="481" y="552" class="sm" fill="#9fb0c3" text-anchor="middle">秘钥 · 授权 · 委派</text>
-    <rect x="620" y="516" width="266" height="46" rx="8" fill="#16222b" stroke="#3b5a86"/>
-    <text x="753" y="534" class="sm" fill="#cfe0f6" text-anchor="middle" font-weight="700">sandbox</text>
-    <text x="753" y="552" class="sm" fill="#9fb0c3" text-anchor="middle">seccomp/ns → gVisor（phase-2）</text>
-  </g>
+  <!-- inter-block arrows -->
+  <line x1="322" y1="250" x2="346" y2="250" stroke="#6ea8fe" stroke-width="1.5" marker-end="url(#dA)"/>
+  <text x="334" y="238" class="mut" text-anchor="middle" font-size="9.5">IM/定时</text>
+  <text x="334" y="270" class="mut" text-anchor="middle" font-size="9.5">进 Atlas</text>
+  <line x1="676" y1="240" x2="700" y2="240" stroke="#e0a94b" stroke-width="1.5" marker-end="url(#dG)"/>
+  <line x1="700" y1="262" x2="676" y2="262" stroke="#e0a94b" stroke-width="1.5" marker-end="url(#dG)"/>
+  <text x="688" y="228" class="mut" text-anchor="middle" font-size="9.5">同源代码</text>
+  <text x="688" y="288" class="mut" text-anchor="middle" font-size="9">跨域信任边界</text>
 
-  <!-- edges -->
-  <!-- SudoWork -> moss create task -->
-  <line x1="205" y1="100" x2="215" y2="140" stroke="#6ea8fe" stroke-width="1.4" marker-end="url(#mA)"/>
-  <text x="150" y="124" class="el">创建任务(TaskSpec)</text>
-  <!-- channels -> moss -->
-  <line x1="430" y1="100" x2="270" y2="140" stroke="#6ea8fe" stroke-width="1.2" marker-end="url(#mA)"/>
-  <!-- moss -> hydra 派单 -->
-  <line x1="340" y1="169" x2="360" y2="169" stroke="#6ea8fe" stroke-width="1.4" marker-end="url(#mA)"/>
-  <text x="300" y="132" class="el">派单/编排</text>
-  <!-- hydra -> sudocode spawn -->
-  <line x1="485" y1="198" x2="470" y2="234" stroke="#6ea8fe" stroke-width="1.4" marker-end="url(#mA)"/>
-  <text x="492" y="222" class="el">spawn agent (start_session)</text>
-  <!-- sudocode -> shareone 交付 -->
-  <line x1="765" y1="198" x2="765" y2="234" stroke="#4ade80" stroke-width="1.3" marker-end="url(#mG)"/>
-  <text x="778" y="222" class="el">交付/验收</text>
-  <!-- sudocode -> nova-gateway 出口 -->
-  <line x1="300" y1="300" x2="255" y2="334" stroke="#6ea8fe" stroke-width="1.4" marker-end="url(#mA)"/>
-  <text x="150" y="322" class="el">模型/工具/凭证出口</text>
-  <!-- sudocode -> nexus VFS/a2a/MAS (routed through MCP/Credential gap x~620) -->
-  <line x1="620" y1="300" x2="612" y2="426" stroke="#4ade80" stroke-width="1.6" marker-end="url(#mG)"/>
-  <text x="470" y="414" class="el">VFS syscalls · A2A · MAS::start_session</text>
-  <!-- nova-gateway -> nexus (creds/vault) -->
-  <line x1="225" y1="392" x2="225" y2="426" stroke="#6ea8fe" stroke-width="1.1" marker-end="url(#mA)" stroke-dasharray="4 3"/>
-  <!-- identity stamps agent (dashed up) -->
-  <line x1="481" y1="462" x2="481" y2="300" stroke="#e0a94b" stroke-width="1.1" marker-end="url(#mA)" stroke-dasharray="3 4"/>
-  <text x="150" y="414" class="el" fill="#c9bda0">identity=agent-name 贯穿全链</text>
+  <!-- 域隔离 / 制品单向发布 note under Atlas -->
+  <text x="511" y="404" class="mut" text-anchor="middle" font-size="10">跨域只允许制品单向发布（Agent 包/Skill/配置）· 数据不反向流动 · 核心域 trace 不出域</text>
+  <text x="852" y="404" class="mut" text-anchor="middle" font-size="10">与内网之间只走脱敏产物</text>
 
-  <text x="112" y="600" class="sm" fill="#7f93ab">Mega-product 组合：Atlas / SaaS = 上面全部模块的同源装配（部署形态不同）；SaaS 先在腾讯云跑通 → 企业交付同源到 Atlas；SudoEdge = 盒内含 Atlas + SudoWork（air-gap）。</text>
-  <text x="112" y="620" class="sm" fill="#7f93ab">虚线=凭证/身份面；绿实线=引擎↔基座（存储/协作 SSOT 在 nexus）；蓝实线=任务/控制流。</text>
+  <!-- shared 底座 band -->
+  <rect x="16" y="536" width="988" height="76" rx="12" fill="#0d1512" stroke="#3b7a52" stroke-width="1.6"/>
+  <text x="34" y="562" fill="#4ade80" font-size="13.5" class="h">一份底座（三处同源二进制 · 逐格一致 · 责任人 Ethan）</text>
+  <text x="34" y="584" class="sm">sudocode（Agent 引擎 · 会话循环/计划/工具裁决/子 Agent）　+　nexus + nexus-vfs（分布式 VFS · 身份=CA cert=agent-name 不可伪造 · A2A · 存储 SSOT · 跨 CA 信任边界）</text>
+  <text x="34" y="602" class="mut">P1/P2/P6 共用；执行面只约定接口，实现按环境不同（本机进程 / 容器由 moss 承载），可互换不改 Harness 一行。</text>
+  <!-- 底座 up-links to three blocks -->
+  <line x1="169" y1="536" x2="169" y2="520" stroke="#4ade80" stroke-width="1.3" marker-end="url(#dA)" stroke-dasharray="3 3"/>
+  <line x1="511" y1="536" x2="511" y2="520" stroke="#4ade80" stroke-width="1.3" marker-end="url(#dA)" stroke-dasharray="3 3"/>
+  <line x1="852" y1="536" x2="852" y2="520" stroke="#4ade80" stroke-width="1.3" marker-end="url(#dA)" stroke-dasharray="3 3"/>
+  <text x="519" y="528" class="mut" text-anchor="middle" font-size="10">同源二进制，向三处部署</text>
 </svg>
 </div>
-<p class="meta">这是第一版，模块间关系可迭代。存储/协作/身份的 SSOT 统一在 nexus（绿实线）；任务/控制流走蓝实线；凭证/身份面走虚线。</p>
+<p class="meta">按你指的部署拓扑分三块画（本地 / atlas / saas）。跨块：本地→Atlas 走 IM/定时触发 + 制品单向发布；Atlas↔SaaS 同源代码 + 跨域信任边界（只走脱敏产物）。模块粒度与跨块关系可继续迭代。</p>
 
 <h2>二、产品组合与 repo</h2>
 <p>Mega-product 由 Base product 装配复用（每个 mega 可含多个 base）。owner 与成功标准以下表为准，repo 链到 GitHub；权威「repo→责任人/编制」总表见组织文档 §0。</p>
@@ -385,6 +367,6 @@ interface TaskExecutionResolution {
 <li><b>Phase D</b>：完整企业治理 + 数据飞轮 —— 委派 DID、撤销/轮换、后训练闭环（Verify+Event-Trace）。</li>
 </ul>
 
-<p class="foot-note">订正版 v2.1 · 基于武鹏 v1.4 + agent-context-storage-matrix + nexus-auth-architecture + v4.4 命名口径 · 落 sudoprivacy/sudostack · sudowork-win-pc-3</p>
+<p class="foot-note">系统架构说明书 v2.2 · 基于武鹏 v1.4 + agent-context-storage-matrix + nexus-auth-architecture + v4.4 命名口径 · 落 sudoprivacy/sudostack · sudowork-win-pc-3</p>
 
 </main></body></html>

@@ -3,7 +3,7 @@ import os, io
 BASE = r'C:\Users\songym\cursor-projects\_docssot'
 def rd(p): return io.open(os.path.join(BASE, p), encoding='utf-8').read()
 
-modules_svg = rd('arch_modules.svg')
+deploy_svg  = rd('arch_deploy.svg')
 cons_svg    = rd('arch_consolidate.svg')
 
 GH = 'https://github.com/'
@@ -11,9 +11,9 @@ def repo(name, org='sudoprivacy', label=None):
     return f'<a href="{GH}{org}/{name}"><code>{label or name}</code></a>'
 
 BODY = '''
-<span class="badge">Sudo 产品架构说明书 · 订正版 v2.1</span>
-<h1>Sudo 新一代产品架构说明书（订正版）</h1>
-<p class="meta">在武鹏 v1.4 基础上订正命名口径、合并 Atlas、把 <b>AgentSpec 与 agent-context-storage-matrix consolidate 成同一套模型</b>，并补齐顶层架构图。本文是跨全家族技术架构 SSOT，落 ''' + repo('sudostack') + '''。开发（PRD + 伪代码）以本文与 matrix 为准。</p>
+<span class="badge">Sudo 系统架构说明书 · v2.2</span>
+<h1>Sudo 系统架构说明书</h1>
+<p class="meta">在武鹏 v1.4 基础上订正命名口径、合并 Atlas、把 <b>AgentSpec 与 agent-context-storage-matrix consolidate 成同一套模型</b>，并按三种部署位置画顶层架构。本文是跨全家族技术架构 SSOT，落 ''' + repo('sudostack') + '''。开发（PRD + 伪代码）以本文与 matrix 为准。</p>
 
 <div class="align">
 <b>本版订正重点（相对武鹏 v1.4）</b>
@@ -25,10 +25,10 @@ BODY = '''
 </ul>
 </div>
 
-<h2>一、顶层架构（模块关系）</h2>
-<p>五层：<b>入口</b>（SudoWork UI / IM 渠道 / WebUI）→ <b>中控·编排</b>（moss 中控给人用 · hydra 编排调度 · shareone 协同验收）→ <b>引擎</b>（sudocode，一次运行 = pid + session）→ <b>出口</b>（SudoRouter 模型/工具/凭证收口）→ <b>基座</b>（nexus：VFS 命名空间 + 不可伪造身份 + A2A + AgentRegistry + vault + sandbox）。Mega-product（Atlas/SaaS/SudoEdge）是这些模块的<b>同源装配</b>，部署形态不同。</p>
-<div class="dia">__MODULES__</div>
-<p class="meta">这是第一版，模块间关系可迭代。存储/协作/身份的 SSOT 统一在 nexus（绿实线）；任务/控制流走蓝实线；凭证/身份面走虚线。</p>
+<h2>一、顶层架构（三种部署位置 · 一份底座）</h2>
+<p>按<b>三种部署位置、一份底座</b>组织，不是几个产品，是同一个东西的不同部署位置：<b>① 本地环境（个人端）</b>SudoWork UI + 内嵌 sudocode，断网可独立跑；<b>② Sudo Atlas（企业内网）</b>服务端，部署两次（办公域用户自管 / 核心域 IT 管控），差异靠配置不分叉代码；<b>③ Sudo SaaS（公有云）</b>与 Atlas 同源的最强部署。三处跑的是<b>同一份底座</b>（sudocode + nexus）二进制、逐格一致。<b>Phase 1 先跑通 本地 SudoWork → Sudo SaaS</b>（腾讯云 dogfood，立即可 demo）。</p>
+<div class="dia">__DEPLOY__</div>
+<p class="meta">按你指的部署拓扑分三块画（本地 / atlas / saas）。跨块：本地→Atlas 走 IM/定时触发 + 制品单向发布；Atlas↔SaaS 同源代码 + 跨域信任边界（只走脱敏产物）。模块粒度与跨块关系可继续迭代。</p>
 
 <h2>二、产品组合与 repo</h2>
 <p>Mega-product 由 Base product 装配复用（每个 mega 可含多个 base）。owner 与成功标准以下表为准，repo 链到 GitHub；权威「repo→责任人/编制」总表见组织文档 §0。</p>
@@ -167,15 +167,15 @@ interface TaskExecutionResolution {
 <li><b>Phase D</b>：完整企业治理 + 数据飞轮 —— 委派 DID、撤销/轮换、后训练闭环（Verify+Event-Trace）。</li>
 </ul>
 
-<p class="foot-note">订正版 v2.1 · 基于武鹏 v1.4 + agent-context-storage-matrix + nexus-auth-architecture + v4.4 命名口径 · 落 sudoprivacy/sudostack · sudowork-win-pc-3</p>
+<p class="foot-note">系统架构说明书 v2.2 · 基于武鹏 v1.4 + agent-context-storage-matrix + nexus-auth-architecture + v4.4 命名口径 · 落 sudoprivacy/sudostack · sudowork-win-pc-3</p>
 '''
 
-BODY = BODY.replace('__MODULES__', modules_svg).replace('__CONS__', cons_svg)
+BODY = BODY.replace('__DEPLOY__', deploy_svg).replace('__CONS__', cons_svg)
 
 TPL = '''<!doctype html>
 <html lang="zh-CN"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sudo 产品架构说明书（订正版 v2.1）</title><base target="_blank">
+<title>Sudo 系统架构说明书 v2.2</title><base target="_blank">
 <style>
 :root{--bg:#0f141b;--panel:#161d27;--panel2:#1b2430;--text:#e6edf5;--muted:#9fb0c3;--line:#2a3644;--accent:#6ea8fe;--green:#4ade80;--gold:#e0a94b;}
 *{box-sizing:border-box;}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;font-size:16px;}
@@ -207,4 +207,4 @@ __BODY__
 
 html = TPL.replace('__BODY__', BODY)
 io.open(os.path.join(BASE, 'arch_native.html'), 'w', encoding='utf-8').write(html)
-print('modules svg:', len(modules_svg), '| cons svg:', len(cons_svg), '| total html:', len(html))
+print('deploy svg:', len(deploy_svg), '| cons svg:', len(cons_svg), '| total html:', len(html))
