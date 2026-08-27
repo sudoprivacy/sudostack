@@ -1,0 +1,86 @@
+<svg viewBox="0 0 980 520" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,PingFang SC,Microsoft YaHei,sans-serif">
+  <defs>
+    <marker id="cA" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#6ea8fe"/></marker>
+  </defs>
+  <style>.pth{font-family:Consolas,monospace;fill:#9fe0c0;}</style>
+
+  <!-- IMAGE box -->
+  <rect x="14" y="20" width="300" height="292" rx="12" fill="#1b2a3f" stroke="#6ea8fe" stroke-width="1.6"/>
+  <rect x="30" y="34" width="120" height="22" rx="11" fill="#0b1017" stroke="#3b5a86"/>
+  <text x="90" y="49" fill="#6ea8fe" font-size="12" font-weight="700" text-anchor="middle">IMAGE（持久）</text>
+  <text x="164" y="50" class="pth" font-size="14" font-weight="700">/agents/{name}/</text>
+  <text x="30" y="76" fill="#dbe8fb" font-size="12.5">agent-name · 持久 principal · 可寻址身份</text>
+  <text x="30" y="96" fill="#e0a94b" font-size="12.5" font-weight="700">≡ AgentSpec（制品声明）</text>
+  <line x1="30" y1="106" x2="298" y2="106" stroke="#2a3644"/>
+  <g font-size="11.5">
+    <text x="30" y="128" fill="#d7f5e1" font-family="Consolas,monospace">config.toml</text>
+    <text x="46" y="146" fill="#9fb0c3">id·version·owner·requires{skills,</text>
+    <text x="46" y="162" fill="#9fb0c3">mcpServers,models,permissions}·</text>
+    <text x="46" y="178" fill="#9fb0c3">governance{status,risk,did,</text>
+    <text x="46" y="194" fill="#9fb0c3">imageDigest,signedBy}</text>
+    <text x="30" y="218" fill="#d7f5e1" font-family="Consolas,monospace">prompts/</text>
+    <text x="120" y="218" fill="#9fb0c3">← runtime.instructionRef</text>
+    <text x="30" y="240" fill="#d7f5e1" font-family="Consolas,monospace">skills/</text>
+    <text x="120" y="240" fill="#9fb0c3">← requires.skills</text>
+    <text x="30" y="262" fill="#d7f5e1" font-family="Consolas,monospace">memory/</text>
+    <text x="120" y="262" fill="#9fb0c3">← Memory Protocol（4类+team）</text>
+    <text x="30" y="290" fill="#7f93ab" font-size="11">contract.input/output = TaskSpec 校验基准</text>
+  </g>
+
+  <!-- SESSION box -->
+  <rect x="340" y="20" width="300" height="292" rx="12" fill="#231f2e" stroke="#b48ce0" stroke-width="1.6"/>
+  <rect x="356" y="34" width="120" height="22" rx="11" fill="#0b1017" stroke="#4a3a63"/>
+  <text x="416" y="49" fill="#c9a6ef" font-size="12" font-weight="700" text-anchor="middle">SESSION（持久）</text>
+  <text x="490" y="50" class="pth" font-size="13.5" font-weight="700" fill="#d9c2f5">/sessions/&lt;sid&gt;/</text>
+  <text x="356" y="76" fill="#e9ddf7" font-size="12.5">session-id · UUID · --resume key</text>
+  <text x="356" y="94" fill="#a99bc0" font-size="12">跨 N 个 pid · 扁平 SSOT（无嵌套）</text>
+  <line x1="356" y1="106" x2="624" y2="106" stroke="#3a3247"/>
+  <g font-size="11.5">
+    <text x="356" y="128" fill="#e9ddf7" font-family="Consolas,monospace">transcript.jsonl</text>
+    <text x="372" y="146" fill="#a99bc0">≡ Verify + Event/Trace 契约</text>
+    <text x="372" y="163" fill="#e0a94b">＝后训练友好存储格式（§4 后训练线）</text>
+    <text x="356" y="188" fill="#e9ddf7" font-family="Consolas,monospace">tool-results/&lt;id&gt;</text>
+    <text x="372" y="206" fill="#a99bc0">write-once 大输出 offload（cache 稳定）</text>
+    <text x="356" y="232" fill="#a99bc0">owner 属性 → 默认策略</text>
+    <text x="356" y="250" fill="#a99bc0">repo = DT_LINK（0..N，触达即挂）</text>
+    <text x="356" y="272" fill="#a99bc0">隔离 = policy 非 path → 跨 agent 可检索</text>
+    <text x="356" y="296" fill="#7f93ab" font-size="11">Context Protocol 在此组装注入到 pid</text>
+  </g>
+
+  <!-- RUNTIME box -->
+  <rect x="666" y="20" width="300" height="292" rx="12" fill="#2a2620" stroke="#e0a94b" stroke-width="1.6"/>
+  <rect x="682" y="34" width="122" height="22" rx="11" fill="#0b1017" stroke="#5c4a24"/>
+  <text x="743" y="49" fill="#e0a94b" font-size="12" font-weight="700" text-anchor="middle">RUNTIME（临时）</text>
+  <text x="818" y="50" class="pth" font-size="14" font-weight="700" fill="#f0d79a">/proc/{pid}/</text>
+  <text x="682" y="76" fill="#f5e6c8" font-size="12.5">pid · 一次运行句柄 · exit 即 reap</text>
+  <text x="682" y="94" fill="#c9bda0" font-size="12">= 进程，不是磁盘上的可执行体</text>
+  <line x1="682" y1="106" x2="950" y2="106" stroke="#4a4224"/>
+  <g font-size="11.5">
+    <text x="682" y="128" fill="#f5e6c8" font-family="Consolas,monospace">status</text>
+    <text x="760" y="128" fill="#c9bda0">FSM（AgentRegistry SSOT）</text>
+    <text x="682" y="150" fill="#f5e6c8" font-family="Consolas,monospace">session</text>
+    <text x="760" y="150" fill="#c9bda0">→ 指回 /sessions/&lt;sid&gt;</text>
+    <text x="682" y="172" fill="#f5e6c8" font-family="Consolas,monospace">chat-with-me</text>
+    <text x="810" y="172" fill="#c9bda0">A2A DT_STREAM</text>
+    <text x="682" y="194" fill="#f5e6c8" font-family="Consolas,monospace">workspace/{alias}</text>
+    <text x="682" y="212" fill="#c9bda0">→ repo zone DT_LINK（reaped）</text>
+    <text x="682" y="240" fill="#f5e6c8">TaskSpec（一次执行）落此：</text>
+    <text x="698" y="258" fill="#c9bda0">input·deadline·workspace_ref·</text>
+    <text x="698" y="274" fill="#c9bda0">task_mode·execution_resolution</text>
+    <text x="682" y="298" fill="#7f93ab" font-size="11">Tool 调用出 workspace 沙箱（seccomp/ns）</text>
+  </g>
+
+  <!-- relations lane -->
+  <text x="20" y="344" fill="#8aa0bb" font-size="12" font-weight="700">三者关系（OS 类比：磁盘可执行体 vs 运行进程）</text>
+  <rect x="360" y="360" width="260" height="26" rx="13" fill="#0b1017" stroke="#3b5a86"/>
+  <text x="490" y="377" fill="#cfe0f6" font-size="11.5" text-anchor="middle">① agent-name ──start_session(sid?)──▶ pid</text>
+  <rect x="360" y="392" width="260" height="26" rx="13" fill="#0b1017" stroke="#5c4a24"/>
+  <text x="490" y="409" fill="#f0d79a" font-size="11.5" text-anchor="middle">② pid ──/proc/{pid}/session──▶ session-id</text>
+  <rect x="360" y="424" width="260" height="26" rx="13" fill="#0b1017" stroke="#4a3a63"/>
+  <text x="490" y="441" fill="#d9c2f5" font-size="11.5" text-anchor="middle">③ session ──DT_LINK──▶ /agents/{name}/sessions/</text>
+
+  <!-- contracts strip -->
+  <rect x="14" y="466" width="952" height="46" rx="10" fill="#12191b" stroke="#3b7a52"/>
+  <text x="26" y="484" fill="#4ade80" font-size="12" font-weight="700">六契约 × 物理落点（实现者必须落到 matrix 路径，不得另起存储）：</text>
+  <text x="26" y="503" fill="#9fb0c3" font-size="11.5">TaskSpec→/proc/{pid}/ ·　Context→/proc/{pid}/（组装）·　Memory→/agents/{name}/memory/ ·　Verify+Event-Trace→/sessions/&lt;sid&gt;/transcript.jsonl ·　Tool→/tools//skills/+MCP gateway</text>
+</svg>
