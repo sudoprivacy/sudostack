@@ -34,15 +34,14 @@ BODY = '''
 <p>Mega-product 由 Base product 装配复用（每个 mega 可含多个 base）。owner 与成功标准以下表为准，repo 链到 GitHub；权威「repo→责任人/编制」总表见组织文档 §0。</p>
 <table>
 <tr><th>Mega / 层</th><th>Base-product（repo）</th><th>owner</th><th>成功标准</th></tr>
-<tr><td rowspan="6"><b>Sudo Atlas</b><br>企业私有化<br>（原 Server+MOSS）<br>owner 铁锋<br>repo ''' + repo('sudoatlas') + '''</td>
+<tr><td rowspan="5"><b>Sudo Atlas</b><br>企业私有化<br>（原 Server+MOSS）<br>owner 铁锋<br>repo ''' + repo('sudoatlas') + '''</td>
     <td>''' + repo('sudocode') + ''' · Agent 引擎</td><td>Ethan</td><td>独立 CLI 引擎稳定；对齐 AgentSpec/ACP/matrix；PTY 门禁</td></tr>
 <tr><td>''' + repo('nexus','nexi-lab') + ''' + nexus-vfs · 基座</td><td>Ethan</td><td>VFS/身份/session 存储 SSOT；跨节点一致；不可伪造 from</td></tr>
 <tr><td>''' + repo('nova-gateway') + ''' = SudoRouter</td><td>张帅</td><td>模型/工具/凭证统一出口；<b>核心域只接内部算力，办公/支撑域可接外部，且支撑域 router 可级联核心域 router 借内部算力</b>；每域独占 Key</td></tr>
-<tr><td>''' + repo('moss') + ''' · 中控+容器执行面</td><td><b>武鹏</b></td><td>中控体验丝滑；容器执行/配额稳定；registry/session <b>client</b>（不复制 nexus SSOT）</td></tr>
-<tr><td>''' + repo('hydra') + ''' · 编排/调度</td><td><b>Ethan</b></td><td>spawn agent + setup sessions/派单；与 moss 职责不重合</td></tr>
+<tr><td>''' + repo('moss') + ''' · 中控/控制平面</td><td><b>武鹏</b></td><td>企业 IAM/registry/triggers/cron/channels/wiki；agent 身份/session/registry 与 <b>nexus merge</b> 做 client（不复制 SSOT）；容器执行已上移 k8s+gvisor</td></tr>
 <tr><td>''' + repo('shareone') + ''' · 协同/验收</td><td>孙文龙</td><td>standalone + 在 sudowork/sudocode 内嵌端到端丝滑；签名交付</td></tr>
 <tr><td rowspan="3"><b>Sudo SaaS</b><br>公有云·Atlas 同源<br>owner 铁锋<br>repo ''' + repo('sudosaas') + '''</td>
-    <td>= Atlas 全部 base（同源装配：sudocode/nexus/moss/hydra/shareone）</td><td>—</td><td><b>先在腾讯云跑通</b>完整搭建演练，立即可 demo</td></tr>
+    <td>= Atlas 全部 base（同源装配：sudocode/nexus/moss/shareone）</td><td>—</td><td><b>先在腾讯云跑通</b>完整搭建演练，立即可 demo</td></tr>
 <tr><td>SudoRouter：公有云<b>直接用 <a href="https://sudorouter.ai/">sudorouter.ai</a></b></td><td>张帅</td><td>公有云模型出口；更强模型 / 三方数据</td></tr>
 <tr><td>+ ''' + repo('sudochat') + ''' 多租户 · ''' + repo('sudoevolve') + ''' 验收</td><td>待定</td><td>多租户会话隔离；Rubric 打分与验收裁决</td></tr>
 <tr><td rowspan="4"><b>SudoEdge</b><br>盒子/离线<br>owner Joe<br>repo ''' + repo('sudoedge') + '''</td>
@@ -57,7 +56,23 @@ BODY = '''
     <td>''' + repo('ai-dev-browser') + '''（<b>sudowork 内置工具，未来 sudocode 内置</b>）</td><td>待定</td><td>中等 agent 驱动中等难度网页探索；tools↔cores 1:1</td></tr>
 <tr><td>''' + repo('password-agent') + '''（凭证/秘钥 vault）</td><td>梁燕芝</td><td>plaintext 不进 LLM</td></tr>
 </table>
-<p class="meta">「三方接入」不单列——它是 Agent（sudocode）的 tools/MCP 能力；「编排」= hydra，不再叫「编排脑」（原 SaaS 口径里的编排脑即 hydra + SudoGenius 领域 Planner）。</p>
+<p class="meta">「三方接入」不单列——它是 Agent（sudocode）的 tools/MCP 能力。「编排」在服务端<b>不是一个 base</b>，而是拆开：任务编排/触发=moss(event-triggers+cron)、算力/pod 调度=k8s、agent spawn+A2A=nexus-vfs（详见下方「服务端组成栈」）。</p>
+
+<h2>二·五、服务端组成栈（sudosaas / Atlas）</h2>
+<p>基于对 moss / sudochat / hydra <b>真实代码</b>的核查，服务端各角色归属如下。核心原则：<b>jail 只有一套（k8s+gvisor），控制平面（moss）与 nexus 按 matrix 契约 merge，各自的自造容器层都不进服务端。</b></p>
+<table>
+<tr><th>角色</th><th>谁来做</th><th>说明</th></tr>
+<tr><td><b>多租户控制平面</b></td><td>''' + repo('moss') + '''（身份/token 与 nexus merge）</td><td>moss 真正价值：企业 IAM/orgs/角色/api-key、agentStore 租户注册+审批、event-triggers+cron、channels、wiki/文档、secrets。≈ 早期 Atlas</td></tr>
+<tr><td><b>引擎</b></td><td>''' + repo('sudocode') + '''</td><td>每租户 worker</td></tr>
+<tr><td><b>jail + 调度</b></td><td><b>k8s + gvisor</b></td><td>统一取代 moss 的 docker-CLI、sudochat 的 dockerode、hydra 的 tmux —— 三个各自造的弱 jail</td></tr>
+<tr><td><b>headless spawn / supervise</b></td><td>sudowork ACP + ''' + repo('nexus','nexi-lab') + ''' <code>start_session</code></td><td>hydra 自己文档 §8.2 也是这么分工的</td></tr>
+<tr><td><b>A2A（若需要）</b></td><td>''' + repo('nexus','nexi-lab') + '''-vfs mailbox</td><td>不是 hydra；hydra 只是消费 nexus 的 mailbox</td></tr>
+<tr><td><b>多租户 chatbot 模态</b></td><td>''' + repo('sudochat') + ''' 聊天经纪层（去掉 dockerode）</td><td>坐在上面的前端层（会话/SSE/每租户 prompt·wiki·skill）</td></tr>
+<tr><td>hydra</td><td>❌ <b>不进服务端</b></td><td>周进鲸的 VS Code/Electron <b>开发者 IDE 工具</b>（copilot-worker 并行 agent · tmux+worktree · 单机）；至多 UX 参考</td></tr>
+</table>
+<div class="align">
+<b>moss ↔ nexus merge 范围（按 matrix 契约，非只 identity）</b>：agent 身份（CA cert）· session（扁平 <code>/sessions/&lt;sid&gt;/</code>）· agent-registry 的 AgentSpec 制品（<code>/agents/{name}/</code>）· memory/workspace —— 这四类 matrix 定义 nexus 为 SSOT，moss 逐行改成 client；企业 IAM/审批流/triggers/cron/channels/wiki/secrets 留 moss。<b>matrix 就是这份 merge 的 checklist。</b>
+</div>
 <div class="align">
 <b>最重要的产品边界</b>
 <ul>

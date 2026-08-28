@@ -34,15 +34,15 @@
   <text x="364" y="96" fill="#dbe8fb" font-size="14" class="h">② Sudo Atlas（企业内网 · sudoatlas 🆕）</text>
   <text x="364" y="113" class="sm">部署两次：办公域（用户自管）/ 核心域（IT 管控）· 不分叉代码</text>
   <g>
-    <rect x="360" y="126" width="302" height="50" rx="8" fill="#16222f" stroke="#3b5a86"/>
-    <text x="511" y="146" fill="#cfe0f6" class="bx" text-anchor="middle">接入与任务</text>
-    <text x="511" y="164" class="sm" text-anchor="middle">IM / API / 定时触发 · 任务队列 · 执行裁决</text>
-    <rect x="360" y="184" width="302" height="50" rx="8" fill="#1b2430" stroke="#4a6ea0"/>
-    <text x="511" y="204" fill="#cfe0f6" class="bx" text-anchor="middle">Agent 治理</text>
-    <text x="511" y="222" class="sm" text-anchor="middle">注册中心 · 委派身份 ∩ 权限 · 审计/回滚闸门</text>
+    <rect x="360" y="126" width="302" height="50" rx="8" fill="#231f2e" stroke="#c9a6ef"/>
+    <text x="511" y="146" fill="#e9ddf7" class="bx" text-anchor="middle">控制平面（moss）</text>
+    <text x="511" y="164" class="sm" text-anchor="middle">接入 IM/API/定时 · 任务队列/裁决 · IAM</text>
+    <rect x="360" y="184" width="302" height="50" rx="8" fill="#231f2e" stroke="#b48ce0"/>
+    <text x="511" y="204" fill="#e9ddf7" class="bx" text-anchor="middle">Agent 治理（moss）</text>
+    <text x="511" y="222" class="sm" text-anchor="middle">注册+审批 · 委派身份∩权限 · event-triggers+cron</text>
     <rect x="360" y="242" width="302" height="60" rx="8" fill="#16211a" stroke="#4ade80"/>
-    <text x="511" y="262" fill="#d7f5e1" class="bx" text-anchor="middle">底座运行（容器）</text>
-    <text x="511" y="280" class="sm" text-anchor="middle">sudocode 引擎 · moss 容器执行面 · hydra 编排</text>
+    <text x="511" y="262" fill="#d7f5e1" class="bx" text-anchor="middle">引擎 + jail（per-tenant）</text>
+    <text x="511" y="280" class="sm" text-anchor="middle">sudocode worker × <tspan fill="#f0d79a">k8s + gvisor pod</tspan></text>
     <text x="511" y="296" class="sm" text-anchor="middle">SudoRouter（nova-gateway）本域独占 Key</text>
     <rect x="360" y="310" width="302" height="44" rx="8" fill="#12191b" stroke="#3b7a52"/>
     <text x="511" y="337" fill="#9fd0c0" class="sm" text-anchor="middle">shareone 验收留痕 · trace 全量落盘（后训练）</text>
@@ -58,14 +58,14 @@
     <text x="852" y="146" fill="#d7f5e1" class="bx" text-anchor="middle">服务端本体（Atlas 同源）</text>
     <text x="852" y="164" class="sm" text-anchor="middle">接入 · 任务 · Agent 管控治理</text>
     <rect x="714" y="184" width="276" height="50" rx="8" fill="#16211a" stroke="#4ade80"/>
-    <text x="852" y="204" fill="#d7f5e1" class="bx" text-anchor="middle">hydra 编排/派单 · moss 容器执行面</text>
-    <text x="852" y="222" class="sm" text-anchor="middle">跨域调度 · 执行状态汇聚</text>
+    <text x="852" y="204" fill="#d7f5e1" class="bx" text-anchor="middle">引擎 + jail（per-tenant）</text>
+    <text x="852" y="222" class="sm" text-anchor="middle">sudocode worker × <tspan fill="#f0d79a">k8s + gvisor pod</tspan></text>
     <rect x="714" y="242" width="276" height="60" rx="8" fill="#1a1420" stroke="#b48ce0"/>
-    <text x="852" y="262" fill="#e9ddf7" class="bx" text-anchor="middle">sudoevolve 验收 · shareone 协同</text>
-    <text x="852" y="280" class="sm" text-anchor="middle">sudochat 多租户（每租户一 worker）</text>
-    <text x="852" y="296" class="sm" text-anchor="middle">Rubric 打分 · 失败模式归集</text>
+    <text x="852" y="262" fill="#e9ddf7" class="bx" text-anchor="middle">sudochat 多租户聊天层</text>
+    <text x="852" y="280" class="sm" text-anchor="middle">sudoevolve 验收 · shareone 协同</text>
+    <text x="852" y="296" class="sm" text-anchor="middle">SudoRouter = sudorouter.ai</text>
     <rect x="714" y="310" width="276" height="44" rx="8" fill="#0e1620" stroke="#2a3644"/>
-    <text x="852" y="337" class="mut" text-anchor="middle" font-size="10.5">三方接入 connectors · 更强模型 · C端/低敏</text>
+    <text x="852" y="337" class="mut" text-anchor="middle" font-size="10.5">三方 = agent tools/MCP · 更强模型 · C端/低敏</text>
   </g>
   <text x="718" y="380" class="mut">盒子交付后取出，在此迭代</text>
 
@@ -85,8 +85,8 @@
   <!-- shared 底座 band -->
   <rect x="16" y="536" width="988" height="76" rx="12" fill="#0d1512" stroke="#3b7a52" stroke-width="1.6"/>
   <text x="34" y="562" fill="#4ade80" font-size="13.5" class="h">一份底座（三处同源二进制 · 逐格一致 · 责任人 Ethan）</text>
-  <text x="34" y="584" class="sm">sudocode（Agent 引擎 · 会话循环/计划/工具裁决/子 Agent）　+　nexus + nexus-vfs（分布式 VFS · 身份=CA cert=agent-name 不可伪造 · A2A · 存储 SSOT · 跨 CA 信任边界）</text>
-  <text x="34" y="602" class="mut">P1/P2/P6 共用；执行面只约定接口，实现按环境不同（本机进程 / 容器由 moss 承载），可互换不改 Harness 一行。</text>
+  <text x="34" y="584" class="sm">sudocode（Agent 引擎）　+　nexus + nexus-vfs（身份=CA cert=agent-name 不可伪造 · 存储 SSOT /agents//sessions//proc · A2A mailbox · start_session 派生 · 跨 CA 信任）</text>
+  <text x="34" y="602" class="mut">执行面只约定接口（本机进程 / 云端 k8s+gvisor pod）。编排 = moss(task) + k8s(compute) + nexus(spawn/A2A)；hydra = 开发者 IDE 工具，不在服务端。</text>
   <!-- 底座 up-links to three blocks -->
   <line x1="169" y1="536" x2="169" y2="520" stroke="#4ade80" stroke-width="1.3" marker-end="url(#dA)" stroke-dasharray="3 3"/>
   <line x1="511" y1="536" x2="511" y2="520" stroke="#4ade80" stroke-width="1.3" marker-end="url(#dA)" stroke-dasharray="3 3"/>
