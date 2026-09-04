@@ -28,11 +28,22 @@ cluster_port = 8443
 
 [components.scode]
 repo     = "sudoprivacy/sudocode"
-role     = "ACP agent engine (stdio), one per session; spawned/supervised by moss"
+role     = "ACP agent engine (stdio); moss K8sBackend spawns ONE scode POD per session"
 source   = "release-binary"                   # musl-static (zero glibc since v0.2.0)
 artifact = "scode"
-version  = "0.1.28"                           # scode --version on the live VM
-install_path = "~/.local/bin/scode"
+version  = "0.1.28"                            # scode --version on the live VM
+# scode does not run on the host directly — the binary is mounted into each
+# session pod; per-tenant isolation is the gvisor runtime class (see compute).
+
+[compute]
+# Env-agnostic compute model: moss spawns each session's scode as an isolated
+# pod. Isolation = gvisor (runsc) runtime class — a per-tenant jail. This is the
+# systematically-correct execution surface (SSOT: "引擎+jail(per-tenant) k8s+gvisor pod").
+# The concrete cluster (single-node k3s vs managed k8s) is a per-target detail
+# set in the profile.
+model         = "k8s-pod-per-session"
+isolation     = "gvisor"                       # handler runsc
+pod_base_image = "node:22-bookworm-slim"       # scode binary mounted in, not baked
 
 [components.webui]
 repo    = "sudoprivacy/sudowork"              # apps/webui in the monorepo
@@ -42,4 +53,5 @@ version = "TODO"
 port    = 26808
 
 # Model egress is external and not deployed here:
-#   scode --auth proxy → SudoRouter (nova-gateway) at sudorouter.ai
+#   scode pods → ANTHROPIC_BASE_URL = https://hk.sudorouter.ai/v1 → SudoRouter
+#   (nova-gateway); key = ANTHROPIC_API_KEY (SudoRouter key, host env, not here).

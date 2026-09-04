@@ -33,20 +33,29 @@ product's own repo (e.g. the webui image in `sudowork`); this layer only
 
 ## Verified SaaS topology (source: the running 腾讯云 VM `sudowork-saas`)
 
+Single VM: control plane on systemd, **compute on a local k3s + gvisor**.
+
 ```
-Tailscale 100.64.0.1
-  └─ moss-server  (systemd, node)      :43127   control plane; hosts scode (ACP, stdio, per-session)
-  └─ nexus-broker (systemd, nexusd)    :2126    storage/identity/secrets; cluster founder :8443
-       scode  → --auth proxy → SudoRouter (sudorouter.ai)   model egress (external)
+Tailscale 100.64.0.1   (VM sudowork-saas / k8s node vm-3-6-ubuntu)
+  ├─ moss-server  (systemd, node)   :43127   control plane; K8sBackend spawns 1 scode pod/session
+  ├─ nexus-broker (systemd, nexusd) :2126    storage/identity/secrets; cluster founder :8443
+  └─ k3s (single-node) + gvisor (runsc) runtime class     namespace: moss-sessions
+        scode pod per session  (image node:22-bookworm-slim; scode mounted at /opt/scode/scode)
+          └─ ANTHROPIC_BASE_URL=https://hk.sudorouter.ai/v1 → SudoRouter   (model egress, external)
 ```
 
 ## Status / TODO
 
-- [x] Codify the live SaaS deploy as config-as-code (this profile — topology,
-      systemd units, env schema, version pins).
-- [ ] Wire artifact provenance (moss build, `nexusd-cluster-main` release, pinned
-      scode release) so a profile can be deployed to a fresh host.
-- [ ] Idempotent `deploy.sh` per profile (render env + units from the profile,
-      place artifacts, enable services) + post-deploy health check.
+- [x] Codify the live SaaS deploy as config-as-code (topology, systemd units,
+      k3s+gvisor compute, env schema, version pins).
+- [ ] Wire artifact provenance so a profile deploys to a fresh host: moss = git
+      build @ `cf3b7e8`; `nexusd-cluster-main` 0.1.1 + scode 0.1.28 release
+      binaries; k3s + gvisor (runsc) runtime class + the `moss-sessions` namespace.
+- [ ] Idempotent `deploy.sh` per profile: install k3s + gvisor runtime class,
+      place artifacts, render env + systemd units from the profile, enable
+      services, and health-check (control plane + a real session pod).
+- [ ] **Verify on a fresh throwaway host** (never the live prod VM), full e2e:
+      client → moss → gvisor scode pod → SudoRouter → reply. This is the
+      acceptance gate; then open the sudostack deploy PR.
 - [ ] Add the Atlas intranet profiles once sudoatlas exists (the second target
       confirms which parts of the spine are truly shared).

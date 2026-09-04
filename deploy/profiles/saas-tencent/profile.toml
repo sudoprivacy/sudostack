@@ -1,42 +1,55 @@
 # Profile: saas-tencent — 数牍腾讯云 公有云 (the live dogfood deploy).
 # Env-specific overlay only; component set + versions come from ../../components.toml.
-# Codified from the running VM `sudowork-saas` (single-host, bare VM + systemd).
+# Codified from the running VM `sudowork-saas` (vm-3-6-ubuntu).
 #
 # Secrets are referenced by NAME here, never by value — real values live in the
 # host env files (moss.env / broker.env), which are NOT committed.
 
-target   = "public-cloud"
-substrate = "vm-systemd"                 # bare Ubuntu VM + systemd (not K8s)
+target    = "public-cloud"
+substrate = "vm-k3s-gvisor"              # single Ubuntu VM; control plane on systemd, compute on local k3s + gvisor
 
 [host]
-name = "sudowork-saas"
-os   = "ubuntu"                          # 6.8 generic
+name = "sudowork-saas"                    # k8s node name: vm-3-6-ubuntu
+os   = "ubuntu"
 user = "ubuntu"
 # Reachability is over Tailscale; advertised address must stay the tailnet IP,
 # else moss hands clients ws_url=127.0.0.1 and remote clients can't connect.
 advertise_host = "100.64.0.1"
 
-[services.moss-server]                   # component = moss
-working_dir      = "/home/ubuntu/moss"
-env_file         = "/home/ubuntu/moss.env"
-exec             = "/usr/bin/node /home/ubuntu/moss/bin/moss-server.mjs"
-node_env         = "production"
-path_prepend     = "/home/ubuntu/.local/bin:/home/ubuntu/.bun/bin"   # so it finds scode
-listen           = "0.0.0.0:43127"
-# moss.env schema (values live on host, not here):
-#   MOSS_ADVERTISED_HOST=100.64.0.1  JWT/session secrets  admin bootstrap creds
-#   scode auth: --auth proxy → SudoRouter endpoint + key
+# Compute substrate: single-node k3s on the same VM, with a gvisor (runsc)
+# runtime class. moss's K8sBackend spawns one scode pod per session here.
+[compute.k3s]
+kind          = "k3s"                     # single-node, v1.36.4+k3s1 (container runtime: containerd)
+namespace     = "moss-sessions"
+runtime_class = "gvisor"                  # handler = runsc (/usr/bin/runsc); per-session jail
+scode_pod_image = "node:22-bookworm-slim" # pod base; the scode binary is mounted in, not baked
+scode_pod_path  = "/opt/scode/scode"      # MOSS_K8S_SCODE_PATH — scode binary mounted into pods
+kubeconfig    = "/home/ubuntu/.moss/k3s-kubeconfig.yaml"
 
-[services.nexus-broker]                  # component = nexus-broker
-working_dir      = "/home/ubuntu/nexus-broker"
-env_file         = "/home/ubuntu/nexus-broker/broker.env"
-exec             = "/home/ubuntu/nexusd-cluster-main --cluster-init saas --hostname sudowork-saas --advertise-addr 100.64.0.1:8443 --data-dir /home/ubuntu/nexus-broker/data --identity-dir /home/ubuntu/nexus-broker/identity --accept-enrollments"
-grpc_listen      = "127.0.0.1:2126"
-cluster_listen   = "100.64.0.1:8443"
+[services.moss-server]                    # component = moss (control plane, K8sBackend)
+working_dir  = "/home/ubuntu/moss"
+env_file     = "/home/ubuntu/moss.env"
+exec         = "/usr/bin/node /home/ubuntu/moss/bin/moss-server.mjs"
+node_env     = "production"
+path_prepend = "/home/ubuntu/.local/bin:/home/ubuntu/.bun/bin"
+listen       = "0.0.0.0:43127"
+# moss.env schema (KEYS only; values live on host):
+#   MOSS_ADVERTISED_HOST (=100.64.0.1)  + JWT/session secrets + admin bootstrap
+#   K8sBackend: MOSS_K8S_KUBECONFIG · MOSS_K8S_NAMESPACE · MOSS_K8S_RUNTIME_CLASS
+#               MOSS_K8S_SCODE_PATH · MOSS_SCODE_IMAGE
+#   model egress (passed to scode pods): ANTHROPIC_BASE_URL (=https://hk.sudorouter.ai/v1) · ANTHROPIC_API_KEY (SudoRouter key)
 
-[services.scode]                         # component = scode; not a service — hosted by moss
-install_path     = "/home/ubuntu/.local/bin/scode"
-also_at          = "/home/ubuntu/.nexus/sudowork/sudocode/scode"
+[services.nexus-broker]                   # component = nexus-broker (storage/identity/secrets)
+working_dir  = "/home/ubuntu/nexus-broker"
+env_file     = "/home/ubuntu/nexus-broker/broker.env"
+exec         = "/home/ubuntu/nexusd-cluster-main --cluster-init saas --hostname sudowork-saas --advertise-addr 100.64.0.1:8443 --data-dir /home/ubuntu/nexus-broker/data --identity-dir /home/ubuntu/nexus-broker/identity --accept-enrollments"
+grpc_listen    = "127.0.0.1:2126"
+cluster_listen = "100.64.0.1:8443"
+# broker.env schema (KEYS only): NEXUS_API_KEY_SECRET · RUST_LOG
+
+[services.scode]                          # component = scode; not a long-running service
+host_install = "/home/ubuntu/.local/bin/scode"   # host copy
+pod_mount    = "/opt/scode/scode"                 # mounted into each session pod
 
 # webui multi-tenant console is NOT deployed on this VM today (client-side).
 # When added, it deploys as the apps/webui Docker image (see components.webui),
