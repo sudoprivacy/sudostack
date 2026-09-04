@@ -38,8 +38,8 @@ flowchart TB
 
   subgraph PACKS["Content packs — 部署时拉取 agents/skills"]
     direction LR
-    FDE["sudo-fde · FDE 角色"]
-    TEN["tenant-resources · 按租户"]
+    FDE["sudogenius-fde · FDE 角色"]
+    TEN["sudogenius-tenants · 按租户"]
   end
 
   SAAS -->|引用共享 spine / SSOT| STACK
