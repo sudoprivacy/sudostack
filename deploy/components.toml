@@ -1,0 +1,42 @@
+# Deployment spine — the env-agnostic component set + pinned versions.
+# "What gets deployed", independent of target. Profiles reference these by id.
+#
+# Versions here are the single source of truth for a deployment; bumping a
+# component = editing one line here, then redeploying every target. Exact
+# release pins marked TODO are to be captured from the base-product release
+# artifacts (they were placed by hand on the current SaaS VM).
+
+runtime = { node = "22.23.2" }               # host node (moss-server runs on it)
+
+[components.moss]
+repo    = "sudoprivacy/moss"
+role    = "control plane; hosts scode (ACP) + WS bridge; JWT/sessions/admin API"
+runtime = "node"
+entry   = "bin/moss-server.mjs"
+version = "TODO"                              # VM shows package version 0.0.3 / server 0.1.0 — pin to a moss release tag
+port    = 43127
+
+[components.nexus-broker]
+repo    = "nexi-lab/nexus"                    # nexus is cross-org (per SSOT)
+role    = "storage / identity (CA cert = agent-name) / secrets; cluster founder"
+artifact = "nexusd-cluster-main"              # single static binary
+version = "TODO"                              # pin to a nexusd-cluster release
+grpc_port = 2126
+cluster_port = 8443
+
+[components.scode]
+repo    = "sudoprivacy/sudocode"
+role    = "ACP agent engine (stdio), one per session; spawned/supervised by moss"
+artifact = "scode"                            # musl-static binary (zero glibc since v0.2.0)
+version = "TODO"                              # pin to a scode release tag (moss hosts this exact binary)
+install_path = "~/.local/bin/scode"
+
+[components.webui]
+repo    = "sudoprivacy/sudowork"              # apps/webui in the monorepo
+role    = "multi-tenant browser admin console (optional; client-side, not on the SaaS VM today)"
+artifact = "docker image (apps/webui/Dockerfile, monorepo build)"
+version = "TODO"
+port    = 26808
+
+# Model egress is external and not deployed here:
+#   scode --auth proxy → SudoRouter (nova-gateway) at sudorouter.ai

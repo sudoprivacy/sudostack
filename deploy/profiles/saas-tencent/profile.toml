@@ -1,0 +1,45 @@
+# Profile: saas-tencent — 数牍腾讯云 公有云 (the live dogfood deploy).
+# Env-specific overlay only; component set + versions come from ../../components.toml.
+# Codified from the running VM `sudowork-saas` (single-host, bare VM + systemd).
+#
+# Secrets are referenced by NAME here, never by value — real values live in the
+# host env files (moss.env / broker.env), which are NOT committed.
+
+target   = "public-cloud"
+substrate = "vm-systemd"                 # bare Ubuntu VM + systemd (not K8s)
+
+[host]
+name = "sudowork-saas"
+os   = "ubuntu"                          # 6.8 generic
+user = "ubuntu"
+# Reachability is over Tailscale; advertised address must stay the tailnet IP,
+# else moss hands clients ws_url=127.0.0.1 and remote clients can't connect.
+advertise_host = "100.64.0.1"
+
+[services.moss-server]                   # component = moss
+working_dir      = "/home/ubuntu/moss"
+env_file         = "/home/ubuntu/moss.env"
+exec             = "/usr/bin/node /home/ubuntu/moss/bin/moss-server.mjs"
+node_env         = "production"
+path_prepend     = "/home/ubuntu/.local/bin:/home/ubuntu/.bun/bin"   # so it finds scode
+listen           = "0.0.0.0:43127"
+# moss.env schema (values live on host, not here):
+#   MOSS_ADVERTISED_HOST=100.64.0.1  JWT/session secrets  admin bootstrap creds
+#   scode auth: --auth proxy → SudoRouter endpoint + key
+
+[services.nexus-broker]                  # component = nexus-broker
+working_dir      = "/home/ubuntu/nexus-broker"
+env_file         = "/home/ubuntu/nexus-broker/broker.env"
+exec             = "/home/ubuntu/nexusd-cluster-main --cluster-init saas --hostname sudowork-saas --advertise-addr 100.64.0.1:8443 --data-dir /home/ubuntu/nexus-broker/data --identity-dir /home/ubuntu/nexus-broker/identity --accept-enrollments"
+grpc_listen      = "127.0.0.1:2126"
+cluster_listen   = "100.64.0.1:8443"
+
+[services.scode]                         # component = scode; not a service — hosted by moss
+install_path     = "/home/ubuntu/.local/bin/scode"
+also_at          = "/home/ubuntu/.nexus/sudowork/sudocode/scode"
+
+# webui multi-tenant console is NOT deployed on this VM today (client-side).
+# When added, it deploys as the apps/webui Docker image (see components.webui),
+# TLS terminated at an external reverse proxy (prod requires https publicOrigin).
+[services.webui]
+enabled = false
