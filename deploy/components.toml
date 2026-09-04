@@ -9,26 +9,29 @@
 runtime = { node = "22.23.2" }               # host node (moss-server runs on it)
 
 [components.moss]
-repo    = "sudoprivacy/moss"
-role    = "control plane; hosts scode (ACP) + WS bridge; JWT/sessions/admin API"
-runtime = "node"
-entry   = "bin/moss-server.mjs"
-version = "TODO"                              # VM shows package version 0.0.3 / server 0.1.0 — pin to a moss release tag
-port    = 43127
+repo     = "sudoprivacy/moss"
+role     = "control plane; hosts scode (ACP) + WS bridge; JWT/sessions/admin API"
+source   = "git"                              # built from a checkout, not a release artifact
+runtime  = "node"
+entry    = "bin/moss-server.mjs"              # build output (run with node)
+version  = "cf3b7e8"                          # git describe v0.0.3-472-gcf3b7e8d (live VM); pin = commit
+port     = 43127
 
 [components.nexus-broker]
-repo    = "nexi-lab/nexus"                    # nexus is cross-org (per SSOT)
-role    = "storage / identity (CA cert = agent-name) / secrets; cluster founder"
-artifact = "nexusd-cluster-main"              # single static binary
-version = "TODO"                              # pin to a nexusd-cluster release
+repo     = "nexi-lab/nexus"                   # nexus is cross-org (per SSOT)
+role     = "storage / identity (CA cert = agent-name) / secrets; cluster founder"
+source   = "release-binary"                   # single static binary, placed on host
+artifact = "nexusd-cluster-main"
+version  = "0.1.1"                            # nexusd-cluster --version on the live VM
 grpc_port = 2126
 cluster_port = 8443
 
 [components.scode]
-repo    = "sudoprivacy/sudocode"
-role    = "ACP agent engine (stdio), one per session; spawned/supervised by moss"
-artifact = "scode"                            # musl-static binary (zero glibc since v0.2.0)
-version = "TODO"                              # pin to a scode release tag (moss hosts this exact binary)
+repo     = "sudoprivacy/sudocode"
+role     = "ACP agent engine (stdio), one per session; spawned/supervised by moss"
+source   = "release-binary"                   # musl-static (zero glibc since v0.2.0)
+artifact = "scode"
+version  = "0.1.28"                           # scode --version on the live VM
 install_path = "~/.local/bin/scode"
 
 [components.webui]
