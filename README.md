@@ -49,6 +49,30 @@ flowchart TB
   STACK -.->|运行时拉取| PACKS
 ```
 
+## 装配清单（profile）
+
+三个 Mega 不是三套架构，是**同一条 spine 的三张装配清单**：spine 在 sudostack 装配一次，每个形态只声明自己额外要什么。
+
+```mermaid
+flowchart LR
+  subgraph SPINE["共有 spine — sudostack 装配一次"]
+    direction TB
+    HOST["宿主层 bootstrap"]
+    ORCH["容器 / 编排"]
+    CTRL["moss · 控制平面"]
+    ENG["sudocode · Agent 引擎"]
+    IDN["nexus · 身份与状态"]
+    RT["SudoRouter · 模型路由"]
+    WIRE["configure · 接线"]
+  end
+
+  SPINE ==> SAAS2["<b>Sudo SaaS</b> · 公有云<br/>＋ 多租户<br/>＋ 编排脑<br/>＋ 三方接入"]
+  SPINE ==> ATLAS2["<b>Sudo Atlas</b> · 企业内网<br/>＋ 私有化 ShareOne<br/>＋ 内网身份对接"]
+  SPINE ==> EDGE2["<b>SudoEdge</b> · 盒子<br/>＋ 本地 GPU 栈<br/>＋ 自签信任域 CA_B<br/>＋ 随盒 ShareOne<br/>＋ FDE 工具箱"]
+```
+
+盒子形态刻意**不含 hydra 与多租户** —— 前者是开发期编排、后者是云侧租户隔离，都不进交付物。离线形态不是第四个产品，是 SudoEdge 这份清单关掉出站协作后的同一份装配。
+
 ## 架构 SSOT
 
 - **产品架构说明书（订正版）** — `docs/ARCHITECTURE.md`（remote-url 至 ShareOne）：产品分层、六契约、AgentSpec 语义。
