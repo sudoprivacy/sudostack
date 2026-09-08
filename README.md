@@ -6,12 +6,12 @@
 
 | 层 | 成员 |
 |---|---|
-| **Mega-product**（面向客户的组合，同源、部署形态不同） | Sudo Atlas（企业私有化）· Sudo SaaS（公有云同源）· SudoEdge（盒子/离线） |
+| **Mega-product**（面向客户的组合，同源、部署形态不同） | Sudo Atlas（企业私有化）· Sudo Cloud（公有云同源）· SudoEdge（盒子/离线） |
 | **Base product**（底层 repo，被复用） | sudocode · nexus(+nexus-vfs, `nexi-lab`) · nova-gateway(=SudoRouter) · moss(中控) · hydra(编排/调度) · shareone · ai-dev-browser · password-agent |
 | **UI** | SudoWork（纯 UI，repo `sudowork`，Harness=sudocode） |
 | **Agent 集** | SudoGenius（领域包：本体/规则/资产/eval） |
 
-Mega-product 由 Base product 装配复用；Atlas 与 SaaS 共享本 repo 的 submodule 引用。
+Mega-product 由 Base product 装配复用；Atlas 与 Cloud 共享本 repo 的 submodule 引用。
 
 ## 依赖关系
 
@@ -19,7 +19,7 @@ Mega-product 由 Base product 装配复用；Atlas 与 SaaS 共享本 repo 的 s
 
 ```mermaid
 flowchart TB
-  SAAS["sudosaas<br/>公有云 · 腾讯云"]
+  CLOUD["sudocloud<br/>公有云 · 腾讯云"]
   ATLAS["sudoatlas<br/>企业私有化 · 内网"]
   EDGE["sudoedge<br/>盒子 / 离线 · DGX"]
 
@@ -42,7 +42,7 @@ flowchart TB
     TEN["sudogenius-tenants · 按租户"]
   end
 
-  SAAS -->|引用共享 spine / SSOT| STACK
+  CLOUD -->|引用共享 spine / SSOT| STACK
   ATLAS -->|引用共享 spine / SSOT| STACK
   EDGE -->|引用共享 spine / SSOT| STACK
   STACK -->|装配复用| BASE
@@ -66,7 +66,7 @@ flowchart LR
     WIRE["configure · 接线"]
   end
 
-  SPINE ==> SAAS2["<b>Sudo SaaS</b> · 公有云<br/>＋ 多租户<br/>＋ 编排脑<br/>＋ 三方接入"]
+  SPINE ==> CLOUD2["<b>Sudo Cloud</b> · 公有云<br/>＋ 多租户<br/>＋ 编排脑<br/>＋ 三方接入"]
   SPINE ==> ATLAS2["<b>Sudo Atlas</b> · 企业内网<br/>＋ 私有化 ShareOne<br/>＋ 内网身份对接"]
   SPINE ==> EDGE2["<b>SudoEdge</b> · 盒子<br/>＋ 本地 GPU 栈<br/>＋ 自签信任域 CA_B<br/>＋ 随盒 ShareOne<br/>＋ FDE 工具箱"]
 ```
@@ -86,7 +86,7 @@ flowchart LR
 ```
 base/sudocode        base/nova-gateway    base/moss        base/hydra
 base/shareone        base/ai-dev-browser  base/password-agent
-mega/sudoatlas      mega/sudosaas       mega/sudoedge
+mega/sudoatlas      mega/sudocloud      mega/sudoedge
 ui/sudowork
 ```
 
