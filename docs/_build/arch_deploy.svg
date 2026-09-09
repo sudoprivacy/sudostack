@@ -29,9 +29,9 @@
   </g>
   <text x="34" y="372" class="mut">本地任务默认在此执行</text>
 
-  <!-- Block 2 Sudo Atlas -->
+  <!-- Block 2 Sudo Private -->
   <rect x="346" y="70" width="330" height="450" rx="13" fill="#141d2b" stroke="#6ea8fe" stroke-width="1.6"/>
-  <text x="364" y="96" fill="#dbe8fb" font-size="14" class="h">② Sudo Atlas（企业内网 · sudoatlas 🆕）</text>
+  <text x="364" y="96" fill="#dbe8fb" font-size="14" class="h">② Sudo Private（客户自建 · sudoprivate 🆕）</text>
   <text x="364" y="113" class="sm">部署两次：办公域（用户自管）/ 核心域（IT 管控）· 不分叉代码</text>
   <g>
     <rect x="360" y="126" width="302" height="50" rx="8" fill="#231f2e" stroke="#c9a6ef"/>
@@ -52,7 +52,7 @@
   <!-- Block 3 Sudo Cloud -->
   <rect x="700" y="70" width="304" height="450" rx="13" fill="#101a20" stroke="#4ade80" stroke-width="1.6"/>
   <text x="718" y="96" fill="#d7f5e1" font-size="14" class="h">③ Sudo Cloud（公有云 · sudocloud 🆕）</text>
-  <text x="718" y="113" class="sm">数牍腾讯云 · 与 Atlas 同源「最强部署」</text>
+  <text x="718" y="113" class="sm">数牍腾讯云 · 同一 Atlas 平台「最强部署」</text>
   <g>
     <rect x="714" y="126" width="276" height="42" rx="8" fill="#22202f" stroke="#b48ce0"/>
     <text x="852" y="144" fill="#e9ddf7" class="bx" text-anchor="middle">Tailscale 接入（100.64.0.1）</text>
@@ -84,13 +84,13 @@
   <!-- inter-block arrows -->
   <line x1="322" y1="250" x2="346" y2="250" stroke="#6ea8fe" stroke-width="1.5" marker-end="url(#dA)"/>
   <text x="334" y="238" class="mut" text-anchor="middle" font-size="9.5">IM/定时</text>
-  <text x="334" y="270" class="mut" text-anchor="middle" font-size="9.5">进 Atlas</text>
+  <text x="334" y="270" class="mut" text-anchor="middle" font-size="9.5">进 Private</text>
   <line x1="676" y1="240" x2="700" y2="240" stroke="#e0a94b" stroke-width="1.5" marker-end="url(#dG)"/>
   <line x1="700" y1="262" x2="676" y2="262" stroke="#e0a94b" stroke-width="1.5" marker-end="url(#dG)"/>
   <text x="688" y="228" class="mut" text-anchor="middle" font-size="9.5">同源代码</text>
   <text x="688" y="288" class="mut" text-anchor="middle" font-size="9">跨域信任边界</text>
 
-  <!-- 域隔离 / 制品单向发布 note under Atlas -->
+  <!-- 域隔离 / 制品单向发布 note under Private -->
   <text x="511" y="404" class="mut" text-anchor="middle" font-size="10">跨域只允许制品单向发布（Agent 包/Skill/配置）· 数据不反向流动 · 核心域 trace 不出域</text>
   <text x="852" y="420" class="mut" text-anchor="middle" font-size="10">与企业内网之间只走脱敏产物（跨域信任边界）</text>
 

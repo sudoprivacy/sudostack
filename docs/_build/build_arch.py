@@ -18,29 +18,29 @@ BODY = '''
 <div class="align">
 <b>本版订正重点（相对武鹏 v1.4）</b>
 <ul>
-<li><b>命名口径</b>：<b>P2 SudoServer + P3 SudoMOSS 合并为 Sudo Atlas</b>（中控能力来自 base 产品 moss）；P4 SudoRouter 的 repo 是 ''' + repo('nova-gateway') + '''（当前没有 sudorouter repo）；P6 → <b>Sudo Cloud</b>；nexus 在 <b>nexi-lab</b>（跨 org）。</li>
-<li><b>先跑通 Cloud</b>：云端任务默认<b>先在我们自己的腾讯云跑通 Sudo Cloud</b>（已有部分服务在上面，方便 demo、立即可运行），作为企业交付前的完整搭建演练；企业交付时<b>同源</b>到 Atlas（私有化）。</li>
+<li><b>命名口径</b>：<b>P2 SudoServer + P3 SudoMOSS 合并为 Sudo Atlas</b>（中控能力来自 base 产品 moss）。<b>Atlas 命名的是服务端平台本身，不是某个部署位置</b>——「谁托管」是另一个轴：<b>Sudo Cloud</b>(我们托管) / <b>Sudo Private</b>(客户自建) / <b>SudoEdge</b>(盒子) 都含 Atlas，而 <b>Sudo Local</b>(SudoWork＋内嵌 sudocode 单机) <b>根本没有 Atlas</b>——这就是两个轴不能压成一个的原因；P4 SudoRouter 的 repo 是 ''' + repo('nova-gateway') + '''（当前没有 sudorouter repo）；P6 → <b>Sudo Cloud</b>；nexus 在 <b>nexi-lab</b>（跨 org）。</li>
+<li><b>先跑通 Cloud</b>：云端任务默认<b>先在我们自己的腾讯云跑通 Sudo Cloud</b>（已有部分服务在上面，方便 demo、立即可运行），作为企业交付前的完整搭建演练；企业交付时<b>同源</b>到 <b>Sudo Private</b>（客户自建，同一个 Atlas 平台、换个托管方）。</li>
 <li><b>Agent 统一模型 consolidation（核心）</b>：<b>AgentSpec ≡ matrix 的 image 层 <code>/agents/{name}/</code></b>；且 <code>agent-name</code> 是一张 <b>CA 签发的不可伪造身份</b>（= governance.did）。实现者<b>必须</b>读懂 matrix。</li>
 <li><b>三个 ID</b>：<code>agent-name</code>（image/制品/身份）· <code>session-id</code>（持久 <code>--resume</code> key）· <code>pid</code>（一次运行句柄）。"Agent 发布"不是发布一次任务。</li>
 </ul>
 </div>
 
 <h2>一、顶层架构（三种部署位置 · 一份底座）</h2>
-<p>按<b>三种部署位置、一份底座</b>组织，不是几个产品，是同一个东西的不同部署位置：<b>① 本地环境（个人端）</b>SudoWork UI + 内嵌 sudocode，断网可独立跑；<b>② Sudo Atlas（企业内网）</b>服务端，部署两次（办公域用户自管 / 核心域 IT 管控），差异靠配置不分叉代码；<b>③ Sudo Cloud（公有云）</b>与 Atlas 同源的最强部署。三处跑的是<b>同一份底座</b>（sudocode + nexus）二进制、逐格一致。<b>Phase 1 先跑通 本地 SudoWork → Sudo Cloud</b>（腾讯云 dogfood，立即可 demo）。</p>
+<p>按<b>三种部署位置、一份底座</b>组织，不是几个产品，是同一个东西的不同部署位置：<b>① 本地环境（个人端）</b>SudoWork UI + 内嵌 sudocode，断网可独立跑；<b>② Sudo Private（客户自建 · 企业内网）</b>Atlas 平台部署在客户网络，部署两次（办公域用户自管 / 核心域 IT 管控），差异靠配置不分叉代码；<b>③ Sudo Cloud（我们托管 · 公有云）</b>同一个 Atlas 平台的最强部署。三处跑的是<b>同一份底座</b>（sudocode + nexus）二进制、逐格一致。<b>Phase 1 先跑通 Sudo Local → Sudo Cloud</b>（腾讯云 dogfood，立即可 demo）。</p>
 <div class="dia">__DEPLOY__</div>
-<p class="meta">按你指的部署拓扑分三块画（本地 / atlas / cloud）。跨块：本地→Atlas 走 IM/定时触发 + 制品单向发布；Atlas↔Cloud 同源代码 + 跨域信任边界（只走脱敏产物）。模块粒度与跨块关系可继续迭代。</p>
+<p class="meta">按你指的部署拓扑分三块画（local / private / cloud）。跨块：Local→Private 走 IM/定时触发 + 制品单向发布；Private↔Cloud 同源代码 + 跨域信任边界（只走脱敏产物）。模块粒度与跨块关系可继续迭代。</p>
 
 <h2>二、产品组合与 repo</h2>
 <p>Mega-product 由 Base product 装配复用（每个 mega 可含多个 base）。owner 与成功标准以下表为准，repo 链到 GitHub；权威「repo→责任人/编制」总表见组织文档 §0。</p>
 <table>
 <tr><th>Mega / 层</th><th>Base-product（repo）</th><th>owner</th><th>成功标准</th></tr>
-<tr><td rowspan="5"><b>Sudo Atlas</b><br>企业私有化<br>（原 Server+MOSS）<br>owner 铁锋<br>repo ''' + repo('sudoatlas') + '''</td>
+<tr><td rowspan="5"><b>Sudo Private</b><br>客户自建（Atlas 平台）<br>（原 Server+MOSS）<br>owner 铁锋<br>repo ''' + repo('sudoprivate') + '''</td>
     <td>''' + repo('sudocode') + ''' · Agent 引擎</td><td>Ethan</td><td>独立 CLI 引擎稳定；对齐 AgentSpec/ACP/matrix；PTY 门禁</td></tr>
 <tr><td>''' + repo('nexus','nexi-lab') + ''' + nexus-vfs · 基座</td><td>Ethan</td><td>VFS/身份/session 存储 SSOT；跨节点一致；不可伪造 from</td></tr>
 <tr><td>''' + repo('nova-gateway') + ''' = SudoRouter</td><td>张帅</td><td>模型/工具/凭证统一出口；<b>核心域只接内部算力，办公/支撑域可接外部，且支撑域 router 可级联核心域 router 借内部算力</b>；每域独占 Key</td></tr>
 <tr><td>''' + repo('moss') + ''' · 中控/控制平面</td><td><b>武鹏</b></td><td>企业 IAM/registry/triggers/cron/channels/wiki；agent 身份/session/registry 与 <b>nexus merge</b> 做 client（不复制 SSOT）；容器执行已上移 k8s+gvisor</td></tr>
 <tr><td>''' + repo('shareone') + ''' · 协同/验收</td><td>孙文龙</td><td>standalone + 在 sudowork/sudocode 内嵌端到端丝滑；签名交付</td></tr>
-<tr><td rowspan="3"><b>Sudo Cloud</b><br>公有云·Atlas 同源<br>owner 铁锋<br>repo ''' + repo('sudocloud') + '''</td>
+<tr><td rowspan="3"><b>Sudo Cloud</b><br>我们托管·同一 Atlas 平台<br>owner 铁锋<br>repo ''' + repo('sudocloud') + '''</td>
     <td>= Atlas 全部 base（同源装配：sudocode/nexus/moss/shareone）</td><td>—</td><td><b>先在腾讯云跑通</b>完整搭建演练，立即可 demo</td></tr>
 <tr><td>SudoRouter：公有云<b>直接用 <a href="https://sudorouter.ai/">sudorouter.ai</a></b></td><td>张帅</td><td>公有云模型出口；更强模型 / 三方数据</td></tr>
 <tr><td>+ ''' + repo('sudochat') + ''' 多租户 · ''' + repo('sudoevolve') + ''' 验收</td><td>待定</td><td>多租户会话隔离；Rubric 打分与验收裁决</td></tr>
@@ -58,7 +58,7 @@ BODY = '''
 </table>
 <p class="meta">「三方接入」不单列——它是 Agent（sudocode）的 tools/MCP 能力。「编排」在服务端<b>不是一个 base</b>，而是拆开：任务编排/触发=moss(event-triggers+cron)、算力/pod 调度=k8s、agent spawn+A2A=nexus-vfs（详见下方「服务端组成栈」）。</p>
 
-<h2>二·五、服务端组成栈（sudocloud / Atlas）</h2>
+<h2>二·五、Atlas 平台的服务端组成栈（cloud / private / edge 共用）</h2>
 <p>基于对 moss / sudochat / hydra <b>真实代码</b>的核查，服务端各角色归属如下。核心原则：<b>jail 只有一套（k8s+gvisor），控制平面（moss）与 nexus 按 matrix 契约 merge，各自的自造容器层都不进服务端。</b></p>
 <table>
 <tr><th>角色</th><th>谁来做</th><th>说明</th></tr>
@@ -77,7 +77,7 @@ BODY = '''
 <b>最重要的产品边界</b>
 <ul>
 <li><b>SudoWork ≠ 服务端</b>：它是 UI，Agent 是 sudocode；Agent 身份/存储在引擎侧，SudoWork 只读 + 只写自己的 UI 字段。</li>
-<li><b>Atlas ≠ 云端</b>：Atlas 是企业私有化，公有云是 Cloud（Atlas 同源）；两者共享全部 base + sudostack 装配。<b>先跑通 Cloud，再同源交付 Atlas。</b></li>
+<li><b>Atlas 是平台，不是位置</b>：Cloud（我们托管）与 Private（客户自建）跑的是<b>同一个 Atlas</b>，共享全部 base + sudostack 装配，差别只在谁托管。<b>先跑通 Cloud，再同源交付 Private。</b>用户视角只看到「本地 / 云端」，Atlas 是 IT 采购看的名字。</li>
 <li><b>SudoRouter 不单独对外</b>：各产品的模型/工具/凭证出口，不是独立售卖的产品。</li>
 </ul>
 </div>
@@ -86,15 +86,15 @@ BODY = '''
 <p>用户侧只出现<b>两个任务入口</b>：本地任务、云端任务。用户不选 runtime；平台按 AgentSpec 的运行需求 + 组织策略 + 数据密级在后台解析，并把结果写入 Trace/Audit（可解释）。</p>
 <ul>
 <li><b>本地任务</b> → 默认 <b>SudoWork</b> 执行（本机文件/shell/browser/本地凭证/离线路径）。</li>
-<li><b>云端任务</b> → <b>先跑通 Sudo Cloud</b>（腾讯云，立即可 demo/运行）；企业内网/强审计场景由组织策略同源到 <b>Atlas</b> 私有化链路（含原 SudoMOSS 治理平面）。</li>
+<li><b>云端任务</b> → <b>先跑通 Sudo Cloud</b>（腾讯云，立即可 demo/运行）；企业内网/强审计场景由组织策略同源到 <b>Sudo Private</b> 链路（含原 SudoMOSS 治理平面）。</li>
 <li>不可执行时给<b>任务级解释</b>（"依赖本地浏览器，不能创建云端任务" / "企业审批未通过"），不做三选一置灰。</li>
 </ul>
 <pre class="code">type TaskMode = 'local' | 'cloud'
 
 interface TaskExecutionResolution {
   taskMode: TaskMode
-  // 先跑通 cloud（腾讯云 dogfood），企业交付同源到 atlas（私有化）
-  resolvedRuntime: 'sudolocal' | 'sudocloud' | 'sudoatlas'
+  // 先跑通 cloud（腾讯云 dogfood），企业交付同源到 private（客户自建）
+  resolvedRuntime: 'sudolocal' | 'sudocloud' | 'sudoprivate'
   resolutionMode: 'default' | 'policy_routed' | 'fallback'
   reason: string   // 进 Trace/Audit，可审计
 }</pre>
@@ -158,7 +158,7 @@ interface TaskExecutionResolution {
 <tr><td><code>sudowork/src/webserver/</code></td><td><b>Atlas</b>（原 SudoServer 平面）</td><td>模块化 server runtime/auth/registry client/task queue → 下沉</td></tr>
 <tr><td><code>sudowork</code> 的 assistant presets</td><td><b>AgentSpec Registry</b></td><td><b>迁移到 AgentSpec</b>（与 moss/assistants 同）</td></tr>
 <tr><td><code>sudowork/src/agent/acp/</code></td><td>共用 Harness client</td><td>抽 <code>@sudo/harness-client</code></td></tr>
-<tr><td><code>sudowork/src/channels/</code></td><td>IM 接入层</td><td>抽 <code>@sudo/channels</code> 供 Atlas/Cloud 复用</td></tr>
+<tr><td><code>sudowork/src/channels/</code></td><td>IM 接入层</td><td>抽 <code>@sudo/channels</code> 供 Cloud/Private 复用</td></tr>
 <tr><td><code>moss/src/server/agentStore.ts</code></td><td>Atlas 中控（原 SudoMOSS）Agent Registry <b>client</b></td><td>重构为 AgentSpec-based；<b>不复制 nexus SSOT</b></td></tr>
 <tr><td><code>moss/src/server/sessionManager.ts</code></td><td>Atlas Session/Task/Workspace/Artifact <b>client</b></td><td>委托 nexus（matrix）；不另存</td></tr>
 <tr><td><code>moss/assistants/*</code></td><td>声明式内置 Agent</td><td>迁移到 AgentSpec</td></tr>
