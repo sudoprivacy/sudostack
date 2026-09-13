@@ -260,6 +260,27 @@ Task/data/tool policy 在后续 Epic 加入。
 
 仅有 ZoneGrant 不代表可以访问 Zone 内所有 resource；仅有 ReBAC tuple 但没有 ZoneGrant 同样拒绝。
 
+> **⚠️ 当前未强制（2026-09-13 实测 · sudowork-3）**
+>
+> 本节要求第一层必须完成到 `valid identity ∩ ZoneGrant ∩ ReBAC`，而 §2.12 要求
+> 「permission provider 缺失：拒绝启动」。**我们今天出的二进制满足不了这条。**
+>
+> ReBAC 在 `nexus` 仓库里确实存在且是 Zanzibar 形状、tuple 存 raft
+> （`rust/services/rebac/`：`store.rs` · `tuple_key.rs` · `raft_store.rs` ·
+> `graph_cache.rs` · `permission_provider.rs`），但它是 **opt-in cargo feature**
+> （`--features rebac`），**不在默认 slim assembly 里** —— 属 R10 纯 Rust 迁移（epic #4674）。
+>
+> 真机验证：`nexusd-cluster v0.1.3` + v6 dylib 启动，`kernel::kernel::dispatch` 只报
+> `service brought up service=a2a` 与 `service=managed_agent`，**没有 rebac**。
+> 所以按 §2.12 字面执行，当前守护进程必须拒绝启动。
+>
+> **这不是要改本节的决策** —— 目标态是对的。缺的是分期，落在消费方：
+> **P0**（今天）zone 只承担数据归属与命名空间，授权仍由 moss 的 `org_id` 检查承担；
+> **P1**（ReBAC 进我们出的 assembly 后）换成 ZoneGrant ∩ ReBAC tuple，届时
+> 「一人同时属于多个 Zone」的 overlap 才真正可用。
+>
+> 按本目录 README 的总则一，此处标注为「当前未强制」而非留作读起来像规范的句子。
+
 ### 2.12 默认 fail-closed
 
 生产 profile 中：
