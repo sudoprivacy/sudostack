@@ -92,6 +92,7 @@ flowchart LR
 ## 架构 SSOT
 
 - **产品架构说明书（订正版）** — `docs/ARCHITECTURE.md`（remote-url 至 ShareOne）：产品分层、六契约、AgentSpec 语义。
+- **跨仓语义 ADR（Proposed）** — `docs/adr/`：标识与生命周期、Zone 与租户、Agent principal 与版本、Task 与执行解析、契约版本化、transcript/overlay。论证与原始语义冻结指南见 `docs/design/`。
 - **Agent 存储金标准** — `sudocode/docs/design/agent-context-storage-matrix.html`：context/memory/session/storage 物理模型。
 - **sudocode 接入 PRD** — `sudocode/docs/design/`：sudocode 如何落地 matrix。
 
