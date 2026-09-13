@@ -14,6 +14,6 @@
   "scripts": {
     "generate": "node --use-env-proxy contracts/generate.mjs",
     "check": "node contracts/generate.mjs --check",
-    "test": "node --test contracts/zone-id/conformance.test.mjs"
+    "test": "node --experimental-strip-types --test contracts/zone-id/conformance.test.mjs"
   }
 }

@@ -1,0 +1,8 @@
+# Generated contract artifacts are compared byte-for-byte by CI
+# (`generate.mjs --check`). Without this, a Windows checkout rewrites them to
+# CRLF, the generator emits LF, and every file reads as stale — a gate that
+# fails for a reason that has nothing to do with the contract it guards.
+*.gen.ts   text eol=lf
+*.gen.json text eol=lf
+*.gen.md   text eol=lf
+contracts/generate.mjs text eol=lf
