@@ -34,6 +34,38 @@
 CI 校验这一点。`none` 是合法值 —— 它存在的意义是让「没强制」变成一个**能数、能看趋势**的数字。
 **没人数的标签，会退化回它本来要取代的那段散文。**
 
+#### 怎么写（`enforced-by.mjs` 校验这套写法）
+
+标签跟在条款同一个 bullet / 段落里，一条一个：
+
+```markdown
+- 长度 3–63；`[enforced_by: const:contracts/zone-id/zone-id.gen.ts#ZONE_ID_MAX_LEN]`
+- 每个 Session MUST 有不可变 `home_zone_id`。`[enforced_by: test:moss@src/server/db.test.ts#home zone is immutable]`
+- 任何例外必须另写 ADR。`[enforced_by: none]`
+```
+
+| kind | 指向 | 校验方式 |
+|---|---|---|
+| `none` | 什么都不指 | 永远合法，计数 |
+| `file:<path>` | 一个完整产物（schema、向量集、workflow） | 文件存在 |
+| `const:<path>#<符号>` | 生成常量 —— 形状被一个值钉住 | 文件里找得到该导出 |
+| `type:<path>#<符号>` | 导出类型 —— 形状被编译器钉住 | 同上 |
+| `test:<path>#<测试名>` | 一个真的会跑的测试 | 文件里找得到该测试名 |
+
+`<path>` 默认相对本仓库；跨仓写 `<repo>@<path>`（如 `moss@src/server/db.ts`）。本仓库没有 checkout
+的兄弟仓库解析不了 —— 这种情况报「**无法校验**」并计数，**不算通过**（总则 2 的自我适用：
+「我查不了」不能塌缩成「查过了，没问题」）。把兄弟仓库所在目录设给 `SUDOSTACK_REPOS_ROOT` 即可真正解析。
+
+一条用了规范词但其实是解释性散文的句子，写 `[not-normative]`；它同样被计数，滥用在 review 里看得见。
+
+**存量用 baseline 棘轮**：`enforced-by-baseline.json` 记下每份 ADR 今天还没认领的条款数，只许降不许升。
+新写的条款当天就得回答自己 —— 那是回答最便宜的一天；旧条款逐条认领后跑
+`node docs/adr/enforced-by.mjs --update-baseline` 把数字降下去。
+
+**已知边界**：关键词表（MUST / MUST NOT / SHOULD / SHALL / 必须 / 禁止 / 不得 / 应当）是**下限**，
+不是定义 —— §2.4 的「长度 3–63」没有任何关键词，却和本目录里任何一条一样规范。所以标签写在哪里都会被解析
+校验（不止关键词命中的地方），而「有没有漏掉一条规范性条款」这件事，机器只兜到关键词为止，剩下的靠人。
+
 **2. 失败不得表现为合法值。**
 
 任何契约定义的操作，其失败必须与合法返回值可区分。这条不是风格偏好，是实测代价：本周在
