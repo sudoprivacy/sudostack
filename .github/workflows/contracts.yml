@@ -30,4 +30,4 @@ jobs:
       # languages are two implementations, and one can forget a case while
       # reading the same constants. The vectors are what catch that.
       - name: TypeScript validator agrees with the generated vectors
-        run: node --test contracts/zone-id/conformance.test.mjs
+        run: node --experimental-strip-types --test contracts/zone-id/conformance.test.mjs

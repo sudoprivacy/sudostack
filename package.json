@@ -1,0 +1,19 @@
+{
+  "name": "@sudo/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Derived cross-repo contract artifacts. Generated from upstream specs at the revisions named in contracts/*/pin.json — do not edit the .gen.* files.",
+  "type": "module",
+  "exports": {
+    "./zone-id": "./contracts/zone-id/zone-id.gen.ts"
+  },
+  "files": [
+    "contracts/**/*.gen.ts",
+    "contracts/**/*.gen.json"
+  ],
+  "scripts": {
+    "generate": "node --use-env-proxy contracts/generate.mjs",
+    "check": "node contracts/generate.mjs --check",
+    "test": "node --experimental-strip-types --test contracts/zone-id/conformance.test.mjs"
+  }
+}

@@ -8,7 +8,7 @@
  * is why they are generated from the spec rather than written here — a
  * hand-written case list can only test rules its author remembered.
  *
- * Run: node --test contracts/zone-id/conformance.test.mjs
+ * Run: node --experimental-strip-types --test contracts/zone-id/conformance.test.mjs
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -19,16 +19,15 @@ import { fileURLToPath } from 'node:url'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const vectors = JSON.parse(readFileSync(join(HERE, 'vectors.gen.json'), 'utf8'))
 
-// The generated artifact is TypeScript for consumers; here only its runtime
-// behaviour is under test, so the type annotations are stripped rather than
-// compiled. Keeps this repository free of a TypeScript toolchain for one file.
-const src = readFileSync(join(HERE, 'zone-id.gen.ts'), 'utf8')
-const js = src
-  .replace(/^export type ZoneIdRefusal[\s\S]*?\n\n/m, '')
-  .replace(/: ZoneIdRefusal \| null/g, '')
-  .replace(/\(id: string\)/g, '(id)')
-  .replace(/\(r: ZoneIdRefusal\): string/g, '(r)')
-const mod = await import(`data:text/javascript,${encodeURIComponent(js)}`)
+// Imported as TypeScript directly. Node strips the types (>=22.6 with
+// --experimental-strip-types, on by default from 23), so the artifact under test
+// is the very file consumers import — not a copy this test transformed.
+//
+// An earlier version stripped the annotations with regexes to avoid needing a
+// flag. That was the wrong trade: the regexes broke the moment the package
+// gained "type": "module", and a test that mangles its subject before checking
+// it is testing something nobody ships.
+const mod = await import('./zone-id.gen.ts')
 
 test('the generated validator agrees with every vector', () => {
   assert.ok(vectors.length > 0, 'vectors.gen.json is empty — the generator produced nothing to check')
