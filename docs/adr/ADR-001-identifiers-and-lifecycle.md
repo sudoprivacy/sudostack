@@ -615,3 +615,47 @@ Attempt 1 failed/Verify rejected
 - `managed_agent.start_session_v1.session_id` 被标记为 legacy misnomer；
 - `agent_pid.rs` 的“产品 PID 等于 OS PID”决策被本 ADR 替代；
 - 任何例外必须另写 ADR，不能在单仓 PR 中重新定义 Session/PID。
+
+---
+
+## 12. 强制状态
+
+按索引总则 1，本 ADR 的每条规范性条款在这里认领自己靠什么失败。证据是逐条到代码里核出来的，
+不是推断的；`none` 是合法值，它的作用是让「没强制」可数。
+
+**结论先说：本 ADR 的核心对象 Task 在任何仓库里都不存在。** moss 没有 `tasks` 表，`TaskSpec`
+全仓零匹配；工作单元是 session，而 `session_attempts` 承载的是 process/container generation ——
+那是本 ADR 的 **PID 轴**，套着 Attempt 的名字（§1 背景其实已经写到了这点）。所以 §2.7 一整套
+Task/Attempt 条款今天没有消费方，不是「实现得不对」，是「还没有实现」。
+
+| 条款 | 强制物 | 证据 |
+|---|---|---|
+| §2.3 平台 `pid` MUST 不可解析、临时 | `none` | 无平台 PID 概念。最接近的是 `session_attempts.runner_pid`（`moss/src/server/db.ts:184`），而它就是 OS pid |
+| §2.4 consumer MUST NOT 解析 ID 内部结构 | `none` | — |
+| §2.6 Session 可保存/引用 transcript、Task 列表、Context manifests、Verify refs… | `none` | transcript / agent principal / workspace 在 `sessions` 上有；Task 列表、Context manifests、Verify refs 无此概念 |
+| §2.6 Session 在 PID 退出后继续存在 | 构造上成立，无测试 | `moss/src/server/sessionRunnerDaemon.ts:311-348` 只改状态，不删行 |
+| §2.6 可跨进程/Pod/节点恢复 | `test:claimAttempt.test.ts` | 节点接管走 attempt 级 CAS，`moss/src/server/db.ts:1493` |
+| §2.6 Session 具有 owner、home Zone、创建时间 | `none` | owner 与 created_at 有（`db.ts:151-171`）；**没有 zone 列**，租户轴是 `org_id` |
+| §2.6 v1 固定一个 Agent Principal | `none` | `spawnAttempt` 每次重启都会改写 session 的 engine/image（`runtimeService.ts`） |
+| §2.7 policy 拒绝时没有 Attempt/PID | `none` | 无 Task。同形状的规则在 moss 的 session 侧成立且有测试：`test:tokenQuota.test.ts` |
+| §2.7 实质变化必须新 Task + `supersedes_task_id` | `none` | 无 Task；session 的 spec 字段可原地改写 |
+| §2.7 Runtime MUST 在恢复前检查 idempotency/evidence | `none` | — |
+| §3.1 Conversation MUST 通过显式 binding 指向 Session | `none` | 无 `SessionBinding`；moss 用 `sessions.channel_chat_id` 直连 |
+| §3.2 `AttemptRef` 三个 id 不可混用 | `none` | 三者都是裸 `string`，无 branded type |
+| §4 Runtime start 必须接收已存在的 Session/Attempt | 构造上成立 | attempt 行先写、runner 后起（`runtimeService.ts` `spawnAttempt`） |
+| §4 新 consumer 不得把 v1 `session_id` 持久化为 canonical | `none` | — |
+| §6 Session delete 必须检查 retention/ownership | 部分 | **没有 `DELETE /api/v1/sessions/:id` 这条路由**；channels 侧带 org/user（`server.ts:2856`）；retention 无 |
+| §7.4 Archive 禁止新 Task/Attempt | `none` | moss 无 session archive 概念 |
+| §8 ID 由权威服务创建；迁移 import 必须校验登记 | `none` | — |
+| §8 字段名同义变必须发 v2 | `none` | 属 ADR-005 范围 |
+| §5 运维必须从 PID 查 RuntimeLocator，不能假设 OS number | **与现状冲突** | `reconcileOnStartup` 直接 `process.kill(runnerPid, 0)`（`runtimeService.ts:936`、`:995`） |
+| §10 迁移期必须保持 Nexus PID/FSM SSOT | `none` | FSM 今天在 moss |
+| §11 新跨仓代码 MUST 使用本 ADR 的 ID 语义 | `none` | — |
+| §11 任何例外必须另写 ADR | `none` | 流程条款，机器无从校验 |
+
+**这张表读出来的意思**：18 条规范性条款里，`none` 17 条，构造上成立但无测试 2 条，有测试 1 条，
+与现状明确冲突 1 条。它不是在说这份 ADR 写错了 —— 目标态我认为是对的；它是在说这份 ADR 今天
+**几乎完全是意图，不是约束**。第一步不是补测试，是按索引总则的行为类第一档去问：这些条款里有
+多少能改成「推导出来的」而不是「声明出来的」。
+
+`enforced_by` linter 落地后，每条的认领移到条款旁边，这张表随之删除 —— 同一件事不留两处。
