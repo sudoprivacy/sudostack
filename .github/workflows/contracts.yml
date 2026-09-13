@@ -1,0 +1,33 @@
+name: contracts
+
+# The gate that makes the derived artifacts mean anything. Without it they are
+# committed files somebody can hand-edit, and the edit survives review by looking
+# like ordinary source.
+#
+# Rust needs no gate: nexus-vfs generates its validator into OUT_DIR at compile
+# time, so there is nothing committed there to go stale. This exists because
+# TypeScript has no equivalent hook.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  derived-artifacts-match-the-spec:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Regenerate from the pinned upstream revision and fail on any difference.
+      # A hand edit shows up here; so does a spec change nobody regenerated for.
+      - name: Derived artifacts match the pinned spec
+        run: node contracts/generate.mjs --check
+
+      # Rule data cannot drift — both sides read one spec. Logic can: two
+      # languages are two implementations, and one can forget a case while
+      # reading the same constants. The vectors are what catch that.
+      - name: TypeScript validator agrees with the generated vectors
+        run: node --test contracts/zone-id/conformance.test.mjs

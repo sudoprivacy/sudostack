@@ -1,0 +1,21 @@
+{
+  "$comment": [
+    "Which revision of each upstream contract this assembly line derives from.",
+    "",
+    "A pin, not a copy. The definitions live with whoever owns the concept —",
+    "zone-id belongs to nexus-vfs, because zone is its kernel concept and",
+    "create_zone is there. Copying the spec here would make a second truth and it",
+    "would start drifting the same day. Naming a revision does not.",
+    "",
+    "This must name the same nexus-vfs revision the shipped daemon was built",
+    "from. A validator that disagrees with the daemon it is validating for is",
+    "worse than no validator: it would reject ids the daemon accepts, or pass ids",
+    "it refuses, and either way the operator is told something false."
+  ],
+  "nexus-vfs": {
+    "rev": "21789169d207abeef727768ce94d7a2484361a4b",
+    "specs": {
+      "zone-id": "contracts/zone-id/spec.json"
+    }
+  }
+}
