@@ -20,8 +20,53 @@
 第三档是合法的 —— 有些东西确实没法机器校验。但它必须**承认自己是第三档**，不能穿着规范的外衣。
 一句读起来像规则、实际没人校验的话，比不写这句话更糟。
 
-第一个走完这条路的是 zone-id：规则住在语义所有者家里（nexus-vfs `contracts/zone-id/spec.json`），
-Rust 校验器由 `build.rs` 编译期生成，改 spec 一个数字校验器自动跟着变，没有人需要记得重新生成。
+### 走通的样板：zone-id
+
+第一条走完全程的规则。每个箭头都是机器执行的，没有一步依赖「有人记得」：
+
+```mermaid
+flowchart TB
+  SPEC["<b>contracts/zone-id/spec.json</b><br/>唯一真相 · 住在语义所有者家里"]
+
+  subgraph NV["nexus-vfs — zone 的语义所有者"]
+    direction TB
+    BUILD["build.rs<br/><i>编译期生成到 OUT_DIR</i>"]
+    RUSTV["Rust 校验器<br/><i>产物不进仓库 · 无文件可手改</i>"]
+    BOUND["--cluster-init 边界<br/><b>真的拒绝</b>"]
+    RVEC["向量测试<br/><i>规则数据不漂 · 这里管逻辑不漂</i>"]
+  end
+
+  subgraph SS["sudostack — 装配与分发，不定义"]
+    direction TB
+    PIN["pin.json<br/><b>指定 rev，不复制 spec</b>"]
+    GEN["generate.mjs"]
+    TSV["zone-id.gen.ts"]
+    VEC["vectors.gen.json<br/><i>用例由 spec 派生</i>"]
+    EX["EXAMPLES.gen.md"]
+    CIG["CI: generate --check<br/><b>手改或漏生成即红</b>"]
+  end
+
+  CONS["消费方<br/>moss · sudowork · cloud/private/edge"]
+
+  SPEC --> BUILD --> RUSTV --> BOUND
+  RUSTV --> RVEC
+  SPEC -.->|"按 rev 取，不复制"| PIN
+  PIN --> GEN --> TSV --> CIG
+  GEN --> VEC --> CIG
+  GEN --> EX
+  VEC -.->|"同一组向量<br/>两种语言判定必须一致"| RVEC
+  TSV --> CONS
+```
+
+**读这张图的三个要点：**
+
+1. **左边那条虚线是全图的关键** —— sudostack **不持有定义**，只按 rev 取。复制就是第二份真相，从复制那天开始漂。而「用哪个 rev」由我们**已经在做**的 nexus-vfs pin 回答，不新增一个需要有人记得的东西。
+2. **Rust 侧没有可手改的文件**（产物在 `OUT_DIR`），TS 侧有 —— 因为 TypeScript 没有等价的编译期钩子。所以 TS 那半靠 CI 的 `--check` 兜底，这是两种语言能力差异决定的，不是偏好。
+3. **底下那条虚线管的是另一件事**：共用 spec 让**规则数据**不可能漂，但**逻辑**会 —— 两种语言是两份实现，一份可能在读着相同常量的情况下漏掉某个 case。同一组向量两边都跑，才把这条堵上。
+
+实测：同一组 11 个向量，Rust 与 TypeScript 判定完全一致；把 spec 里 `max` 从 63 改成 40，两边的测试**自动**失败，没有人执行过「重新生成」。
+
+**这条规则落地第二天就抓出了提案者自己的错误**：写进 Sudo Cloud 计划的 `zone id = org:<organizations.id>` 是非法的（冒号不在字符集内，位置 3）。裸 UUID 合法、`org-<uuid>` 合法。这比任何论证都更能说明「规范要可执行」。
 
 ## 两个方向，别弄反（代码依赖 vs 产品装配）
 
