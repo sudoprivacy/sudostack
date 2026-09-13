@@ -2,6 +2,66 @@
 
 顶层装配 repo：以 submodule 引用各 **Base product** 与 **Mega-product**，并作为**跨全家族技术架构 SSOT** 的落位。
 
+## 契约怎么落地（先读这条）
+
+> **能在代码里强制的，绝不手写第二遍。**
+
+一条规则写在文档里、没有任何东西能让它失败，那它不是规则 —— 它更糟：它让读者以为这件事有人管着。
+所以每条跨仓库定义都必须落到下面三档之一，**并且说清楚自己在哪一档**：
+
+| 档 | 手段 | 手改能不能跑到生产 |
+|---|---|---|
+| **编译期** | Rust `build.rs` 生成到 `OUT_DIR` + `include!` —— **产物不进仓库** | **不能**：没有可改的文件 |
+| **CI** | 产物进仓库但文件名带 `.gen.`、文件头写明来源与再生成命令；CI 跑 `generate && git diff --exit-code` | **不能**：改了就红 |
+| **只能靠人看** | 写进 README 或 ADR，**并显式标注「当前未强制」** | **能** —— 所以必须标注 |
+
+**判据不是「用了哪个工具」，是「手改一个生成产物能不能一路跑到生产」。** 不能，才算数。
+
+第三档是合法的 —— 有些东西确实没法机器校验。但它必须**承认自己是第三档**，不能穿着规范的外衣。
+一句读起来像规则、实际没人校验的话，比不写这句话更糟。
+
+第一个走完这条路的是 zone-id：规则住在语义所有者家里（nexus-vfs `contracts/zone-id/spec.json`），
+Rust 校验器由 `build.rs` 编译期生成，改 spec 一个数字校验器自动跟着变，没有人需要记得重新生成。
+
+## 两个方向，别弄反（代码依赖 vs 产品装配）
+
+sudostack 是**产品组合的 base，不是代码的 base**。它在中间：下游是 Base product，上游是 Mega-product。
+下面那张产品装配图的箭头，和这张代码/契约依赖图的箭头，**方向是相反的** —— 混淆这两者会把定义放错仓库。
+
+```mermaid
+flowchart LR
+  subgraph OWN["语义所有者 — 定义住这里"]
+    direction TB
+    NVFS["nexus-vfs<br/>zone · 共识 · 路径"]
+    SCODE2["sudocode<br/>agent 执行"]
+  end
+
+  STACK2["<b>sudostack</b><br/>装配 · 跨语言分发 · 一致性守门"]
+
+  subgraph CONS["消费方"]
+    direction TB
+    MOSS2["moss"]
+    SW2["sudowork"]
+    MEGA["sudocloud · sudoprivate · sudoedge"]
+  end
+
+  NVFS -->|"契约 spec 向上流"| STACK2
+  SCODE2 -->|"契约 spec 向上流"| STACK2
+  STACK2 -->|"派生产物 + 一致性 gate"| MOSS2
+  STACK2 -->|"派生产物 + 一致性 gate"| SW2
+  STACK2 -->|"派生产物 + 一致性 gate"| MEGA
+```
+
+**定义住谁家的判据：这个概念的语义所有者是谁。**
+
+| 概念 | 住哪 | 为什么 |
+|---|---|---|
+| `zone_id`、共识边界、路径 | **nexus-vfs** | zone 是它的内核概念，`create_zone` 在它那里。放别处会让上游依赖下游，且成环 |
+| Task / Attempt 生命周期、产品契约版本 | **sudostack** | 我们的产品语义，nexus 里没有对应概念 |
+
+反过来放会出两个问题：**依赖成环**（sudostack 装配 Base product，Base product 又依赖 sudostack），
+以及**规则和执行点不在同一个仓库** —— 那样 `build.rs` 这类编译期强制根本没法用。
+
 ## 两层产品模型
 
 | 层 | 成员 |
