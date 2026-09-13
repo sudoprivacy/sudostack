@@ -1,0 +1,57 @@
+[
+  {
+    "id": "aaa",
+    "valid": true,
+    "why": "shortest permitted"
+  },
+  {
+    "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "valid": true,
+    "why": "longest permitted"
+  },
+  {
+    "id": "cloud-user-1001",
+    "valid": true,
+    "why": "canonical shape"
+  },
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "valid": true,
+    "why": "a bare UUID is usable as-is"
+  },
+  {
+    "id": "aa",
+    "valid": false,
+    "why": "shorter than the minimum"
+  },
+  {
+    "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "valid": false,
+    "why": "longer than the maximum"
+  },
+  {
+    "id": "-leading",
+    "valid": false,
+    "why": "leading separator"
+  },
+  {
+    "id": "trailing-",
+    "valid": false,
+    "why": "trailing separator"
+  },
+  {
+    "id": "Has-Upper",
+    "valid": false,
+    "why": "uppercase is excluded, not folded"
+  },
+  {
+    "id": "has_char",
+    "valid": false,
+    "why": "character outside the set"
+  },
+  {
+    "id": "org:550e8400-e29b-41d4-a716-446655440000",
+    "valid": false,
+    "why": "a colon is not in the set"
+  }
+]
