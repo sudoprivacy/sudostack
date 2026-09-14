@@ -99,7 +99,7 @@ Org  --grant--> Zone
 User/Agent/Service --direct grant--> Zone（受政策限制）
 ```
 
-v1 必须支持：
+v1 必须支持： `[enforced_by: none]` —— Org 是 moss 的概念，nexus-vfs 里没有；moss 侧也没有 ZoneGrant，四条子项都没有实现方
 
 - 一个 Org 访问多个 Zone；
 - 一个 Zone 在合并/迁移期被多个 Org 访问；
@@ -149,7 +149,7 @@ Zone ID SHOULD 不直接使用公司显示名称。可在创建时由名称生�
 
 ### 2.6 Resource identity
 
-跨仓 ResourceRef MUST 使用：
+跨仓 ResourceRef MUST 使用： `[enforced_by: none]` —— `ResourceRef` 在 moss 与 sudowork 全仓零匹配
 
 ```ts
 interface ResourceRef {
@@ -187,23 +187,23 @@ path    = /sessions/sess_123
 
 ### 2.7 Session home Zone
 
-每个 Session MUST 有不可变 `home_zone_id`。
+每个 Session MUST 有不可变 `home_zone_id`。 `[enforced_by: none]` —— moss 的 `sessions` 没有 zone 列，租户轴是 `org_id`
 
 规则：
 
 - Session metadata、Task、Transcript、Context、Artifact 和 Verify record 默认写 home Zone；
 - 一个 Session MAY 引用其他 Zone 的 Repo、dataset 或 Memory；
-- cross-Zone resource 必须使用 ResourceRef；
+- cross-Zone resource 必须使用 ResourceRef； `[enforced_by: none]` —— 同上，`ResourceRef` 不存在
 - 每次访问重新验证当前 grant/ReBAC；
 - Session home Zone 不因引用外部资源而改变；
 - 将数据复制进 home Zone 是显式数据移动操作，不是 mount/link 的隐含效果。
 
 ### 2.8 Attempt execution Zone
 
-每个 Attempt MUST 固化 `execution_zone_id`。
+每个 Attempt MUST 固化 `execution_zone_id`。 `[enforced_by: none]` —— moss 的 `session_attempts` 没有 zone 列
 
 - 默认等于 Session home Zone；
-- 如果在其他 Zone 执行，Moss policy 必须明确接受并记录原因；
+- 如果在其他 Zone 执行，Moss policy 必须明确接受并记录原因； `[enforced_by: none]` —— moss 没有跨 zone 执行这条路径
 - Runtime PID 绑定 execution Zone；
 - Context 组装需验证所有 ResourceRef 可在 execution Zone 的 policy 下使用；
 - Agent 不因运行于某 Zone 自动得到该 Zone 全部权限。
@@ -220,10 +220,10 @@ path    = /sessions/sess_123
 规则：
 
 - mount/link 不复制数据；
-- link follow MUST 对目标 Zone 和 resource 重新授权；
+- link follow MUST 对目标 Zone 和 resource 重新授权； `[enforced_by: none]` —— 行为靠构造成立（`syscall_impl.rs:324/730` 带目标路径重新进入被门控的 syscall，权限门因此再跑一次），但没有任何测试钉住它：改成内联解析就会静默失去
 - link 权限不是 capability transfer；
 - source Zone 的权限不自动传播到 target Zone；
-- copy 必须检查 source read + target write + data egress policy，并产生 Audit；
+- copy 必须检查 source read + target write + data egress policy，并产生 Audit； `[enforced_by: none]` —— 权限那一半是真的（`syscall_impl.rs:2162-2164`，Read on src + Write on dst），但 data egress policy 与 Audit 两样都不存在，所以整条并未被强制
 - path knowledge 不等于 permission。
 
 ### 2.10 Cloud、Private、Core 与 Zone
@@ -233,10 +233,10 @@ Cloud/Private/Edge 是部署位置和托管模型，Zone 是数据/安全边界�
 默认：
 
 - Sudo Cloud tenant data 与客户 Private data 在不同 Zone/trust boundary；
-- Private Office 与 Private Core SHOULD 是不同 Zone；
-- Core 数据不得因 Cloud runtime 可用而自动 fallback；
-- cross-location federation 必须显式登记 CA/trust domain、ZoneGrant 和 data policy；
-- 同一 Zone 是否跨多节点复制由 Zone federation policy 决定，但不得无意跨越 Cloud/Private trust boundary。
+- Private Office 与 Private Core SHOULD 是不同 Zone； `[enforced_by: none]` —— Office/Core 是产品概念，kernel 里没有对应物
+- Core 数据不得因 Cloud runtime 可用而自动 fallback； `[enforced_by: none]` —— 没有任何东西阻止这种 fallback
+- cross-location federation 必须显式登记 CA/trust domain、ZoneGrant 和 data policy； `[enforced_by: test:nexus-vfs@rust/profiles/cluster/tests/foreign_ca_register.rs#register_foreign_ca_makes_it_trusted_at_the_handshake_live]`
+- 同一 Zone 是否跨多节点复制由 Zone federation policy 决定，但不得无意跨越 Cloud/Private trust boundary。 `[enforced_by: test:nexus-vfs@rust/profiles/cluster/tests/foreign_ca_register.rs#foreign_agent_is_confined_to_its_mailbox]`
 
 ### 2.11 权限是 ZoneGrant 与 ReBAC 的交集
 
@@ -251,7 +251,7 @@ Allowed = valid identity
        ∩ runtime restrictions
 ```
 
-其中第一层必须完成到：
+其中第一层必须完成到： `[enforced_by: none]` —— 见本节下方 ⚠️：ReBAC 是 opt-in cargo feature，不在我们出的 slim assembly 里
 
 ```text
 valid identity ∩ ZoneGrant ∩ ReBAC
@@ -294,7 +294,7 @@ Task/data/tool policy 在后续 Epic 加入。
 - policy version 不可用：拒绝；
 - cross-Zone target 不明：拒绝。
 
-可信 loopback local mode MAY 使用显式 NoAuth/no-permission development posture，但必须：
+可信 loopback local mode MAY 使用显式 NoAuth/no-permission development posture，但必须： `[enforced_by: test:nexus-vfs@rust/profiles/cluster/src/auth_posture.rs#a_reachable_bind_without_auth_refuses_to_start]`
 
 - 只绑定 loopback；
 - 日志明确警告；
@@ -409,7 +409,7 @@ Resource relation 最低要求：
 - runner/executor；
 - manager/admin（受 capability 限制）。
 
-Nexus Rust ReBAC v1 当前使用固定 candidate relation map；后续应加载 namespace config，但第一层至少必须保证 `/agents`、`/sessions`、`/repos` 的关系一致。
+Nexus Rust ReBAC v1 当前使用固定 candidate relation map；后续应加载 namespace config，但第一层至少必须保证 `/agents`、`/sessions`、`/repos` 的关系一致。 `[enforced_by: none]` —— ReBAC 引擎在 `rust/lib/src/rebac/`，但 `/agents`、`/sessions`、`/repos` 的关系一致性零匹配
 
 ---
 
@@ -483,11 +483,11 @@ Moss validates Org/business policy
 2. auth context、Zone lease、ReBAC graph cache 跨节点立即失效；
 3. 后续 syscall/tool/resource read/write 立即拒绝；
 4. 依赖该 grant 的 active PID/Attempt 默认进入 cancellation；
-5. supervisor 必须以可审计原因终止或隔离 PID；
-6. 若暂时无法终止，状态必须为 `revocation_pending`，不得继续获得新资源；
+5. supervisor 必须以可审计原因终止或隔离 PID； `[enforced_by: none]` —— `revocation_pending` 全树零匹配
+6. 若暂时无法终止，状态必须为 `revocation_pending`，不得继续获得新资源； `[enforced_by: none]` —— 同上
 7. revoke 不删除历史 Audit/Task/Session。
 
-选择默认终止 active PID 的原因：Agent 可能已经将敏感数据保存在内存中，仅阻止下一次 read 不能撤回已有数据。对低风险本地模式可由单独 policy 放宽，但 production default 必须保守。
+选择默认终止 active PID 的原因：Agent 可能已经将敏感数据保存在内存中，仅阻止下一次 read 不能撤回已有数据。对低风险本地模式可由单独 policy 放宽，但 production default 必须保守。 `[not-normative]`
 
 ---
 
@@ -544,7 +544,7 @@ Moss validates Org/business policy
 
 ### 9.3 Production profile
 
-- 新 Atlas/production build 必须安装 auth + Zone + ReBAC composite；
+- 新 Atlas/production build 必须安装 auth + Zone + ReBAC composite； `[enforced_by: none]` —— 我们出的 assembly 不含 ReBAC
 - `--insecure-no-auth` 只允许 CI/dev；
 - Moss HA 示例与安装器切换到 mTLS/API-key auth；
 - startup/status 暴露 auth/permission capability；
@@ -568,11 +568,11 @@ Moss validates Org/business policy
 
 ### 10.4 link/mount 自动继承源权限
 
-拒绝。会形成 capability leak；目标必须重新授权。
+拒绝。会形成 capability leak；目标必须重新授权。 `[enforced_by: none]` —— 与 §4 的 link follow 同一条要求：靠构造成立，无测试
 
 ### 10.5 permission provider 缺失时放行
 
-拒绝用于 production。开发 loopback posture 可显式开放，生产必须 fail-closed。
+拒绝用于 production。开发 loopback posture 可显式开放，生产必须 fail-closed。 `[enforced_by: test:nexus-vfs@rust/profiles/cluster/src/auth_posture.rs#a_reachable_bind_without_auth_refuses_to_start]`
 
 ### 10.6 Agent certificate 自动获得整个 Zone
 
@@ -580,7 +580,7 @@ Moss validates Org/business policy
 
 ### 10.7 grant revoke 只等待缓存 TTL
 
-拒绝。撤销必须主动失效缓存并阻止后续访问。
+拒绝。撤销必须主动失效缓存并阻止后续访问。 `[enforced_by: test:nexus-vfs@rust/raft/src/raft/state_machine.rs#apply_invalidate_callback_fires_on_metadata_mutations_only]`
 
 ---
 
@@ -629,9 +629,9 @@ Moss validates Org/business policy
 
 本 ADR 被接受后：
 
-- 新代码不得把 `org_id`/Org name 直接当 `zone_id`；
-- 新数据路径不得以 content type 作为 Zone；
-- 所有 ResourceRef 必须携带 Zone；
-- production Nexus 必须安装 permission provider；
+- 新代码不得把 `org_id`/Org name 直接当 `zone_id`； `[enforced_by: none]` —— moss 只校验 zone id 的格式，不阻止拿 org_id 去当 zone id
+- 新数据路径不得以 content type 作为 Zone； `[enforced_by: none]`
+- 所有 ResourceRef 必须携带 Zone； `[enforced_by: none]` —— `ResourceRef` 不存在
+- production Nexus 必须安装 permission provider； `[enforced_by: none]` —— `auth_posture` 管的是认证平面；没有任何启动检查绑定 permission provider
 - 跨 Zone 默认拒绝；
-- 任何放宽 default-deny 或 revoke 行为的需求必须另写 ADR。
+- 任何放宽 default-deny 或 revoke 行为的需求必须另写 ADR。 `[enforced_by: none]` —— 流程条款，机器无从校验
