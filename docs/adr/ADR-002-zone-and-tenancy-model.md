@@ -116,7 +116,7 @@ v1 必须支持：
 - 长度 3–63；`[enforced_by: const:contracts/zone-id/zone-id.gen.ts#ZONE_ID_MAX_LEN]`
 - lowercase alphanumeric + hyphen；`[enforced_by: const:contracts/zone-id/zone-id.gen.ts#ZONE_ID_CHARSET]`
 - 不以 hyphen 开头或结尾；`[enforced_by: test:contracts/zone-id/conformance.test.mjs#the generated validator agrees with every vector]`
-- reserved IDs 禁止租户创建；`[enforced_by: none]` —— 保留 id 列表不在 `zone-id` 契约里，两侧各自硬编码
+- reserved IDs 禁止租户创建；`[enforced_by: test:nexus-vfs@rust/contracts/src/zone_id.rs#reserved_ids_are_refused_by_the_constants_that_own_them]` —— 列表按**常量名**写在 `spec.json` 的 `reserved.constants` 里，`build.rs` 据此生成 `ZONE_ID_RESERVED`；值本身住在 `constants.rs`，所以非 Rust 消费方查不了它，由 daemon 兜底
 - 创建后不可修改；`[enforced_by: none]`
 - display name 单独存储。
 
