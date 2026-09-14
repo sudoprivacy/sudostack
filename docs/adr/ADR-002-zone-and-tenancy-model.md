@@ -113,11 +113,11 @@ v1 必须支持：
 
 复用现有 Nexus 格式：
 
-- 长度 3–63；
-- lowercase alphanumeric + hyphen；
-- 不以 hyphen 开头或结尾；
-- reserved IDs 禁止租户创建；
-- 创建后不可修改；
+- 长度 3–63；`[enforced_by: const:contracts/zone-id/zone-id.gen.ts#ZONE_ID_MAX_LEN]`
+- lowercase alphanumeric + hyphen；`[enforced_by: const:contracts/zone-id/zone-id.gen.ts#ZONE_ID_CHARSET]`
+- 不以 hyphen 开头或结尾；`[enforced_by: test:contracts/zone-id/conformance.test.mjs#the generated validator agrees with every vector]`
+- reserved IDs 禁止租户创建；`[enforced_by: none]` —— 保留 id 列表不在 `zone-id` 契约里，两侧各自硬编码
+- 创建后不可修改；`[enforced_by: none]`
 - display name 单独存储。
 
 示例：
@@ -130,6 +130,7 @@ edge-device-01
 ```
 
 Zone ID SHOULD 不直接使用公司显示名称。可在创建时由名称生成候选 slug，但一经创建永久稳定。
+`[enforced_by: none]`
 
 ### 2.5 Reserved Zones
 
@@ -260,7 +261,7 @@ Task/data/tool policy 在后续 Epic 加入。
 
 仅有 ZoneGrant 不代表可以访问 Zone 内所有 resource；仅有 ReBAC tuple 但没有 ZoneGrant 同样拒绝。
 
-> **⚠️ 当前未强制（2026-09-13 实测 · sudowork-3）**
+> **⚠️ 当前未强制（2026-09-13 实测 · sudowork-3）** `[enforced_by: none]`
 >
 > 本节要求第一层必须完成到 `valid identity ∩ ZoneGrant ∩ ReBAC`，而 §2.12 要求
 > 「permission provider 缺失：拒绝启动」。**我们今天出的二进制满足不了这条。**

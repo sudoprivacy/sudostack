@@ -31,3 +31,26 @@ jobs:
       # reading the same constants. The vectors are what catch that.
       - name: TypeScript validator agrees with the generated vectors
         run: node --experimental-strip-types --test contracts/zone-id/conformance.test.mjs
+
+  # 总则 1: every normative clause names what makes it fail, and what it names
+  # has to be real. Separate job because it gates the DOCUMENTS, not the
+  # derived artifacts — and because its failure has a different fix (write the
+  # tag) from the job above (regenerate).
+  every-clause-names-what-enforces-it:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # The checker has to be able to fail, or it is the prose it replaced.
+      - name: The enforcement checker catches what it claims to
+        run: node --test docs/adr/enforced-by.test.mjs
+
+      # Fails on: a new clause with no answer, an answer pointing at something
+      # that is not there, a malformed answer. `enforced_by: none` passes — it
+      # is the number this exists to make countable, and the count is printed
+      # on every run so the trend is visible without anyone asking for it.
+      - name: Every normative clause answers for itself
+        run: node docs/adr/enforced-by.mjs
