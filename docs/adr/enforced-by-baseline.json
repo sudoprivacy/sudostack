@@ -1,7 +1,7 @@
 {
   "untagged": {
     "ADR-001-identifiers-and-lifecycle.md": 18,
-    "ADR-002-zone-and-tenancy-model.md": 27,
+    "ADR-002-zone-and-tenancy-model.md": 0,
     "ADR-003-agent-principal-and-versioning.md": 25,
     "ADR-004-task-and-execution-resolution.md": 25,
     "ADR-005-product-contract-versioning.md": 39,
