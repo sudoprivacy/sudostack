@@ -220,7 +220,7 @@ path    = /sessions/sess_123
 规则：
 
 - mount/link 不复制数据；
-- link follow MUST 对目标 Zone 和 resource 重新授权； `[enforced_by: none]` —— 行为靠构造成立（`syscall_impl.rs:324/730` 带目标路径重新进入被门控的 syscall，权限门因此再跑一次），但没有任何测试钉住它：改成内联解析就会静默失去
+- link follow MUST 对目标 Zone 和 resource 重新授权； `[enforced_by: test:nexus-vfs@rust/kernel/src/kernel/mod.rs#following_a_link_re_authorizes_the_target]` —— 机制是**重新进入被门控的 syscall**（read `syscall_impl.rs:330`、write `:736` 带目标路径再入，§13 的门因此再跑一次），不是内联解析。此条在 nexus-vfs#285 之前是 `none`：机制成立但无人钉住。该测试装一个「放行 link、拒绝 target」的 provider，断言的不只是「被拒」，而是**门确实被问到了 target 路径**——只断言被拒不够，好几个不相干的机制都能产生被拒
 - link 权限不是 capability transfer；
 - source Zone 的权限不自动传播到 target Zone；
 - copy 必须检查 source read + target write + data egress policy，并产生 Audit； `[enforced_by: none]` —— 权限那一半是真的（`syscall_impl.rs:2162-2164`，Read on src + Write on dst），但 data egress policy 与 Audit 两样都不存在，所以整条并未被强制
@@ -568,7 +568,7 @@ Moss validates Org/business policy
 
 ### 10.4 link/mount 自动继承源权限
 
-拒绝。会形成 capability leak；目标必须重新授权。 `[enforced_by: none]` —— 与 §4 的 link follow 同一条要求：靠构造成立，无测试
+拒绝。会形成 capability leak；目标必须重新授权。 `[enforced_by: test:nexus-vfs@rust/kernel/src/kernel/mod.rs#following_a_link_re_authorizes_the_target]` —— 与 §4 的 link follow 同一条要求，同一个测试覆盖
 
 ### 10.5 permission provider 缺失时放行
 
