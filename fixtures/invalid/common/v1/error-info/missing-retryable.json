@@ -1,0 +1,6 @@
+{
+  "api_version": "common.sudo.dev/v1",
+  "kind": "ErrorInfo",
+  "code": "ZONE_ACCESS_DENIED",
+  "message": "access denied"
+}

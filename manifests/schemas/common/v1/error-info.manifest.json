@@ -1,0 +1,21 @@
+{
+  "family": "common",
+  "api_version": "common.sudo.dev/v1",
+  "kind": "ErrorInfo",
+  "schema_id": "https://contracts.sudo.dev/schemas/common/v1/error-info.schema.json",
+  "schema_digest": "GENERATED_BY_RELEASE_MANIFEST",
+  "semantic_adr_refs": [
+    "docs/adr/ADR-005-product-contract-versioning.md#error-contract"
+  ],
+  "owner": "sudostack",
+  "security_owner": "platform-security",
+  "producers": ["moss", "sudowork", "sudocode", "nexus"],
+  "consumers": ["moss", "sudowork", "sudocode", "nexus"],
+  "data_classification": "metadata",
+  "secrets_allowed": false,
+  "large_payload_policy": "details-must-be-redacted",
+  "retention_policy": "event-or-response-owner-policy",
+  "compatibility": {
+    "status": "experimental"
+  }
+}

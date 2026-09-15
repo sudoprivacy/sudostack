@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.sudo.dev/schemas/common/v1/error-info.schema.json",
+  "title": "ErrorInfo",
+  "type": "object",
+  "required": ["api_version", "kind", "code", "message", "retryable"],
+  "additionalProperties": true,
+  "properties": {
+    "api_version": {
+      "const": "common.sudo.dev/v1"
+    },
+    "kind": {
+      "const": "ErrorInfo"
+    },
+    "code": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*$"
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "retryable": {
+      "type": "boolean"
+    },
+    "details": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "cause_ref": {
+      "$ref": "./resource-ref.schema.json"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "api_version": "common.sudo.dev/v1",
+  "kind": "ErrorInfo",
+  "code": "RESOURCE_TEMPORARILY_UNAVAILABLE",
+  "message": "resource is temporarily unavailable",
+  "retryable": true,
+  "details": {
+    "retry_after_ms": 1000
+  },
+  "cause_ref": {
+    "api_version": "common.sudo.dev/v1",
+    "kind": "ResourceRef",
+    "zone_id": "private-acme-office",
+    "path": "/repos/repo_123"
+  }
+}

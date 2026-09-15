@@ -1,0 +1,10 @@
+{
+  "api_version": "common.sudo.dev/v1",
+  "kind": "ResourceRef",
+  "zone_id": "550e8400-e29b-41d4-a716-446655440000",
+  "path": "/datasets/source.csv",
+  "version": "2026-09-15T00:00:00Z",
+  "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "media_type": "text/csv",
+  "size_bytes": 128
+}

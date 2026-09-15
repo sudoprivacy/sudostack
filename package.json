@@ -5,16 +5,31 @@
   "description": "Derived cross-repo contract artifacts. Generated from upstream specs at the revisions named in contracts/*/pin.json — do not edit the .gen.* files.",
   "type": "module",
   "exports": {
-    "./zone-id": "./contracts/zone-id/zone-id.gen.ts"
+    "./zone-id": "./contracts/zone-id/zone-id.gen.ts",
+    "./common/v1": "./contracts/common/v1/common.gen.ts"
   },
   "files": [
     "contracts/**/*.gen.ts",
-    "contracts/**/*.gen.json"
+    "contracts/**/*.gen.json",
+    "schemas/**/*.schema.json",
+    "fixtures/**/*.json",
+    "manifests/**/*.json",
+    "compatibility/**/*.yaml"
   ],
   "scripts": {
     "generate": "node --use-env-proxy contracts/generate.mjs",
-    "check": "node contracts/generate.mjs --check",
-    "test": "node --experimental-strip-types --test contracts/zone-id/conformance.test.mjs",
+    "generate:common": "node tools/generate-common.mjs",
+    "generate:release-manifest": "node tools/generate-release-manifest.mjs",
+    "check": "node --use-env-proxy contracts/generate.mjs --check",
+    "check:all": "npm run check && npm run check:common && npm run check:v0-distribution && npm run check:schemas && npm run check:compatibility && npm run check:consumers && npm run check:release-manifest && npm run check:rust && npm test",
+    "check:common": "node tools/generate-common.mjs --check",
+    "check:compatibility": "node tools/compatibility-check.mjs",
+    "check:consumers": "node tools/check-consumers.mjs",
+    "check:release-manifest": "node tools/generate-release-manifest.mjs --check",
+    "check:rust": "cargo test --manifest-path crates/rust/Cargo.toml",
+    "check:schemas": "node tools/check-schemas.mjs",
+    "check:v0-distribution": "node tools/check-v0-distribution.mjs",
+    "test": "node --experimental-strip-types --test contracts/zone-id/conformance.test.mjs contracts/common/v1/conformance.test.mjs tools/contracts-tooling.test.mjs",
     "adr:enforced-by": "node docs/adr/enforced-by.mjs",
     "adr:enforced-by:test": "node --test docs/adr/enforced-by.test.mjs"
   }

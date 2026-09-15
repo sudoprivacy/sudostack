@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.sudo.dev/schemas/common/v1/contract-envelope.schema.json",
+  "title": "ContractEnvelope",
+  "type": "object",
+  "required": ["api_version", "kind"],
+  "additionalProperties": true,
+  "properties": {
+    "api_version": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*\\.sudo\\.dev/v[0-9]+$"
+    },
+    "kind": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9]*$"
+    }
+  }
+}

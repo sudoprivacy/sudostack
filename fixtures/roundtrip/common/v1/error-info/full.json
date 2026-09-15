@@ -1,0 +1,11 @@
+{
+  "api_version": "common.sudo.dev/v1",
+  "kind": "ErrorInfo",
+  "code": "UNSUPPORTED_VERSION",
+  "message": "unsupported contract major",
+  "retryable": false,
+  "details": {
+    "supported": ["common.sudo.dev/v1"],
+    "received": "common.sudo.dev/v2"
+  }
+}

@@ -1,0 +1,22 @@
+consumers:
+  moss:
+    base: origin/dev
+    zone-id: [v1]
+    common: [v1]
+    boundary_tests:
+      - src/contracts/__tests__/commonV1Boundary.test.ts
+  sudowork:
+    base: origin/dev
+    common: [v1]
+    boundary_tests:
+      - tests/contract/common-v1-boundary.test.ts
+  sudocode:
+    base: origin/main
+    common: [v1]
+    boundary_tests:
+      - rust/crates/runtime/tests/sudo_common_contract_boundary.rs
+  nexus:
+    base: origin/develop
+    common: [v1]
+    boundary_tests:
+      - tests/unit/contracts/test_sudo_common_boundary.py
