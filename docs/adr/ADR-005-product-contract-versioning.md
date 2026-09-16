@@ -1,7 +1,8 @@
 # ADR-005：跨仓产品契约的版本、分发与兼容规则
 
-- 状态：Proposed
+- 状态：Accepted（v0.x 分阶段落地中）
 - 日期：2026-09-12
+- 最近实现校准：2026-09-16
 - 决策范围：Sudo 全产品族与跨仓产品契约包
 - 首个发布阶段：`sudostack` v0.x Git 分发；语义接受并完成 codegen/release tooling 后进入正式 `sudo-contracts` v1.x
 - 相关文档：
@@ -11,6 +12,7 @@
   - [`ADR-003：Agent Principal 与 Version`](./ADR-003-agent-principal-and-versioning.md)
   - [`ADR-004：Task 与 Resolution`](./ADR-004-task-and-execution-resolution.md)
   - [`ADR-006：Transcript 与 UI Overlay`](./ADR-006-transcript-and-ui-overlay.md)
+  - [`ADR-005 落地总结`](./ADR-005-implementation-summary-2026-09-16.md)
 
 ---
 
@@ -62,13 +64,19 @@ Sudo 的跨仓 payload 当前由不同技术栈分别定义：
 
 ### 2.1 v0.x 物理承载与正式仓库目标
 
-当前 v0.x 物理承载为 `sudostack` public Git repository 中的私有 npm package `@sudo/contracts`。消费方通过 GitHub 40 位 commit SHA 精确固定，例如：
+当前 v0.x 物理承载为 `sudostack` public Git repository 中的私有 npm package `@sudo/contracts`。当前已验证实现提交为：
+
+```text
+sudoprivacy/sudostack@65904eb0a0991366767095b707f5a86835089a1e
+```
+
+消费方通过 GitHub 40 位 commit SHA 精确固定，例如：
 
 ```text
 github:sudoprivacy/sudostack#<40-char-rev>
 ```
 
-该阶段不依赖 npm registry；`package.json` 中的 `private: true` 用来避免误发布 registry，不阻止 Git dependency 安装。当前 Moss 已按该方式消费；v0.x package 形状、CI gate、consumer matrix、release manifest 和 Moss exact pin 由本仓工具检查。`[enforced_by: test:tools/contracts-tooling.test.mjs#v0 distribution is exact-pinned and CI-gated]`
+该阶段不依赖 npm registry；`package.json` 中的 `private: true` 用来避免误发布 registry，不阻止 Git dependency 安装。当前 Moss 已按该方式消费，并已 pin 到 `65904eb0a0991366767095b707f5a86835089a1e`；v0.x package 形状、CI gate、consumer matrix、release manifest 和 Moss exact pin 由本仓工具检查。`[enforced_by: test:tools/contracts-tooling.test.mjs#v0 distribution is exact-pinned and CI-gated]`
 
 正式阶段的目标物理 SSOT 为独立 Git repository：
 
@@ -104,6 +112,23 @@ Canonical schema 使用 JSON Schema Draft 2020-12。
 JSON Schema 定义 wire 数据。语言包可以提供 idiomatic API，但不得改变 wire 语义。`[enforced_by: test:tools/contracts-tooling.test.mjs#schema lint checks schema ids, api_version, kind, manifests, and fixtures]`
 
 ### 2.3 目录结构
+
+当前 v0.x 实际承载结构位于 `sudostack`，本轮已落地的部分是：
+
+```text
+sudostack/
+  schemas/common/v1/
+  contracts/common/v1/
+  contracts/zone-id/
+  crates/rust/
+  fixtures/{valid,invalid,roundtrip}/common/v1/
+  manifests/schemas/common/v1/
+  manifests/releases/
+  compatibility/
+  tools/
+```
+
+正式 `sudo-contracts` 独立仓库目标结构为：
 
 ```text
 sudo-contracts/
@@ -147,7 +172,7 @@ sudo-contracts/
     compatibility-check/
 ```
 
-首批 E0 只要求：
+正式 E0 目标包括：
 
 ```text
 common/v1
@@ -158,7 +183,7 @@ TypeScript/Rust artifacts
 fixtures/CI
 ```
 
-六个核心 Agent 执行契约由对应后续 Epic 增量加入；`common`、`agent`、`auth`、`runtime`、`transcript`、`overlay` 是这些核心契约共享的基础/支撑契约族。Transcript/Overlay 虽分别在 Epic 6 实现，也必须在同一 contract repository 中版本化。不得为了“目录齐全”提交空洞占位 schema。`[enforced_by: none]` —— schema 目录和空洞占位检查尚未实现
+2026-09-16 的实际落地范围是 `common/v1`、TypeScript artifact、Rust crate、fixtures/CI、manifest、release manifest、compatibility baseline 和消费者 boundary test。`agent/v1`、`auth/v1`、`runtime/v2` 及六个核心 Agent 执行契约仍由后续 Epic 增量加入；`common`、`agent`、`auth`、`runtime`、`transcript`、`overlay` 是这些核心契约共享的基础/支撑契约族。Transcript/Overlay 虽分别在 Epic 6 实现，也必须在同一 contract repository 中版本化。不得为了“目录齐全”提交空洞占位 schema。`[enforced_by: none]` —— 当前 schema/fixture/manifest 检查已覆盖已存在 schema，但尚未实现全 family presence 与空洞占位 schema 的完整门禁
 
 ### 2.4 Contract family 与 `api_version`
 
@@ -238,7 +263,7 @@ https://contracts.sudo.dev/schemas/task/v1/task-spec.schema.json
 - 修正文档但不改变含义；
 - 新增开放 registry code。
 
-必须新 major：`[enforced_by: none]` —— 还没有 compatibility diff 工具判定 schema breaking change
+必须新 major：`[enforced_by: none]` —— 当前已有 structural compatibility checker，可拦截新增 required、删除字段、类型变化、收紧 validation 等基础 breaking change；但尚未覆盖字段语义、identity/lifecycle/authority、默认安全行为等语义级 breaking change
 
 - 新增 required 字段；
 - 删除字段；
@@ -264,7 +289,7 @@ Task.V1
 Task.V2
 ```
 
-因此 package major 不要求与每个 family major 数字完全相同，但 release notes 必须列出 schema support matrix。`[enforced_by: none]` —— 当前没有 release notes/schema support matrix gate
+因此 package major 不要求与每个 family major 数字完全相同，但 release notes 必须列出 schema support matrix。`[enforced_by: none]` —— 当前已有 release manifest 和 consumer matrix 检查，但尚未实现 release notes/schema support matrix 发布门禁
 
 `sudo-contracts` 在 ADR 未接受和 codegen 尚不稳定时使用 `0.x`；第一组 schema 正式冻结后发布 `1.0.0`。
 
@@ -578,29 +603,46 @@ JSON fixture
 
 不要求 JSON property 顺序或空白字节完全相同；要求解析后的规范语义等价。需要签名/哈希的对象另定义 canonical JSON serialization。
 
+当前已验证的 `common/v1` conformance 覆盖：
+
+- `sudostack` 本仓 TypeScript generated validator；
+- `sudostack` 本仓 Rust crate；
+- Moss 通过真实 `@sudo/contracts` GitHub SHA dependency 导入 `@sudo/contracts/common/v1`；
+- SudoWork 读取同一 `sudostack` artifact 和 fixtures；
+- sudocode 通过 Rust boundary test 读取同一 fixtures；
+- Nexus 通过 Python `jsonschema` 读取 canonical schema 和 fixtures。
+
+四个消费者测试均断言目标 `sudostack` checkout 的 HEAD 为 `65904eb0a0991366767095b707f5a86835089a1e`，避免误读未审计的本地工作区。
+
 ---
 
 ## 5. Compatibility Matrix
 
-`compatibility/consumers.yaml` 记录：
+当前 `compatibility/consumers.yaml` 记录：
 
 ```yaml
 consumers:
-  sudowork:
-    task: [v1]
-    event: [v1]
   moss:
-    runtime: [v2]
-    task: [v1]
-    event: [v1]
+    base: origin/dev
+    zone-id: [v1]
+    common: [v1]
+    boundary_tests:
+      - src/contracts/__tests__/commonV1Boundary.test.ts
+  sudowork:
+    base: origin/dev
+    common: [v1]
+    boundary_tests:
+      - tests/contract/common-v1-boundary.test.ts
   sudocode:
-    runtime: [v2]
-    tool: [v1]
-    context: [v1]
+    base: origin/main
+    common: [v1]
+    boundary_tests:
+      - rust/crates/runtime/tests/sudo_common_contract_boundary.rs
   nexus:
-    agent: [v1]
-    auth: [v1]
-    runtime: [v2]
+    base: origin/develop
+    common: [v1]
+    boundary_tests:
+      - tests/unit/contracts/test_sudo_common_boundary.py
 ```
 
 每次 release 必须更新：`[enforced_by: test:tools/contracts-tooling.test.mjs#consumer matrix records supported families and exact pins]`
@@ -620,7 +662,7 @@ consumers:
 
 ### 6.1 Contract repo CI
 
-必须执行：`[enforced_by: none]` —— 当前 CI 只覆盖 zone-id 生成物、zone-id TS conformance 和 ADR enforcement checker，未覆盖完整 contract repo CI 清单
+必须执行：`[enforced_by: none]` —— 当前 CI/check:all 已覆盖 schema lint、离线 `$id/$ref` 解析、valid/invalid fixtures、TS/Rust roundtrip、generated clean diff、structural compatibility diff、Secret-like field negative fixtures、consumer matrix、release manifest digest；尚未覆盖 duplicate registry code、完整 release artifact reproducibility、license/SBOM/checksum 门禁
 
 1. JSON Schema lint；
 2. `$id/$ref` 离线解析；
@@ -636,6 +678,15 @@ consumers:
 12. license/SBOM/checksum。
 
 ### 6.2 Consumer repo CI
+
+当前消费者落地分支：
+
+| Repo | Base branch | Work branch | Commit | Push 状态 |
+|---|---|---|---|---|
+| Moss | `origin/dev` | `codex/adr005-consumer-boundary` | `fdd4cf1` | 已 push |
+| SudoWork | `origin/dev` | `codex/adr005-consumer-boundary` | `504c7ede` | 已 push |
+| sudocode | `origin/main` | `codex/adr005-consumer-boundary` | `701ae8d1` | 已 push |
+| Nexus | `origin/develop` | `codex/adr005-consumer-boundary` | `7a2195bd9` | 本地已提交；`yinbinchen` 对 `nexi-lab/nexus` 仍无 push 权限 |
 
 每个 consumer：
 
@@ -672,8 +723,8 @@ CI 仍需检查：
 5. 跑 conformance/compatibility CI
 6. Review schema owner + affected consumer owner
 7. Merge
-8. Tag sudo-contracts release
-9. 发布 npm/crate/PyPI/Go/NuGet artifacts（按已启用语言）
+8. Tag sudo-contracts release；v0.x 阶段为 `sudostack` Git commit SHA
+9. 发布 npm/crate/PyPI/Go/NuGet artifacts（按已启用语言）；v0.x 阶段 Moss 使用 GitHub SHA dependency
 10. 发布 checksums/SBOM/offline bundle
 11. consumer 通过独立 PR 升级 pin
 12. compatibility matrix 记录 rollout
@@ -743,7 +794,7 @@ Breaking change 需要：
 
 ### 10.1 Existing TypeScript DTO
 
-- `sudowork/packages/contracts` 依赖 `@sudo/contracts`；
+- `sudowork/packages/contracts` 逐步依赖 `@sudo/contracts`；当前本轮只新增 SudoWork boundary test，尚未迁移该 package 的生产依赖；
 - 现有 auth/conversation browser whitelist DTO 保留；
 - 新产品对象从全局 package 引入；
 - 内部 camelCase 类型用 adapter；
@@ -837,15 +888,15 @@ Breaking change 需要：
 ## 13. 验收标准
 
 1. `sudo-contracts` 仓库零业务依赖；
-2. common/agent/auth/runtime schema 有稳定 `$id`；
-3. TypeScript/Rust artifacts 发布；
+2. common/agent/auth/runtime schema 有稳定 `$id`；当前只完成 `common/v1`；
+3. TypeScript/Rust artifacts 发布；当前 v0.x 已有 `common/v1` TypeScript artifact 与 Rust crate，正式 registry 发布尚未开始；
 4. valid/invalid/roundtrip fixtures 通过；
 5. 同 major unknown optional 被接受；
 6. unknown major 被拒绝；
 7. 新增 required 字段被 compatibility CI 判为 breaking；
 8. open code 可处理 unknown value；
 9. 正式 Event producer version 不能是 unknown；
-10. SudoWork/Moss/sudocode/Nexus 至少各有一个 boundary adapter test；
+10. SudoWork/Moss/sudocode/Nexus 至少各有一个 boundary adapter test；当前四仓本地验证通过，Moss/SudoWork/sudocode 已 push，Nexus 因权限未 push；
 11. consumer matrix 可回答每个 repo 支持哪些 family major；
 12. release 具有 checksum/SBOM/offline artifact；
 13. 旧 v1 payload fixture 能被兼容 adapter 读取；
@@ -873,6 +924,6 @@ Breaking change 需要：
 - `sudo-contracts` 是跨仓产品语义 SSOT；
 - consumer repo 不得私自改变跨仓字段含义；`[enforced_by: none]`
 - Zod/protobuf/dataclass/serde 变为生成物或 conformance-verified adapter；
-- breaking semantic change 必须发布新 schema major；`[enforced_by: none]` —— compatibility checker 尚未实现
+- breaking semantic change 必须发布新 schema major；`[enforced_by: none]` —— 当前 structural compatibility checker 已实现，语义级 breaking change 仍需 ADR amendment / compatibility report / reviewer gate
 - 正式生产不允许未版本化 payload 或 `version: unknown` 事件；
 - 第一层完成前，首批 common/agent/auth/runtime contracts 以 v0.x package 迭代，接受后进入稳定 v1.x package release。

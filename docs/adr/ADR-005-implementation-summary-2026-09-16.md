@@ -203,7 +203,7 @@ PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 SUDOSTACK_REPO=/Users/yobach/VSCodeProject
 
 ### 3.3 SHA 约束
 
-四个消费者测试都断言本次审计目标必须是：
+四个消费者测试都把本次审计目标固定为：
 
 ```text
 65904eb0a0991366767095b707f5a86835089a1e
