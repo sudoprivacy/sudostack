@@ -8,13 +8,15 @@
 **是**：跨仓库语义决策的**理由书** —— 我们当时为什么这么定、否掉了什么、后果是什么。ADR
 的原意就是这个：不可变、append-only，决策变了不改旧的，而是写一份新的把旧的标 superseded。
 
-**不是**：SSOT 本身。一份 markdown 无法让任何仓库在偏离时失败，所以它不能单独承担"跨仓库唯一真相"
-这个职责。真正的 SSOT 需要**偏离即失败**，而那要靠两样东西，都长在本仓库里：
+**不是**：SSOT 本身。一份 markdown 无法让任何仓库在偏离时失败，所以它不能单独承担“跨仓库唯一真相”
+这个职责。真正的 SSOT 需要**偏离即失败**：canonical editable definition 与 owner-local enforcement 长在 semantic owner
+repo；`sudostack` 按 exact revision 固定来源、派生和分发，并对聚合引用与产物做一致性 gate。两层职责不能合并：
 
 | 层 | 承载 | 强制方式 |
 |---|---|---|
 | 理由 | `docs/adr/` 本目录 | 不强制 —— 也不该强制 |
-| **形状** | schema / 类型包 | 下游 import，对不上就编不过 |
+| **Owner 形状** | semantic owner repo 的 canonical spec/schema/type | owner build/test；定义与真实执行边界同仓 |
+| **派生形状** | `sudostack` 的 exact pin + generated artifact/package | 下游 import；默认 CI 重建并检查 clean diff |
 | **行为** | 优先做成**推导出来的、拼不出违规状态**；做不到才对真实产物断言可观测结果 | 前者写不出来，后者真跑就红 |
 
 **为什么两层都要**：类型系统抓得住字段形状，抓不住行为。一个下游可以完整 import 契约包，然后写出
@@ -134,7 +136,7 @@ ADR-001 ID/生命周期
   -> ADR-005 契约版本/分发（最后确认如何工程化前五项）
 ```
 
-ADR-005 可以先浏览，但建议最后表决，因为它负责把前五份语义变成 schema/package/compatibility 规则。
+ADR-005 可以先浏览，但建议最后表决，因为它负责把前五份语义映射到各 semantic owner 的 canonical definitions，再规定 `sudostack` 如何 exact-pin、派生、分发与验证兼容；它不把前五份语义集中复制到一个仓库。
 
 ## 联合评审需要重点拍板的事项
 
@@ -223,18 +225,18 @@ ADR-006 当前建议：
 
 需要确认 retention、合规删除、Artifact delivery 和 non-scode backend 支持范围。
 
-### R8. `sudo-contracts` 发布方式
+### R8. Contract 来源、装配与分发
 
 ADR-005 当前建议：
 
-- JSON Schema 2020-12 为 wire schema SSOT；
-- Accepted ADR 为语义/生命周期权威；
-- TypeScript/Rust 首批；
-- Python/Go/C# 按 consumer 增加；
-- v0.x 迭代，语义接受后进入 v1.x；
-- exact pin + compatibility matrix + offline bundle。
+- canonical editable definition 留在 semantic owner repo；
+- `sudostack` exact-pin owner revision，派生、聚合、版本化、分发和 release，不复制 owner source；
+- consumer 可统一安装 `@sudo/contracts`，但 package ownership 不等于 semantic ownership；
+- 当前 v0.x 使用 `sudostack` exact Git commit + `private: true`，package registry 不是 prerequisite；
+- future artifact channel 只按真实 consumer 启用，并保留 compatibility matrix 与 offline bundle；
+- ADR `Proposed`、Contract `draft-frozen`、artifact `released` 与 environment `deployed` 分开举证。
 
-需要确认 package registry、CODEOWNERS、安全 reviewer 和 release owner。
+需要确认 proposed object ownership、安全 reviewer、release owner、首批真实 producer/consumer，以及 B0 legacy rollback；独立 `sudo-contracts` repository 已不再是当前目标或开放选择。
 
 ### R9. 跨 trust domain 的 Agent Registry 路径
 
