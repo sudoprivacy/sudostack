@@ -2,6 +2,7 @@
 
 - 状态：Proposed
 - 日期：2026-09-12
+- 修订：2026-09-18 — §2.1 的"独立 `sudo-contracts` 仓库"载体决策改为由 `sudostack` 本仓承担装配与分发（见 §2.1 amendment）
 - 决策范围：Sudo 全产品族与 `sudo-contracts`
 - 首个发布阶段：`sudo-contracts` v0.x；语义接受后进入 v1.x
 - 相关文档：
@@ -61,6 +62,16 @@ Sudo 的跨仓 payload 当前由不同技术栈分别定义：
 ## 2. 决策
 
 ### 2.1 建立独立 `sudo-contracts` 仓库
+
+> **Amendment（2026-09-18，Zone v1 全链路开发方案 §1.2 非目标 / §2 现状表）：**
+>
+> 本节的"独立 `sudo-contracts` 仓库"载体决策已修订，原文保留如下以供追溯：
+>
+> - 装配与分发角色由 **`sudostack` 本仓**承担（pin → derive → conformance → distribute），不建立独立的 `sudo-contracts` Git repository，避免后来者按本节原文恢复第二个 SSOT；
+> - canonical 语义定义仍住各 semantic owner 仓库（`nexus-vfs` 的 zone-id/zone-path、Nexus 的 Zone/ZoneGrant/ResourceRef、Moss 的 OrgZoneBinding 等），`sudostack` 只按不可变 revision 装配、派生、验证和分发，不复制定义；
+> - 下方约束清单中"**独立 Git repository**"与"**独立 release/tag**"两条随之作废（`sudostack` 随本仓 release）；其余约束（零业务 repo 依赖、可离线镜像、不运行产品服务、不连接业务数据库、不持有 Secret、不从 consumer repo 反向 import 类型）对 `sudostack` 仓内的 contracts 装配线继续适用；
+> - 本 ADR 其余章节出现的 "`sudo-contracts` 仓库/repo"（含 §2.3 目录结构、§2.15 权威表、§6.1 Contract repo CI、§7 发布流程的 "Tag sudo-contracts release"、§13 验收标准第 1 条等物理载体表述），一律按本修订理解为 `sudostack` 仓内的 contracts 装配线；
+> - 语言包名不变：`@sudo/contracts`（npm）与 `sudo-contracts`（crate）的物理来源为 `sudostack` 的派生产物。
 
 跨仓产品契约的物理 SSOT 为：
 
