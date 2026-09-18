@@ -18,16 +18,12 @@ import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const vectors = JSON.parse(readFileSync(join(HERE, 'vectors.gen.json'), 'utf8'))
+const ownerVectors = JSON.parse(readFileSync(join(HERE, 'vectors.source.gen.json'), 'utf8'))
 
-// Imported as TypeScript directly. Node strips the types (>=22.6 with
-// --experimental-strip-types, on by default from 23), so the artifact under test
-// is the very file consumers import — not a copy this test transformed.
-//
-// An earlier version stripped the annotations with regexes to avoid needing a
-// flag. That was the wrong trade: the regexes broke the moment the package
-// gained "type": "module", and a test that mangles its subject before checking
-// it is testing something nobody ships.
-const mod = await import('./zone-id.gen.ts')
+// Exercise the JavaScript artifact exposed by the installed package. Its source
+// and declarations are emitted from the same generated TypeScript module, so
+// runtime, source, and public types cannot be maintained independently.
+const mod = await import('./zone-id.gen.js')
 
 test('the generated validator agrees with every vector', () => {
   assert.ok(vectors.length > 0, 'vectors.gen.json is empty — the generator produced nothing to check')
@@ -38,6 +34,17 @@ test('the generated validator agrees with every vector', () => {
       v.valid,
       `${v.why}: ${JSON.stringify(v.id)} should be ${v.valid ? 'accepted' : 'refused'}, ` +
         `got ${refusal ? mod.describeRefusal(refusal) : 'accepted'}`,
+    )
+  }
+})
+
+test('the generated validator agrees with the exact owner vectors', () => {
+  assert.equal(ownerVectors.cases.length, 12)
+  for (const ownerCase of ownerVectors.cases) {
+    assert.equal(
+      mod.validateZoneId(ownerCase.value) === null,
+      ownerCase.expected === 'accept',
+      ownerCase.id,
     )
   }
 })

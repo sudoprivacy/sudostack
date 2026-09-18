@@ -1,0 +1,34 @@
+{
+  "compatibility_version": 1,
+  "families": {
+    "resource_ref": {
+      "backward_compatibility_claim": false,
+      "owner_revision": "5139e2019d7f46d4dde3f73ee6cd21bb094a7dc1",
+      "provenance_revision": "759842551697efa2579a92f24b16f8ae43829e7b",
+      "semantic_uncertainty": "manual_review",
+      "state": "initial_baseline"
+    },
+    "zone_id": {
+      "current_owner_revision": "24f6730ec90fab8a035b2f5400ed313bda343fbe",
+      "evidence": [
+        "legacy generated vectors",
+        "12 exact owner vectors"
+      ],
+      "lexical_rule_data_equal": true,
+      "owner_spec_digest_changed": true,
+      "previous_owner_revision": "21789169d207abeef727768ce94d7a2484361a4b",
+      "previous_sudostack_revision": "fe27da807594da85f8bc26c5b5394c516f21c80e",
+      "repository_revision_skew": true,
+      "state": "compatible_behavior"
+    }
+  },
+  "package": {
+    "candidate": "0.2.0",
+    "previous": "0.1.0"
+  },
+  "support_matrix": {
+    "actual_consumers": [],
+    "actual_producers": [],
+    "note": "Consumer support remains empty until a production-boundary Work Item passes default CI."
+  }
+}
