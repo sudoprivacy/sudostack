@@ -1,0 +1,51 @@
+{
+  "$comment": [
+    "Which revision of each upstream contract owner this assembly derives from.",
+    "",
+    "A pin, not a copy. nexus-vfs owns zone-id/zone-path projections; nexus",
+    "owns the product Zone/ZoneGrant/ResourceRef/ZoneOperation schemas and the",
+    "shared fixture corpus; moss owns iam/v1 but has no cross-repo consumer",
+    "yet, so its entry is recorded for provenance only — no public iam/v1",
+    "export is derived from it (an empty package for a language nobody",
+    "consumes would be worse than none).",
+    "",
+    "The nexus-vfs rev must match the revision the shipped daemon builds use;",
+    "the nexus rev is the draft-frozen owner commit that carries contracts/."
+  ],
+  "nexus-vfs": {
+    "rev": "763f8c0fef392da8c1151fc3f17b3a6f3f707dbd",
+    "specs": {
+      "zone-id": "contracts/zone-id/spec.json",
+      "zone-path": "contracts/zone-path/spec.json"
+    },
+    "projections": [
+      "contracts/zone-id/tenant-zone-id-create.schema.gen.json",
+      "contracts/zone-id/system-zone-id.schema.gen.json",
+      "contracts/zone-id/existing-zone-id-ref.schema.gen.json",
+      "contracts/zone-id/remote-learned-zone-id.schema.gen.json",
+      "contracts/zone-path/zone-path.schema.gen.json"
+    ]
+  },
+  "nexus": {
+    "rev": "c98baa34d10e496caa8b01498661f7c634372f60",
+    "schemas": [
+      "contracts/common/v1/principal-ref.schema.json",
+      "contracts/common/v1/resource-ref.schema.json",
+      "contracts/auth/v1/zone.schema.json",
+      "contracts/auth/v1/zone-create-request.schema.json",
+      "contracts/auth/v1/zone-patch-request.schema.json",
+      "contracts/auth/v1/zone-grant.schema.json",
+      "contracts/auth/v1/zone-grant-create-request.schema.json",
+      "contracts/auth/v1/zone-operation.schema.json"
+    ],
+    "error_codes": "contracts/auth/v1/error-codes.json",
+    "fixtures_dir": "contracts/fixtures/"
+  },
+  "moss": {
+    "rev": "406427e280b55d04b5dbf097bd84da1194ace6e9",
+    "metadata_only": true,
+    "schemas": [
+      "contracts/iam/v1/org-zone-binding.schema.json"
+    ]
+  }
+}

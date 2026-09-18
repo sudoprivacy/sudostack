@@ -1,0 +1,60 @@
+# Consumer support matrix for the zone-v1 contract family (§7.5 item 11).
+# Documentation/CI input — not a runtime service-discovery mechanism.
+#
+# Generated-language status:
+#   TypeScript  @sudo/contracts — P0 consumer: moss (pinned below)
+#   Rust        sudo-contracts crate — P1a sudocode (step 08); built and
+#               conformance-verified now, consumed when sudocode adopts it
+#   Python      NOT distributed by sudostack — nexus derives owner-local
+#               Pydantic adapters in-repo (no external Python consumer exists)
+#   Go / C#     not generated — no formal consumer (regenerating empty
+#               packages would be worse than none)
+#   iam/v1      moss owner-local only — pinned in provenance for record
+#               keeping, no public export derived
+
+zone_v1:
+  package: "@sudo/contracts@0.2.0-rc.1 (TS) / sudo-contracts@0.2.0-rc.1 (Rust)"
+  owner_revisions:
+    nexus_vfs: 763f8c0fef392da8c1151fc3f17b3a6f3f707dbd
+    nexus: c98baa34d10e496caa8b01498661f7c634372f60
+    moss_metadata_only: 406427e280b55d04b5dbf097bd84da1194ace6e9
+  families:
+    common.sudo.dev/v1: [PrincipalRef, ResourceRef]
+    auth.sudo.dev/v1: [Zone, ZoneCreateRequest, ZonePatchRequest, ZoneGrant, ZoneGrantCreateRequest, ZoneOperation, ErrorInfo]
+
+consumers:
+  moss:
+    language: typescript
+    pin: "github:sudoprivacy/sudostack#45304cf15d1e8d02814e46b7b2fe0b3c30c1709c"
+    pin_status: "0.1.0, ./zone-id only — update to 0.2.0-rc.1 belongs to step 05 (MOSS-BINDING)"
+    consumes: { zone-id: [v0.1-shape] }
+  sudocode:
+    language: rust
+    pin: "pinned via nexus workspace (nexusd cohost-sudocode feature); alignment enforced by release matrix at step 10"
+    pin_status: "consumer adoption is step 08 (SUDOCODE-ZONE, P1a)"
+    consumes: {}
+  nexus:
+    language: python-owner-local
+    pin: "owner — no sudostack dependency by design"
+    consumes: { "auth.sudo.dev/v1": [v1], "common.sudo.dev/v1": [v1] }
+  sudowork:
+    language: typescript
+    pin: none
+    pin_status: "future consumer"
+    consumes: {}
+
+compatibility:
+  checker: compatibility/check-compatibility.mjs
+  baseline: compatibility/baseline/ (snapshot of the released schemas)
+  verdict_fixtures: contracts/zone-v1/fixtures/compatibility.gen.json
+  first_release: "0.2.0-rc.1 is the first zone-v1 release — no previous minor exists; the baseline snapshot IS this release"
+  zone_id_promise: "the only pre-existing consumer (moss @ 45304cf) consumes ./zone-id; compatibility for it is 'behavior unchanged' (see conformance suite)"
+
+pin_alignment_gate:
+  covered_now:
+    - "sudostack derivation pin -> same compatible owner rev (provenance.gen.json)"
+    - "Nexus source Cargo pin -> nexus-vfs exact rev (nexus source-lock.gen.json; single rev verified in nexus tests)"
+    - "Moss @sudo/contracts pin -> derived package source manifest (recorded above; update is step 05)"
+  deferred_to_step_10_assembly:
+    - "Moss nexusd-cluster version -> Nexus release commit -> nexus-vfs exact rev (runtime pins move in step 05)"
+    - "sudocode nexus-vfs pin (moves in step 08)"

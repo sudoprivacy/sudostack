@@ -4,9 +4,10 @@ name: contracts
 # committed files somebody can hand-edit, and the edit survives review by looking
 # like ordinary source.
 #
-# Rust needs no gate: nexus-vfs generates its validator into OUT_DIR at compile
-# time, so there is nothing committed there to go stale. This exists because
-# TypeScript has no equivalent hook.
+# zone-id Rust needs no gate: nexus-vfs generates its validator into OUT_DIR at
+# compile time. The zone-v1 crate (crates/sudo-contracts) DOES ship committed
+# rules via its build.rs reading materialized specs — its gate is cargo test
+# against the shared fixture corpus, same as the TS side.
 on:
   pull_request:
   push:
@@ -20,22 +21,52 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      # Generator/tool versions are locked (exact pins + committed lockfile);
+      # npm ci refuses drift between them.
+      - name: Install locked generator toolchain
+        run: npm ci
 
-      # Regenerate from the pinned upstream revision and fail on any difference.
-      # A hand edit shows up here; so does a spec change nobody regenerated for.
-      - name: Derived artifacts match the pinned spec
+      # Regenerate from the pinned upstream revisions and fail on any
+      # difference. A hand edit shows up here; so does an owner change nobody
+      # regenerated for.
+      - name: Derived artifacts match the pinned specs
         run: node contracts/generate.mjs --check
 
       # Rule data cannot drift — both sides read one spec. Logic can: two
       # languages are two implementations, and one can forget a case while
-      # reading the same constants. The vectors are what catch that.
-      - name: TypeScript validator agrees with the generated vectors
-        run: node --experimental-strip-types --test contracts/zone-id/conformance.test.mjs
+      # reading the same constants. The shared fixtures are what catch that.
+      - name: TypeScript conformance against the shared fixtures
+        run: node --experimental-strip-types --test contracts/zone-id/conformance.test.mjs contracts/zone-v1/conformance/conformance.test.mjs
+
+      # The compatibility detector has to have fired at least once against a
+      # synthetic breaking pair, or "no breaking changes" is self-declared.
+      - name: Compatibility checker catches what it claims to
+        run: node --test compatibility/check-compatibility.test.mjs
+
+      # Baseline snapshot vs the pinned owner revision (§7.5 item 10).
+      - name: No breaking changes vs the compatibility baseline
+        run: node compatibility/check-compatibility.mjs
+
+      # Offline bundle reproducibility (§7.5 items 13-14): checksums must
+      # match the committed bundle; SBOM regenerates from the lockfile.
+      - name: Release bundle is reproducible
+        run: |
+          node contracts/zone-v1/release.mjs
+          git diff --exit-code -- releases/zone-v1
+          npm run sbom
+
+  rust-conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: sudo-contracts agrees with the shared fixtures
+        run: cargo test --manifest-path crates/sudo-contracts/Cargo.toml
 
   # 总则 1: every normative clause names what makes it fail, and what it names
   # has to be real. Separate job because it gates the DOCUMENTS, not the
   # derived artifacts — and because its failure has a different fix (write the
-  # tag) from the job above (regenerate).
+  # tag) from the jobs above (regenerate).
   every-clause-names-what-enforces-it:
     runs-on: ubuntu-latest
     steps:
@@ -52,5 +83,7 @@ jobs:
       # that is not there, a malformed answer. `enforced_by: none` passes — it
       # is the number this exists to make countable, and the count is printed
       # on every run so the trend is visible without anyone asking for it.
+      # Sibling repos resolve through SUDOSTACK_REPOS_ROOT; without it the
+      # cross-repo targets count as unverifiable, which --strict rejects.
       - name: Every normative clause answers for itself
         run: node docs/adr/enforced-by.mjs

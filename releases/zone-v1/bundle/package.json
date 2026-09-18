@@ -21,12 +21,12 @@
     "test": "node --experimental-strip-types --test contracts/zone-id/conformance.test.mjs contracts/zone-v1/conformance/conformance.test.mjs compatibility/check-compatibility.test.mjs",
     "compatibility": "node compatibility/check-compatibility.mjs",
     "release": "node contracts/zone-v1/release.mjs",
-    "sbom": "npx @cyclonedx/cyclonedx-npm --output-file releases/zone-v1/sbom.cdx.gen.json --flatten-components",
+    "sbom": "cyclonedx-npm --output-file releases/zone-v1/sbom.cdx.gen.json --npm --flatten-components",
     "adr:enforced-by": "node docs/adr/enforced-by.mjs",
     "adr:enforced-by:test": "node --test docs/adr/enforced-by.test.mjs"
   },
   "devDependencies": {
-    "@cyclonedx/cyclonedx-npm": "6.0.1",
-    "ajv": "8.18.0"
+    "ajv": "8.18.0",
+    "cyclonedx-npm": "1.0.0"
   }
 }

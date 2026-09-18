@@ -3,8 +3,8 @@
 # zone-id — what is and is not accepted
 
 Derived from the spec, not written by hand, so these cannot describe a rule the
-spec does not have. That is the point: examples written separately drift from
-the rule they illustrate, and a wrong example is worse than none.
+spec does not have. That is the point: examples written separately drift from the
+rule they illustrate, and a wrong example is worse than none.
 
 **The rule**: 3–63 characters, from `abcdefghijklmnopqrstuvwxyz0123456789-`,
 not starting with `-` or ending with `-`.
