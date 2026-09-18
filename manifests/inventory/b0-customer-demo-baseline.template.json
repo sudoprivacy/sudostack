@@ -1,0 +1,714 @@
+{
+  "record_format": "sudostack.b0-customer-demo-baseline-inventory/v1",
+  "record_state": "template",
+  "inventory_spec_ref": "../../docs/inventory/b0-customer-demo-baseline.md",
+  "template_notice": "Copy this template to an access-controlled evidence location. Do not commit customer values, credentials, secret payloads, kubeconfigs, connection strings, raw customer data, or unredacted logs to this repository.",
+  "allowed_evidence_statuses": [
+    "Expected",
+    "Confirmed-Code",
+    "Confirmed-Deployment",
+    "Inferred",
+    "Conflicting",
+    "Unknown",
+    "Legacy-Declared"
+  ],
+  "completion_rules": {
+    "manual_gate": true,
+    "manual_gate_reason": "No repository CI job currently validates completed inventory records.",
+    "record_state_values": [
+      "template",
+      "complete"
+    ],
+    "field_ref_syntax": "JSON Pointer-like paths; * selects every keyed component.",
+    "allowed_check_results": [
+      "pass",
+      "fail",
+      "blocked"
+    ],
+    "allowed_support_dispositions": [
+      "supported",
+      "unsupported",
+      "excluded"
+    ],
+    "evidence_reference_required_for": [
+      "Confirmed-Code",
+      "Confirmed-Deployment",
+      "Inferred",
+      "Conflicting",
+      "Legacy-Declared"
+    ],
+    "deployment_observation_required_status": "Confirmed-Deployment",
+    "deployment_observation_requires_timestamp": true,
+    "unknown_requires_null_or_empty_observation": true,
+    "applicability_unknown_literal": "unknown",
+    "not_applicable_requires": {
+      "applicability": "not_applicable",
+      "required_evidence_status": "Confirmed-Deployment",
+      "evidence_refs_minimum": 1
+    },
+    "required_b0_component_ids": [
+      "sudostack",
+      "moss",
+      "sudowork",
+      "sudowork-server",
+      "nexus",
+      "sudocode",
+      "nexus-vfs"
+    ],
+    "required_mixed_version_row_kinds": [
+      "all_b0",
+      "single_component_transition",
+      "all_candidate",
+      "rollback_to_b0"
+    ],
+    "single_component_transition_rule": "Create one row for every applicable component changed by the candidate; unsupported combinations remain explicit rows.",
+    "candidate_contract_authority": "The exact release/source-closure manifests referenced under source_cut are authoritative for Contract owner revisions, paths, digests, and support metadata. This inventory does not redefine them."
+  },
+  "source_cut": {
+    "prepared_on": "2026-09-18",
+    "inventory_base": {
+      "repository": "sudoprivacy/sudostack",
+      "revision": "44b4e9de087e0b4908ab8f1af407737b435b4104",
+      "evidence_status": "Confirmed-Code",
+      "evidence_refs": [
+        "https://github.com/sudoprivacy/sudostack/commit/44b4e9de087e0b4908ab8f1af407737b435b4104"
+      ]
+    },
+    "adr_maturity": {
+      "value": "Proposed",
+      "evidence_status": "Confirmed-Code",
+      "evidence_refs": [
+        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/docs/adr/ADR-005-product-contract-versioning.md#L3-L7"
+      ]
+    },
+    "candidate_release_manifest": {
+      "identity": {
+        "uri": "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/manifests/releases/0.2.0-candidate.gen.json",
+        "repository_revision": "aec52e9dc5438946dd83d5c56c07149a4800120a",
+        "evidence_status": "Confirmed-Code",
+        "evidence_refs": [
+          "https://github.com/sudoprivacy/sudostack/pull/18"
+        ]
+      },
+      "observed_manifest_digest": {
+        "algorithm": "sha256",
+        "value": null,
+        "evidence_status": "Unknown",
+        "evidence_refs": []
+      }
+    },
+    "declared_contract_baseline": {
+      "value": "draft-frozen",
+      "evidence_status": "Conflicting",
+      "evidence_refs": [
+        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/docs/adr/ADR-005-product-contract-versioning.md#L162-L178",
+        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/manifests/releases/0.2.0-candidate.gen.json#L218-L223"
+      ]
+    },
+    "declared_artifact_publication": {
+      "value": "candidate_unpublished",
+      "evidence_status": "Confirmed-Code",
+      "evidence_refs": [
+        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/manifests/releases/0.2.0-candidate.gen.json#L218-L223"
+      ]
+    },
+    "manifest_declared_deployment_state": {
+      "value": "not_deployed",
+      "meaning": "This is a source-manifest declaration, not an observation that no out-of-band deployment exists.",
+      "evidence_status": "Confirmed-Code",
+      "evidence_refs": [
+        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/manifests/releases/0.2.0-candidate.gen.json#L218-L223"
+      ]
+    }
+  },
+  "contract_scope": {
+    "target_consumers": [
+      {
+        "id": "moss-zone-id",
+        "repository": "sudoprivacy/moss",
+        "contract_family": "ZoneId",
+        "candidate_revision": "69615e049b8b7dbfc44f5362c1418d5fd715d8ab",
+        "target_boundary": "production process-argument construction",
+        "production_boundary_evidence_status": "Conflicting",
+        "evidence_refs": [
+          "https://github.com/sudoprivacy/moss/blob/69615e049b8b7dbfc44f5362c1418d5fd715d8ab/src/server/nexus/nexusManager.ts#L136-L159",
+          "https://github.com/sudoprivacy/moss/blob/69615e049b8b7dbfc44f5362c1418d5fd715d8ab/src/server/nexus/nexusManager.ts#L313-L346",
+          "https://github.com/sudoprivacy/moss/blob/69615e049b8b7dbfc44f5362c1418d5fd715d8ab/src/server/__tests__/nexusZoneId.test.ts#L25-L58"
+        ]
+      }
+    ],
+    "confirmed_production_consumers": [],
+    "deferred": [
+      {
+        "contract_family": "ResourceRef",
+        "state": "deferred_no_current_production_provider_or_consumer",
+        "evidence_status": "Confirmed-Code",
+        "evidence_refs": [
+          "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/contracts/common/v1/resource-ref/owner-manifest.source.gen.json#L36-L66"
+        ]
+      },
+      {
+        "contract_family": "ZonePath",
+        "state": "owner_source_dependency_only_for_deferred_resource_ref",
+        "evidence_status": "Confirmed-Code",
+        "evidence_refs": [
+          "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/contracts/common/v1/resource-ref/owner-manifest.source.gen.json#L814-L830"
+        ]
+      }
+    ],
+    "excluded_target_consumers": [
+      "sudowork",
+      "sudocode",
+      "nexus runtime ResourceRef boundary",
+      "sudowork-server"
+    ]
+  },
+  "known_conflicts": [
+    {
+      "id": "C-01",
+      "summary": "ADR-005 implementation summary says the release manifest/full closure is absent while the same candidate revision contains generated release and closure manifests.",
+      "assembly_blocking": true,
+      "allowed_resolution_outcomes": [
+        "resolved",
+        "authorized_stale_document_disposition"
+      ],
+      "resolution": {
+        "outcome": null,
+        "authority_ref": null,
+        "decision_ref": null
+      },
+      "evidence_status": "Conflicting",
+      "evidence_refs": [
+        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/docs/adr/ADR-005-product-contract-versioning.md#L223-L225",
+        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/manifests/releases/0.2.0-candidate.gen.json"
+      ]
+    },
+    {
+      "id": "C-02",
+      "summary": "The ResourceRef README says remote owner-source availability is blocked while generated operational metadata says available.",
+      "assembly_blocking": true,
+      "allowed_resolution_outcomes": [
+        "resolved",
+        "authorized_stale_document_disposition"
+      ],
+      "resolution": {
+        "outcome": null,
+        "authority_ref": null,
+        "decision_ref": null
+      },
+      "evidence_status": "Conflicting",
+      "evidence_refs": [
+        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/contracts/common/v1/resource-ref/README.md#L22-L30",
+        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/manifests/operations/source-availability.json#L6-L35"
+      ]
+    },
+    {
+      "id": "C-03",
+      "summary": "The candidate declares draft-frozen with empty actual producer/consumer arrays while ADR005-FREEZE-01 requires a real consumer.",
+      "assembly_blocking": true,
+      "allowed_resolution_outcomes": [
+        "resolved"
+      ],
+      "resolution": {
+        "outcome": null,
+        "authority_ref": null,
+        "decision_ref": null
+      },
+      "evidence_status": "Conflicting",
+      "evidence_refs": [
+        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/docs/adr/ADR-005-product-contract-versioning.md#L162-L178",
+        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/manifests/releases/0.2.0-candidate.gen.json#L275-L287"
+      ]
+    },
+    {
+      "id": "C-04",
+      "summary": "Moss candidate tests pass ZoneIds directly to buildNexusArgs, but the production embedded startup call omits clusterInit and external mode bypasses the boundary.",
+      "assembly_blocking": true,
+      "allowed_resolution_outcomes": [
+        "resolved"
+      ],
+      "resolution": {
+        "outcome": null,
+        "authority_ref": null,
+        "decision_ref": null
+      },
+      "evidence_status": "Conflicting",
+      "evidence_refs": [
+        "https://github.com/sudoprivacy/moss/blob/69615e049b8b7dbfc44f5362c1418d5fd715d8ab/src/server/nexus/nexusManager.ts#L136-L159",
+        "https://github.com/sudoprivacy/moss/blob/69615e049b8b7dbfc44f5362c1418d5fd715d8ab/src/server/nexus/nexusManager.ts#L313-L346",
+        "https://github.com/sudoprivacy/moss/blob/69615e049b8b7dbfc44f5362c1418d5fd715d8ab/src/server/__tests__/nexusZoneId.test.ts#L25-L58"
+      ]
+    }
+  ],
+  "baseline": {
+    "baseline_id": null,
+    "baseline_revision": null,
+    "collected_at": null,
+    "collector_role": null,
+    "evidence_bundle_ref": null,
+    "evidence_bundle_digest": {
+      "algorithm": "sha256",
+      "value": null
+    },
+    "environment": {
+      "environment_label": {
+        "value": null,
+        "evidence_status": "Unknown",
+        "evidence_refs": []
+      },
+      "profile": {
+        "value": null,
+        "allowed_values": [
+          "Cloud",
+          "Private",
+          "Edge",
+          "Local"
+        ],
+        "architecture_model_ref": "https://github.com/sudoprivacy/sudostack/blob/44b4e9de087e0b4908ab8f1af407737b435b4104/README.md#L137-L223",
+        "applicability": "unknown",
+        "allowed_applicability_values": [
+          "applicable",
+          "not_applicable",
+          "unknown"
+        ],
+        "evidence_status": "Unknown",
+        "evidence_refs": []
+      }
+    },
+    "components": {
+      "sudostack": {
+        "repository": "sudoprivacy/sudostack",
+        "required_by": "ADR005-B0-01",
+        "observed_at": null,
+        "applicability": {
+          "value": "unknown",
+          "reason": null,
+          "evidence_status": "Unknown",
+          "evidence_refs": []
+        },
+        "repository_revision": {
+          "value": null,
+          "dirty": null,
+          "evidence_status": "Unknown",
+          "evidence_refs": []
+        },
+        "artifacts": {
+          "applicability": "unknown",
+          "items": [],
+          "evidence_status": "Unknown",
+          "evidence_refs": []
+        },
+        "runtime_versions": {
+          "applicability": "unknown",
+          "items": [],
+          "evidence_status": "Unknown",
+          "evidence_refs": []
+        },
+        "configuration_records": {
+          "applicability": "unknown",
+          "items": [],
+          "evidence_status": "Unknown",
+          "evidence_refs": []
+        },
+        "schema_records": {
+          "applicability": "unknown",
+          "items": [],
+          "evidence_status": "Unknown",
+          "evidence_refs": []
+        },
+        "persistence_resources": {
+          "applicability": "unknown",
+          "items": [],
+          "evidence_status": "Unknown",
+          "evidence_refs": []
+        },
+        "zone_identifiers": {
+          "applicability": "unknown",
+          "items": [],
+          "evidence_status": "Unknown",
+          "evidence_refs": []
+        }
+      },
+      "moss": {
+        "repository": "sudoprivacy/moss",
+        "required_by": "ADR005-B0-01",
+        "observed_at": null,
+        "applicability": { "value": "unknown", "reason": null, "evidence_status": "Unknown", "evidence_refs": [] },
+        "repository_revision": { "value": null, "dirty": null, "evidence_status": "Unknown", "evidence_refs": [] },
+        "artifacts": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "runtime_versions": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "configuration_records": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "schema_records": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "persistence_resources": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "zone_identifiers": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] }
+      },
+      "sudowork": {
+        "repository": "sudoprivacy/sudowork",
+        "required_by": "ADR005-B0-01",
+        "observed_at": null,
+        "applicability": { "value": "unknown", "reason": null, "evidence_status": "Unknown", "evidence_refs": [] },
+        "repository_revision": { "value": null, "dirty": null, "evidence_status": "Unknown", "evidence_refs": [] },
+        "artifacts": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "runtime_versions": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "configuration_records": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "schema_records": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "persistence_resources": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "zone_identifiers": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] }
+      },
+      "sudowork-server": {
+        "repository": "sudoprivacy/sudowork-server",
+        "required_by": "ADR005-B0-01",
+        "observed_at": null,
+        "applicability": { "value": "unknown", "reason": null, "evidence_status": "Unknown", "evidence_refs": [] },
+        "repository_revision": { "value": null, "dirty": null, "evidence_status": "Unknown", "evidence_refs": [] },
+        "artifacts": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "runtime_versions": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "configuration_records": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "schema_records": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "persistence_resources": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "zone_identifiers": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] }
+      },
+      "nexus": {
+        "repository": "nexi-lab/nexus",
+        "required_by": "ADR005-B0-01",
+        "observed_at": null,
+        "applicability": { "value": "unknown", "reason": null, "evidence_status": "Unknown", "evidence_refs": [] },
+        "repository_revision": { "value": null, "dirty": null, "evidence_status": "Unknown", "evidence_refs": [] },
+        "artifacts": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "runtime_versions": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "configuration_records": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "schema_records": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "persistence_resources": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "zone_identifiers": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] }
+      },
+      "sudocode": {
+        "repository": "sudoprivacy/sudocode",
+        "required_by": "ADR005-B0-01",
+        "observed_at": null,
+        "applicability": { "value": "unknown", "reason": null, "evidence_status": "Unknown", "evidence_refs": [] },
+        "repository_revision": { "value": null, "dirty": null, "evidence_status": "Unknown", "evidence_refs": [] },
+        "artifacts": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "runtime_versions": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "configuration_records": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "schema_records": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "persistence_resources": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "zone_identifiers": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] }
+      },
+      "nexus-vfs": {
+        "repository": "nexi-lab/nexus-vfs",
+        "required_by": "ADR005-B0-01",
+        "observed_at": null,
+        "applicability": { "value": "unknown", "reason": null, "evidence_status": "Unknown", "evidence_refs": [] },
+        "repository_revision": { "value": null, "dirty": null, "evidence_status": "Unknown", "evidence_refs": [] },
+        "artifacts": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "runtime_versions": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "configuration_records": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "schema_records": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "persistence_resources": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] },
+        "zone_identifiers": { "applicability": "unknown", "items": [], "evidence_status": "Unknown", "evidence_refs": [] }
+      }
+    },
+    "additional_components": []
+  },
+  "candidate_assembly": {
+    "assembly_id": null,
+    "release_manifest_ref": "#/source_cut/candidate_release_manifest",
+    "source_readiness": {
+      "dependency_order_ref": null,
+      "merged_to_declared_bases": null,
+      "unmerged_exception": {
+        "decision_ref": null,
+        "risk_owner_role": null
+      },
+      "evidence_status": "Unknown",
+      "evidence_refs": []
+    },
+    "built_artifacts": {
+      "items": [],
+      "evidence_status": "Unknown",
+      "evidence_refs": []
+    },
+    "runtime_versions": {
+      "items": [],
+      "evidence_status": "Unknown",
+      "evidence_refs": []
+    },
+    "component_assignments": [],
+    "observed_at": null
+  },
+  "checks": {
+    "B0-SMOKE-01": {
+      "definition_ref": "../../docs/inventory/b0-customer-demo-baseline.md#b0-smoke-procedure",
+      "profile": null,
+      "component_ids": [],
+      "command_or_request": null,
+      "sanitized_input_ref": null,
+      "started_at": null,
+      "finished_at": null,
+      "exit_or_status_code": null,
+      "result": null,
+      "actual_observation": null,
+      "negative_side_effect_observation": null,
+      "evidence_status": "Unknown",
+      "evidence_refs": []
+    },
+    "B0-SMOKE-02": {
+      "definition_ref": "../../docs/inventory/b0-customer-demo-baseline.md#b0-smoke-procedure",
+      "profile": null,
+      "component_ids": [],
+      "command_or_request": null,
+      "sanitized_input_ref": null,
+      "started_at": null,
+      "finished_at": null,
+      "exit_or_status_code": null,
+      "result": null,
+      "actual_observation": null,
+      "negative_side_effect_observation": null,
+      "evidence_status": "Unknown",
+      "evidence_refs": []
+    },
+    "B0-SMOKE-03": {
+      "definition_ref": "../../docs/inventory/b0-customer-demo-baseline.md#b0-smoke-procedure",
+      "profile": null,
+      "component_ids": [],
+      "command_or_request": null,
+      "sanitized_input_ref": null,
+      "started_at": null,
+      "finished_at": null,
+      "exit_or_status_code": null,
+      "result": null,
+      "actual_observation": null,
+      "negative_side_effect_observation": null,
+      "evidence_status": "Unknown",
+      "evidence_refs": []
+    },
+    "B0-SMOKE-04": {
+      "definition_ref": "../../docs/inventory/b0-customer-demo-baseline.md#b0-smoke-procedure",
+      "profile": null,
+      "component_ids": [],
+      "command_or_request": null,
+      "sanitized_input_ref": null,
+      "started_at": null,
+      "finished_at": null,
+      "exit_or_status_code": null,
+      "result": null,
+      "actual_observation": null,
+      "negative_side_effect_observation": null,
+      "evidence_status": "Unknown",
+      "evidence_refs": []
+    },
+    "B1-SMOKE-01": {
+      "definition_ref": "../../docs/inventory/b0-customer-demo-baseline.md#candidate-and-mixed-version-smoke",
+      "profile": null,
+      "component_ids": [],
+      "command_or_request": null,
+      "sanitized_input_ref": null,
+      "started_at": null,
+      "finished_at": null,
+      "exit_or_status_code": null,
+      "result": null,
+      "actual_observation": null,
+      "negative_side_effect_observation": null,
+      "evidence_status": "Unknown",
+      "evidence_refs": []
+    },
+    "B1-SMOKE-02": {
+      "definition_ref": "../../docs/inventory/b0-customer-demo-baseline.md#candidate-and-mixed-version-smoke",
+      "profile": null,
+      "component_ids": [],
+      "command_or_request": null,
+      "sanitized_input_ref": null,
+      "started_at": null,
+      "finished_at": null,
+      "exit_or_status_code": null,
+      "result": null,
+      "actual_observation": null,
+      "negative_side_effect_observation": null,
+      "evidence_status": "Unknown",
+      "evidence_refs": []
+    },
+    "B1-SMOKE-03": {
+      "definition_ref": "../../docs/inventory/b0-customer-demo-baseline.md#candidate-and-mixed-version-smoke",
+      "profile": null,
+      "component_ids": [],
+      "command_or_request": null,
+      "sanitized_input_ref": null,
+      "started_at": null,
+      "finished_at": null,
+      "exit_or_status_code": null,
+      "result": null,
+      "actual_observation": null,
+      "negative_side_effect_observation": null,
+      "evidence_status": "Unknown",
+      "evidence_refs": []
+    },
+    "B1-SMOKE-04": {
+      "definition_ref": "../../docs/inventory/b0-customer-demo-baseline.md#candidate-and-mixed-version-smoke",
+      "profile": null,
+      "component_ids": [],
+      "command_or_request": null,
+      "sanitized_input_ref": null,
+      "started_at": null,
+      "finished_at": null,
+      "exit_or_status_code": null,
+      "result": null,
+      "actual_observation": null,
+      "negative_side_effect_observation": null,
+      "evidence_status": "Unknown",
+      "evidence_refs": []
+    },
+    "B1-SMOKE-05": {
+      "definition_ref": "../../docs/inventory/b0-customer-demo-baseline.md#candidate-and-mixed-version-smoke",
+      "profile": null,
+      "component_ids": [],
+      "command_or_request": null,
+      "sanitized_input_ref": null,
+      "started_at": null,
+      "finished_at": null,
+      "exit_or_status_code": null,
+      "result": null,
+      "actual_observation": null,
+      "negative_side_effect_observation": null,
+      "evidence_status": "Unknown",
+      "evidence_refs": []
+    }
+  },
+  "mixed_version_matrix": {
+    "matrix_id": null,
+    "candidate_assembly_ref": "#/candidate_assembly",
+    "single_component_transition_rows": [],
+    "rows": [
+      {
+        "row_id": "all-b0-control",
+        "kind": "all_b0",
+        "component_assignments": [],
+        "support_disposition": null,
+        "procedure_ref": null,
+        "started_at": null,
+        "finished_at": null,
+        "result": null,
+        "observed_result": null,
+        "negative_side_effect_observation": null,
+        "evidence_status": "Unknown",
+        "evidence_refs": []
+      },
+      {
+        "row_id": "all-candidate",
+        "kind": "all_candidate",
+        "component_assignments": [],
+        "support_disposition": null,
+        "procedure_ref": null,
+        "started_at": null,
+        "finished_at": null,
+        "result": null,
+        "observed_result": null,
+        "negative_side_effect_observation": null,
+        "evidence_status": "Unknown",
+        "evidence_refs": []
+      },
+      {
+        "row_id": "rollback-to-b0",
+        "kind": "rollback_to_b0",
+        "component_assignments": [],
+        "support_disposition": null,
+        "procedure_ref": null,
+        "started_at": null,
+        "finished_at": null,
+        "result": null,
+        "observed_result": null,
+        "negative_side_effect_observation": null,
+        "evidence_status": "Unknown",
+        "evidence_refs": []
+      }
+    ]
+  },
+  "rollback_rehearsal": {
+    "target_baseline_ref": "#/baseline",
+    "matrix_ref": "#/mixed_version_matrix",
+    "change_window_ref": null,
+    "change_authorization_ref": null,
+    "operator_role": null,
+    "dependency_order": [],
+    "recovery_objective_seconds": null,
+    "actual_duration_seconds": null,
+    "stop_conditions": [],
+    "persistence_restore_plan_refs": [],
+    "pre_restore_smoke_run_ref": null,
+    "post_restore_smoke_run_ref": null,
+    "steps": {
+      "R-01": {
+        "definition_ref": "../../docs/inventory/b0-customer-demo-baseline.md#rollback-rehearsal",
+        "procedure_ref": null,
+        "started_at": null,
+        "finished_at": null,
+        "result": null,
+        "actual_observation": null,
+        "negative_side_effect_observation": null,
+        "evidence_status": "Unknown",
+        "evidence_refs": []
+      },
+      "R-02": {
+        "definition_ref": "../../docs/inventory/b0-customer-demo-baseline.md#rollback-rehearsal",
+        "procedure_ref": null,
+        "started_at": null,
+        "finished_at": null,
+        "result": null,
+        "actual_observation": null,
+        "negative_side_effect_observation": null,
+        "evidence_status": "Unknown",
+        "evidence_refs": []
+      },
+      "R-03": {
+        "definition_ref": "../../docs/inventory/b0-customer-demo-baseline.md#rollback-rehearsal",
+        "procedure_ref": null,
+        "started_at": null,
+        "finished_at": null,
+        "result": null,
+        "actual_observation": null,
+        "negative_side_effect_observation": null,
+        "evidence_status": "Unknown",
+        "evidence_refs": []
+      },
+      "R-04": {
+        "definition_ref": "../../docs/inventory/b0-customer-demo-baseline.md#rollback-rehearsal",
+        "procedure_ref": null,
+        "started_at": null,
+        "finished_at": null,
+        "result": null,
+        "actual_observation": null,
+        "negative_side_effect_observation": null,
+        "evidence_status": "Unknown",
+        "evidence_refs": []
+      }
+    }
+  },
+  "required_live_inputs": [
+    { "id": "U-01", "field_refs": ["#/baseline/environment"], "evidence_status": "Unknown", "evidence_refs": [], "not_applicable_reason": null },
+    { "id": "U-02", "field_refs": ["#/baseline/components/*/repository_revision"], "evidence_status": "Unknown", "evidence_refs": [], "not_applicable_reason": null },
+    { "id": "U-03", "field_refs": ["#/baseline/components/*/artifacts"], "evidence_status": "Unknown", "evidence_refs": [], "not_applicable_reason": null },
+    { "id": "U-04", "field_refs": ["#/baseline/components/*/runtime_versions"], "evidence_status": "Unknown", "evidence_refs": [], "not_applicable_reason": null },
+    { "id": "U-05", "field_refs": ["#/baseline/components/*/configuration_records"], "evidence_status": "Unknown", "evidence_refs": [], "not_applicable_reason": null },
+    { "id": "U-06", "field_refs": ["#/baseline/components/*/schema_records"], "evidence_status": "Unknown", "evidence_refs": [], "not_applicable_reason": null },
+    { "id": "U-07", "field_refs": ["#/baseline/components/*/persistence_resources", "#/rollback_rehearsal/persistence_restore_plan_refs"], "evidence_status": "Unknown", "evidence_refs": [], "not_applicable_reason": null },
+    { "id": "U-08", "field_refs": ["#/baseline/components/*/zone_identifiers"], "evidence_status": "Unknown", "evidence_refs": [], "not_applicable_reason": null },
+    { "id": "U-09", "field_refs": ["#/checks/B0-SMOKE-03"], "evidence_status": "Unknown", "evidence_refs": [], "not_applicable_reason": null },
+    { "id": "U-10", "field_refs": ["#/checks/B0-SMOKE-01", "#/checks/B0-SMOKE-02", "#/checks/B0-SMOKE-03", "#/checks/B0-SMOKE-04"], "evidence_status": "Unknown", "evidence_refs": [], "not_applicable_reason": null },
+    { "id": "U-11", "field_refs": ["#/rollback_rehearsal"], "evidence_status": "Unknown", "evidence_refs": [], "not_applicable_reason": null },
+    { "id": "U-12", "field_refs": ["#/baseline/components/sudowork-server/applicability", "#/checks/B0-SMOKE-03"], "evidence_status": "Unknown", "evidence_refs": [], "not_applicable_reason": null },
+    { "id": "U-13", "field_refs": ["#/rollback_rehearsal/change_window_ref", "#/rollback_rehearsal/change_authorization_ref", "#/rollback_rehearsal/operator_role", "#/rollback_rehearsal/stop_conditions", "#/baseline/evidence_bundle_ref"], "evidence_status": "Unknown", "evidence_refs": [], "not_applicable_reason": null }
+  ],
+  "signoff": {
+    "assembly_entry": {
+      "decision": "pending",
+      "criteria_result_refs": [],
+      "approved_by_role": null,
+      "approved_at": null
+    },
+    "g3": {
+      "decision": "pending",
+      "criteria_result_refs": [],
+      "approved_by_role": null,
+      "approved_at": null
+    }
+  }
+}
