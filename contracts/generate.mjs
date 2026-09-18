@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 
+import { readCommitBlob, verifyActivationRecords } from '../tools/contracts/activation.mjs'
 import { verifyCompatibilityBaseline } from '../tools/contracts/baseline.mjs'
 import { requireSupportedNode } from '../tools/contracts/node-version.mjs'
 import { renderResourceRefTypeScript } from '../tools/contracts/runtime-template.mjs'
@@ -13,6 +14,7 @@ import {
   loadOwnerClosure,
   loadSourceLock,
   parseJson,
+  requireFullCommitSha,
   sha256,
   stableJson,
   validateOwnerClosure,
@@ -34,6 +36,22 @@ const outputPath = (relativePath) => join(REPO, relativePath)
 const PACKAGE_JSON = parseJson(readFileSync(join(REPO, 'package.json')), 'package.json')
 requireSupportedNode(process.versions.node, PACKAGE_JSON.engines.node)
 const CANDIDATE_MANIFEST_PATH = `manifests/releases/${PACKAGE_JSON.version}-candidate.gen.json`
+const ACTIVATION_PATH = `manifests/activations/${PACKAGE_JSON.version}-candidate.json`
+const ACTIVATION_BYTES = readFileSync(join(REPO, ACTIVATION_PATH))
+const ACTIVATION = parseJson(ACTIVATION_BYTES, ACTIVATION_PATH)
+const CANDIDATE_CONTENT_REVISION = requireFullCommitSha(
+  ACTIVATION.candidate_content_revision,
+  'candidate content revision',
+)
+const HISTORY_REPO = process.env.SUDOSTACK_BASE_REPO ?? REPO
+const PRECURSOR_MANIFEST_BYTES = readCommitBlob(
+  HISTORY_REPO,
+  CANDIDATE_CONTENT_REVISION,
+  ACTIVATION.precursor_candidate_manifest.path,
+)
+if (sha256(PRECURSOR_MANIFEST_BYTES) !== ACTIVATION.precursor_candidate_manifest.sha256) {
+  throw new Error('pre-activation candidate-manifest digest does not match candidate content revision')
+}
 const generatedFixturePath = (ownerRelativePath) => {
   if (!/^fixtures\/(?:valid|invalid)\/[a-z0-9][a-z0-9-]*\.json$/.test(ownerRelativePath)) {
     throw new Error(`unsafe or unsupported owner fixture path: ${ownerRelativePath}`)
@@ -360,7 +378,7 @@ function candidateManifest(closure, outputs) {
     outputs.get('contracts/common/v1/resource-ref/fixture-index.gen.json'),
     'generated fixture index',
   )
-  return {
+  const manifest = {
     manifest_version: 1,
     lifecycle: {
       adr_maturity: 'proposed',
@@ -370,8 +388,14 @@ function candidateManifest(closure, outputs) {
     },
     sudostack: {
       g0_revision: closure.lock.sudostack_g0_revision,
-      candidate_revision: null,
-      activation_state: 'pending_future_commit',
+      candidate_revision: CANDIDATE_CONTENT_REVISION,
+      activation_state: ACTIVATION.state,
+      activation: {
+        commit_binding: ACTIVATION.commit_binding,
+        metadata_path: ACTIVATION_PATH,
+        metadata_sha256: sha256(ACTIVATION_BYTES),
+        precursor_candidate_manifest: ACTIVATION.precursor_candidate_manifest,
+      },
       assembly_source_lock: {
         path: 'contracts/sources.lock.json',
         sha256: sha256(readFileSync(join(REPO, 'contracts', 'sources.lock.json'))),
@@ -430,6 +454,10 @@ function candidateManifest(closure, outputs) {
         path: 'tools/contracts/node-version.mjs',
         sha256: sha256(readFileSync(join(REPO, 'tools', 'contracts', 'node-version.mjs'))),
       },
+      activation_verifier: {
+        path: 'tools/contracts/activation.mjs',
+        sha256: sha256(readFileSync(join(REPO, 'tools', 'contracts', 'activation.mjs'))),
+      },
       node: PACKAGE_JSON.engines.node,
       runtime_validator: `ajv@${PACKAGE_JSON.dependencies.ajv}`,
       raw_json_parser: `jsonc-parser@${PACKAGE_JSON.dependencies['jsonc-parser']}`,
@@ -461,6 +489,16 @@ function candidateManifest(closure, outputs) {
       'unrequested language packages',
     ],
   }
+  verifyActivationRecords({
+    activation: ACTIVATION,
+    activationBytes: ACTIVATION_BYTES,
+    activationPath: ACTIVATION_PATH,
+    currentManifest: manifest,
+    precursorManifestBytes: PRECURSOR_MANIFEST_BYTES,
+    currentBytes: (path) => outputs.get(path) ?? readFileSync(join(REPO, path)),
+    candidateBytes: (path) => readCommitBlob(HISTORY_REPO, CANDIDATE_CONTENT_REVISION, path),
+  })
+  return manifest
 }
 
 function buildOutputs(closure) {

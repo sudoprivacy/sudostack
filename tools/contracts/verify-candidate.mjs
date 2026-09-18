@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { verifyActivation } from './activation.mjs'
 import { verifyCompatibilityBaseline } from './baseline.mjs'
 import { loadSourceLock } from './source.mjs'
 
@@ -20,13 +21,14 @@ const manifestPath = `manifests/releases/${packageJson.version}-candidate.gen.js
 const manifestBytes = read(manifestPath)
 const manifestText = manifestBytes.toString('utf8')
 const manifest = JSON.parse(manifestText)
+const activation = readJson(`manifests/activations/${packageJson.version}-candidate.json`)
 
 assert.equal(manifest.lifecycle.adr_maturity, 'proposed')
 assert.equal(manifest.lifecycle.contract_baseline, 'draft-frozen')
 assert.equal(manifest.lifecycle.artifact_publication, 'candidate_unpublished')
 assert.equal(manifest.lifecycle.deployment_evidence, 'not_deployed')
-assert.equal(manifest.sudostack.candidate_revision, null)
-assert.equal(manifest.sudostack.activation_state, 'pending_future_commit')
+assert.equal(manifest.sudostack.candidate_revision, activation.candidate_content_revision)
+assert.equal(manifest.sudostack.activation_state, activation.state)
 assert.equal(
   sha256(read(manifest.sudostack.assembly_source_lock.path)),
   manifest.sudostack.assembly_source_lock.sha256,
@@ -92,6 +94,7 @@ for (const tool of [
   manifest.toolchain.compatibility_checker,
   manifest.toolchain.baseline_verifier,
   manifest.toolchain.node_version_gate,
+  manifest.toolchain.activation_verifier,
 ]) {
   assert.equal(sha256(read(tool.path)), tool.sha256, tool.path)
 }
@@ -115,8 +118,11 @@ assert.equal(closure.repositories['nexus-vfs'].revision, manifest.owners['nexus-
 assert.deepEqual(closure.owner_manifest.actual_consumers, [])
 assert.equal(closure.owner_manifest.lifecycle.artifact_publication, 'unpublished')
 
+const activationResult = verifyActivation({ repository: REPO })
+
 console.log(
   `candidate manifest verified: ${manifest.generated_artifacts.length} distribution artifacts, ` +
     `${manifest.internal_generation_artifacts.length} internal artifacts, ` +
-    `${manifest.fixtures.resource_ref + manifest.fixtures.zone_id + manifest.fixtures.zone_path} fixtures`,
+    `${manifest.fixtures.resource_ref + manifest.fixtures.zone_id + manifest.fixtures.zone_path} fixtures; ` +
+    `candidate ${activationResult.candidateRevision} (${activationResult.relation})`,
 )

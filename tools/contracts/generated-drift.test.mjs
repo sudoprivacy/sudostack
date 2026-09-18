@@ -14,7 +14,7 @@ test('offline gates catch contradictory provenance and generated hand edits', ()
     for (const path of ['contracts', 'tools/contracts', 'compatibility', 'manifests']) {
       cpSync(join(REPO, path), join(temporary, path), { recursive: true })
     }
-    for (const path of ['package.json', 'package-lock.json']) {
+    for (const path of ['README.md', 'package.json', 'package-lock.json']) {
       cpSync(join(REPO, path), join(temporary, path))
     }
     mkdirSync(join(temporary, 'node_modules'))

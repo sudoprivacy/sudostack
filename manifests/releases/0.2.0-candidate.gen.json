@@ -287,15 +287,28 @@
     "remote": "blocked_unpublished"
   },
   "sudostack": {
-    "activation_state": "pending_future_commit",
+    "activation": {
+      "commit_binding": "activated_by_containing_commit",
+      "metadata_path": "manifests/activations/0.2.0-candidate.json",
+      "metadata_sha256": "272d25c84be134e7ce5fe25d1eed3374ff2dfa40d36e63bedf9926d02c1ae7e7",
+      "precursor_candidate_manifest": {
+        "path": "manifests/releases/0.2.0-candidate.gen.json",
+        "sha256": "85fef7a5a918333684cbf912361b4ae9455565a32474b17c9f5c0cd652ed71fd"
+      }
+    },
+    "activation_state": "candidate_content_revision_recorded",
     "assembly_source_lock": {
       "path": "contracts/sources.lock.json",
       "sha256": "6528b2b77f0dfd5c8c990461530c850aadd1227b889bbc331ad2171064cc9d36"
     },
-    "candidate_revision": null,
+    "candidate_revision": "30da0ddd953268ff8a9a0f0980276300ab153003",
     "g0_revision": "fe27da807594da85f8bc26c5b5394c516f21c80e"
   },
   "toolchain": {
+    "activation_verifier": {
+      "path": "tools/contracts/activation.mjs",
+      "sha256": "711f96cbe7c29bb46a855b33b1e2fac6687daacf8dcb1c22a731c1b31781bb73"
+    },
     "baseline_verifier": {
       "path": "tools/contracts/baseline.mjs",
       "sha256": "3138ac99f230567e6268f6cdc02eda347d69665686d7c91ac8095efbce402111"
@@ -307,7 +320,7 @@
     "generator": {
       "id": "contracts/generate.mjs@1",
       "path": "contracts/generate.mjs",
-      "sha256": "aa20fd947e35c87850798726f836dc5ffb53bf60c31cf3987150962a4cef99d6"
+      "sha256": "fd9f7376ddab04b9f562ea1230fa83eb4de31670d553a03b066b7147460527c7"
     },
     "node": ">=22.21.0",
     "node_version_gate": {
