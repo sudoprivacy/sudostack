@@ -25,6 +25,18 @@ Local exact-source verification requires the immutable owner commits:
 SUDOSTACK_REPOS_ROOT=/path/to/repos npm run source:verify
 ```
 
-Offline generation, conformance, compatibility, manifest, and package gates operate on the byte-verified materialized bundle. Remote source availability is intentionally blocked until the exact owner commits are published.
+Offline generation, conformance, compatibility, manifest, and package gates operate on the byte-verified materialized bundle:
+
+```bash
+npm run generate:check-offline
+```
+
+Remote owner-source availability is `available`: the exact owner commits are published and byte-verified by:
+
+```bash
+npm run source:verify-remote
+```
+
+Remote source availability records access to the immutable owner bytes and their verified digests; it is not a registry release, production adoption, or deployment claim.
 
 Lifecycle state: draft-frozen contract baseline; candidate/unpublished artifact; not deployed; no actual producers or consumers recorded.
