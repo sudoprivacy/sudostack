@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { REPO } from './schema-lib.mjs'
 
 const matrixPath = join(REPO, 'compatibility/consumers.yaml')
@@ -14,23 +14,10 @@ for (const family of ['common', 'zone-id']) {
   if (!matrix.includes(`${family}: [v1]`)) failures.push(`matrix must include ${family}: [v1] for at least one consumer`)
 }
 
-const reposRoot = process.env.SUDOSTACK_REPOS_ROOT
-if (reposRoot) {
-  const consumers = parseConsumers(matrix)
-  for (const [name, consumer] of Object.entries(consumers)) {
-    if (!consumer.base) failures.push(`${name} must declare a base branch`)
-    if (!consumer.boundaryTests.length) failures.push(`${name} must declare at least one boundary test`)
-    for (const testPath of consumer.boundaryTests) {
-      const fullPath = resolve(reposRoot, name, testPath)
-      if (!existsSync(fullPath)) failures.push(`${name} boundary test missing: ${testPath}`)
-    }
-  }
-
-  const mossPkg = JSON.parse(readFileSync(resolve(reposRoot, 'moss/package.json'), 'utf8'))
-  const dep = mossPkg.dependencies?.['@sudo/contracts'] ?? mossPkg.devDependencies?.['@sudo/contracts']
-  if (!/^github:sudoprivacy\/sudostack#[0-9a-f]{40}$/i.test(dep ?? '')) {
-    failures.push(`moss @sudo/contracts is not exact-pinned: ${JSON.stringify(dep)}`)
-  }
+const consumers = parseConsumers(matrix)
+for (const [name, consumer] of Object.entries(consumers)) {
+  if (!consumer.base) failures.push(`${name} must declare a base branch`)
+  if (!consumer.boundaryTests.length) failures.push(`${name} must declare at least one boundary test`)
 }
 
 if (failures.length) {

@@ -1,10 +1,10 @@
 # ADR-005：跨仓产品契约的版本、分发与兼容规则
 
-- 状态：Accepted（v0.x 分阶段落地中）
+- 状态：Proposed（v0.x 原型验证中）
 - 日期：2026-09-12
 - 最近实现校准：2026-09-16
 - 决策范围：Sudo 全产品族与跨仓产品契约包
-- 首个发布阶段：`sudostack` v0.x Git 分发；语义接受并完成 codegen/release tooling 后进入正式 `sudo-contracts` v1.x
+- 首个发布阶段：`sudostack` v0.x Git 分发；待联合评审接受并完成 codegen/release tooling 后，再决定正式 `sudo-contracts` v1.x 的承载策略
 - 相关文档：
   - [`Sudo 跨仓语义与六契约设计`](../design/cross-repo-contracts-semantics-design-v1.0.md)
   - [`ADR-001：标识及生命周期`](./ADR-001-identifiers-and-lifecycle.md)
@@ -76,7 +76,7 @@ sudoprivacy/sudostack@65904eb0a0991366767095b707f5a86835089a1e
 github:sudoprivacy/sudostack#<40-char-rev>
 ```
 
-该阶段不依赖 npm registry；`package.json` 中的 `private: true` 用来避免误发布 registry，不阻止 Git dependency 安装。当前 Moss 已按该方式消费，并已 pin 到 `65904eb0a0991366767095b707f5a86835089a1e`；v0.x package 形状、CI gate、consumer matrix、release manifest 和 Moss exact pin 由本仓工具检查。`[enforced_by: test:tools/contracts-tooling.test.mjs#v0 distribution is exact-pinned and CI-gated]`
+该阶段不依赖 npm registry；`package.json` 中的 `private: true` 用来避免误发布 registry，不阻止 Git dependency 安装。候选 Moss consumer branch 已使用 `65904eb0a0991366767095b707f5a86835089a1e` 精确 pin；本仓默认 CI 只验证自身的 package 形状与 consumer matrix 元数据，Moss pin 必须由 Moss 自身 CI 验证。`[enforced_by: none]` —— 当前没有已合并 consumer 的跨仓 exact-pin gate
 
 正式阶段的目标物理 SSOT 为独立 Git repository：
 
@@ -109,7 +109,7 @@ Canonical schema 使用 JSON Schema Draft 2020-12。
 - 支持 `$id`、`$ref`、组合和 validation；
 - 不把某一种语言或 framework 设为上游真相。
 
-JSON Schema 定义 wire 数据。语言包可以提供 idiomatic API，但不得改变 wire 语义。`[enforced_by: test:tools/contracts-tooling.test.mjs#schema lint checks schema ids, api_version, kind, manifests, and fixtures]`
+JSON Schema 定义 wire 数据。语言包可以提供 idiomatic API，但不得改变 wire 语义。`[enforced_by: none]` —— 当前仅以 shared fixtures 覆盖 `common/v1` 的已实现语言；尚未形成所有 language package 的生成或完整等价性门禁
 
 ### 2.3 目录结构
 
@@ -238,7 +238,7 @@ https://contracts.sudo.dev/schemas/task/v1/task-spec.schema.json
 - opaque IDs 使用 string；
 - digest 明确算法前缀，如 `sha256:...`；
 - binary data 使用 ResourceRef，不嵌入无界 base64；
-- Secret value 禁止进入普通 contract；`[enforced_by: test:contracts/common/v1/conformance.test.mjs#generated common validators reject invalid fixtures]`
+- Secret value 禁止进入普通 contract；`[enforced_by: none]` —— 当前 common validators 只能拒绝已知 secret-like field name，无法从任意 JSON value 证明其不是 Secret
 - null 与 absent 语义必须在 schema/doc 明确；`[enforced_by: none]`
 - 数值可能超过 JavaScript safe integer 时使用 decimal string；
 - map key 和 path 的 normalization 必须明确。`[enforced_by: none]`
@@ -297,9 +297,9 @@ Task.V2
 
 #### Consumer
 
-- MUST 验证 `api_version` 和 `kind`；`[enforced_by: test:contracts/common/v1/conformance.test.mjs#generated common validators accept valid fixtures]`
-- MUST 拒绝未知 major；`[enforced_by: test:contracts/common/v1/conformance.test.mjs#generated common validators reject invalid fixtures]`
-- MUST 忽略支持 major 下未知 optional 字段；`[enforced_by: test:contracts/common/v1/conformance.test.mjs#generated common validators accept valid fixtures]`
+- MUST 验证 `api_version` 和 `kind`；`[enforced_by: none]` —— 当前只覆盖 common/v1 conformance probes，尚未覆盖所有 consumer
+- MUST 拒绝未知 major；`[enforced_by: none]` —— 当前只覆盖 common/v1 conformance probes，尚未覆盖所有 consumer
+- MUST 忽略支持 major 下未知 optional 字段；`[enforced_by: none]` —— 当前只覆盖 common/v1 conformance probes，尚未覆盖所有 consumer
 - SHOULD 保留未知字段用于 proxy/roundtrip，除非安全边界要求剥离；`[enforced_by: none]`
 - MUST 对开放 status/reason code 有 Unknown/fallback；`[enforced_by: none]`
 - MUST 不因字段顺序不同而改变含义；`[enforced_by: none]`
@@ -311,7 +311,7 @@ Task.V2
 - MUST 填所有 required 字段；`[enforced_by: none]`
 - MUST 使用真实 producer/service version；`[enforced_by: none]`
 - MUST 不发送 `version: unknown` 的正式事件；`[enforced_by: none]`
-- MUST 不把 Secret 或无界 payload 放进 Event/Task/Context；`[enforced_by: test:contracts/common/v1/conformance.test.mjs#generated common validators reject invalid fixtures]`
+- MUST 不把 Secret 或无界 payload 放进 Event/Task/Context；`[enforced_by: none]` —— 当前没有 Event、Task 或 Context schema/producer，也无法从 key-name denylist 证明 Secret value 语义
 - SHOULD 支持 negotiated/downgrade major，或明确返回 unsupported-version error。`[enforced_by: none]`
 
 ### 2.9 Open code 与 closed enum
@@ -442,7 +442,7 @@ interface ContractSchemaManifest {
 }
 ```
 
-每个 repository release 还必须生成 release manifest：`[enforced_by: test:tools/contracts-tooling.test.mjs#release manifest pins schema and artifact digests]`
+每个 repository release 还必须生成 release manifest：`[enforced_by: none]` —— 当前仅有 source-tree digest manifest，未形成带真实 release commit、时间和完整 artifact 的发布产物
 
 ```ts
 interface ContractReleaseManifest {
@@ -645,7 +645,7 @@ consumers:
       - tests/unit/contracts/test_sudo_common_boundary.py
 ```
 
-每次 release 必须更新：`[enforced_by: test:tools/contracts-tooling.test.mjs#consumer matrix records supported families and exact pins]`
+每次 release 必须更新：`[enforced_by: none]` —— 当前 matrix 仅记录候选 consumer 和 test 路径，未验证发布版本、迁移 adapter 或 conformance result
 
 - producer versions；
 - consumer versions；
@@ -742,7 +742,7 @@ CI 仍需检查：
 
 ## 8. Governance
 
-每个 family 必须有：`[enforced_by: test:tools/contracts-tooling.test.mjs#schema lint checks schema ids, api_version, kind, manifests, and fixtures]`
+每个 family 必须有：`[enforced_by: none]` —— 当前只验证已经存在的 concrete schema，没有 family completeness 或 owner-policy gate
 
 - semantic owner；
 - schema/code owner；
@@ -854,7 +854,7 @@ Breaking change 需要：
 
 ### 11.7 Consumer 忽略未知 major
 
-拒绝。字段/lifecycle/安全语义可能已改变，必须显式升级。`[enforced_by: test:contracts/common/v1/conformance.test.mjs#generated common validators reject invalid fixtures]`
+拒绝。字段/lifecycle/安全语义可能已改变，必须显式升级。`[enforced_by: none]` —— 当前只对 common/v1 已知 fixture 做 unknown-major 拒绝，尚未覆盖 family-wide upgrade policy
 
 ### 11.8 所有 enum 永久封闭
 

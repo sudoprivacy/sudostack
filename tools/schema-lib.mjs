@@ -53,7 +53,10 @@ export function validateByObject(value, schemas = loadSchemas()) {
   if (!schema) {
     return [{ path: '$', message: `unsupported api_version/kind ${JSON.stringify(value?.api_version)}/${JSON.stringify(value?.kind)}` }]
   }
-  return validate(schema, value, { schemas, basePath: schemaPathFor(schema, schemas) })
+  return [
+    ...forbiddenInlineFieldErrors(value),
+    ...validate(schema, value, { schemas, basePath: schemaPathFor(schema, schemas) })
+  ]
 }
 
 function schemaPathFor(schema, schemas) {
@@ -96,11 +99,6 @@ export function validate(schema, value, options = {}, path = '$') {
       if (!(required in value)) errors.push({ path: `${path}.${required}`, message: 'missing required property' })
     }
     const props = schema.properties ?? {}
-    for (const key of Object.keys(value)) {
-      if (isForbiddenInlineField(key)) {
-        errors.push({ path: `${path}.${key}`, message: 'forbidden inline secret-like field' })
-      }
-    }
     if (schema.additionalProperties === false) {
       for (const key of Object.keys(value)) {
         if (!(key in props)) errors.push({ path: `${path}.${key}`, message: 'unexpected property' })
@@ -153,6 +151,23 @@ function typeMatches(type, value) {
 
 export function isForbiddenInlineField(key) {
   return /secret|credential|password|private[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|api[_-]?key/i.test(key)
+}
+
+function forbiddenInlineFieldErrors(value, path = '$') {
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) => forbiddenInlineFieldErrors(item, `${path}[${index}]`))
+  }
+  if (!value || typeof value !== 'object') return []
+
+  const errors = []
+  for (const [key, child] of Object.entries(value)) {
+    const childPath = `${path}.${key}`
+    if (isForbiddenInlineField(key)) {
+      errors.push({ path: childPath, message: 'forbidden inline secret-like field' })
+    }
+    errors.push(...forbiddenInlineFieldErrors(child, childPath))
+  }
+  return errors
 }
 
 function resolveRef(ref, basePath, schemas) {

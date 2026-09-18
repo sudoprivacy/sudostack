@@ -4,12 +4,6 @@
 
 export const COMMON_API_VERSION = 'common.sudo.dev/v1'
 
-export type ContractEnvelope = {
-  api_version: string
-  kind: string
-  [key: string]: unknown
-}
-
 export type ResourceRef = {
   api_version: typeof COMMON_API_VERSION
   kind: 'ResourceRef'
@@ -45,27 +39,6 @@ export type ParseResult<T> =
   | { ok: false; issues: ValidationIssue[] }
 
 export const COMMON_SCHEMAS = {
-  "ContractEnvelope": {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://contracts.sudo.dev/schemas/common/v1/contract-envelope.schema.json",
-    "title": "ContractEnvelope",
-    "type": "object",
-    "required": [
-      "api_version",
-      "kind"
-    ],
-    "additionalProperties": true,
-    "properties": {
-      "api_version": {
-        "type": "string",
-        "pattern": "^[a-z][a-z0-9-]*\\.sudo\\.dev/v[0-9]+$"
-      },
-      "kind": {
-        "type": "string",
-        "pattern": "^[A-Z][A-Za-z0-9]*$"
-      }
-    }
-  },
   "ErrorInfo": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://contracts.sudo.dev/schemas/common/v1/error-info.schema.json",
@@ -170,7 +143,10 @@ export function safeParseCommon(value: unknown): ParseResult<CommonObject> {
   if (!schema) {
     return { ok: false, issues: [{ path: '$.kind', message: `unsupported kind ${JSON.stringify(kind)}` }] }
   }
-  const issues = validateAgainstSchema(schema as Schema, value, '$')
+  const issues = [
+    ...forbiddenInlineFieldIssues(value, '$'),
+    ...validateAgainstSchema(schema as Schema, value, '$'),
+  ]
   return issues.length ? { ok: false, issues } : { ok: true, value: value as CommonObject }
 }
 
@@ -229,11 +205,6 @@ function validateAgainstSchema(schema: Schema, value: unknown, path: string): Va
   }
   if ((schema.type === 'object' || schema.properties || schema.required) && value && typeof value === 'object' && !Array.isArray(value)) {
     const obj = value as Record<string, unknown>
-    for (const key of Object.keys(obj)) {
-      if (isForbiddenInlineField(key)) {
-        issues.push({ path: `${path}.${key}`, message: 'forbidden inline secret-like field' })
-      }
-    }
     for (const required of schema.required ?? []) {
       if (!(required in obj)) issues.push({ path: `${path}.${required}`, message: 'missing required property' })
     }
@@ -269,4 +240,21 @@ function typeMatches(type: string, value: unknown): boolean {
 
 function isForbiddenInlineField(key: string): boolean {
   return /secret|credential|password|private[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|api[_-]?key/i.test(key)
+}
+
+function forbiddenInlineFieldIssues(value: unknown, path: string): ValidationIssue[] {
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) => forbiddenInlineFieldIssues(item, `${path}[${index}]`))
+  }
+  if (!value || typeof value !== 'object') return []
+
+  const issues: ValidationIssue[] = []
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    const childPath = `${path}.${key}`
+    if (isForbiddenInlineField(key)) {
+      issues.push({ path: childPath, message: 'forbidden inline secret-like field' })
+    }
+    issues.push(...forbiddenInlineFieldIssues(child, childPath))
+  }
+  return issues
 }

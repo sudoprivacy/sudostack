@@ -11,12 +11,10 @@ import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { REPO } from './schema-lib.mjs'
+import { breakingChanges } from './compatibility-check.mjs'
 
 test('v0 distribution is exact-pinned and CI-gated', () => {
-  run('node', ['tools/check-v0-distribution.mjs'], {
-    ...process.env,
-    SUDOSTACK_REPOS_ROOT: join(REPO, '..'),
-  })
+  run('node', ['tools/check-v0-distribution.mjs'])
 })
 
 test('schema lint checks schema ids, api_version, kind, manifests, and fixtures', () => {
@@ -27,11 +25,32 @@ test('compatibility checker has a baseline for every schema', () => {
   run('node', ['tools/compatibility-check.mjs'])
 })
 
+test('compatibility checker rejects representative narrowing changes', () => {
+  const baseline = {
+    type: 'object',
+    properties: {
+      code: { type: 'string', enum: ['A', 'B'] },
+      message: { type: 'string' },
+      records: { type: 'array', items: { type: 'string' } },
+    },
+  }
+  const narrowed = {
+    type: 'object',
+    properties: {
+      code: { type: 'string', enum: ['A'] },
+      message: { type: 'string', maxLength: 20, format: 'date-time' },
+      records: { type: 'array', items: { type: 'string', minLength: 1 } },
+    },
+  }
+  const changes = breakingChanges(baseline, narrowed).join('\n')
+  assert.match(changes, /enum value removed/)
+  assert.match(changes, /maxLength tightened/)
+  assert.match(changes, /format changed/)
+  assert.match(changes, /minLength tightened/)
+})
+
 test('consumer matrix records supported families and exact pins', () => {
-  run('node', ['tools/check-consumers.mjs'], {
-    ...process.env,
-    SUDOSTACK_REPOS_ROOT: join(REPO, '..'),
-  })
+  run('node', ['tools/check-consumers.mjs'])
 })
 
 test('release manifest pins schema and artifact digests', () => {

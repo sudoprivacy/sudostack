@@ -48,6 +48,9 @@ pub fn validate_resource_ref(value: &ResourceRef) -> Result<(), String> {
     if !value.path.starts_with('/') {
         return Err("path must be zone-relative absolute".into());
     }
+    if value.version.as_deref().is_some_and(str::is_empty) {
+        return Err("version must not be empty".into());
+    }
     if let Some(size) = value.size_bytes {
         let _ = size;
     }

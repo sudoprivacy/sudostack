@@ -2,7 +2,7 @@
   "created_at": "1970-01-01T00:00:00Z",
   "generated_artifacts": [
     {
-      "digest": "sha256:37bad52b95e9c3782c4a30d081160421643ea4e4bd9a0320bf73a4883d7a1e2d",
+      "digest": "sha256:2a1afa23047347ee2e6aed2b93a8e866622aadbe41213c38abfb05cc6d021f62",
       "language": "typescript",
       "package": "@sudo/contracts",
       "path": "contracts/common/v1/common.gen.ts",
@@ -25,39 +25,8 @@
   ],
   "git_commit": "WORKTREE",
   "package_version": "0.1.0",
-  "schema_bundle_digest": "sha256:3f78a7a4b43c0c10402bd885a48abe4447fcedd69eb7be692d543175f377eadd",
+  "schema_bundle_digest": "sha256:4b8ed74b9b059e103545fcf700add068bf1e78b6542ceccd9334ab0254aa9883",
   "schemas": [
-    {
-      "api_version": "common.sudo.dev/v1",
-      "compatibility": {
-        "status": "experimental"
-      },
-      "consumers": [
-        "moss",
-        "sudowork",
-        "sudocode",
-        "nexus"
-      ],
-      "data_classification": "metadata",
-      "family": "common",
-      "kind": "ContractEnvelope",
-      "large_payload_policy": "no-payload",
-      "owner": "sudostack",
-      "producers": [
-        "moss",
-        "sudowork",
-        "sudocode",
-        "nexus"
-      ],
-      "retention_policy": "object-owner-policy",
-      "schema_digest": "sha256:50fe80ad71dc9338ace6daf6680bbfdfd713bfa2042aa8497555a5862bda1b88",
-      "schema_id": "https://contracts.sudo.dev/schemas/common/v1/contract-envelope.schema.json",
-      "secrets_allowed": false,
-      "security_owner": "platform-security",
-      "semantic_adr_refs": [
-        "docs/adr/ADR-005-product-contract-versioning.md#contract-family-与-api_version"
-      ]
-    },
     {
       "api_version": "common.sudo.dev/v1",
       "compatibility": {

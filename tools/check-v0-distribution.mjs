@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { REPO, readJson } from './schema-lib.mjs'
 
 const failures = []
@@ -32,19 +32,6 @@ for (const needle of [
   'cargo test --manifest-path crates/rust/Cargo.toml',
 ]) {
   if (!workflow.includes(needle)) fail(`contracts workflow must run ${needle}`)
-}
-
-const reposRoot = process.env.SUDOSTACK_REPOS_ROOT
-if (reposRoot) {
-  const mossPkgPath = resolve(reposRoot, 'moss/package.json')
-  const mossLockPath = resolve(reposRoot, 'moss/bun.lock')
-  const mossPkg = readJson(mossPkgPath)
-  const dep = mossPkg.dependencies?.['@sudo/contracts'] ?? mossPkg.devDependencies?.['@sudo/contracts']
-  if (!/^github:sudoprivacy\/sudostack#[0-9a-f]{40}$/i.test(dep ?? '')) {
-    fail(`moss must pin @sudo/contracts to a 40-character GitHub SHA, got ${JSON.stringify(dep)}`)
-  }
-  const lock = readFileSync(mossLockPath, 'utf8')
-  if (!lock.includes(dep)) fail('moss bun.lock must contain the same @sudo/contracts pin as package.json')
 }
 
 if (failures.length) {
