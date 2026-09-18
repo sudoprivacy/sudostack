@@ -1,0 +1,6 @@
+{
+  "api_version": "common.sudo.dev/v1",
+  "kind": "ResourceRef",
+  "zone_id": "org:550e8400-e29b-41d4-a716-446655440000",
+  "path": "/sessions/sess_123"
+}

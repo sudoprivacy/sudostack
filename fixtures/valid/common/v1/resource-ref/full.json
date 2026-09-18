@@ -1,0 +1,10 @@
+{
+  "api_version": "common.sudo.dev/v1",
+  "kind": "ResourceRef",
+  "zone_id": "private-acme-office",
+  "path": "/artifacts/report.pdf",
+  "version": "v1",
+  "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "media_type": "application/pdf",
+  "size_bytes": 42
+}

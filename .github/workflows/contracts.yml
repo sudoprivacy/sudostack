@@ -26,11 +26,38 @@ jobs:
       - name: Derived artifacts match the pinned spec
         run: node contracts/generate.mjs --check
 
+      - name: Common contract artifacts match the schemas
+        run: node tools/generate-common.mjs --check
+
       # Rule data cannot drift — both sides read one spec. Logic can: two
       # languages are two implementations, and one can forget a case while
       # reading the same constants. The vectors are what catch that.
       - name: TypeScript validator agrees with the generated vectors
         run: node --experimental-strip-types --test contracts/zone-id/conformance.test.mjs
+
+      - name: Common TypeScript validators agree with the fixtures
+        run: node --experimental-strip-types --test contracts/common/v1/conformance.test.mjs
+
+      - name: v0 distribution stays exact-pinned and CI-gated
+        run: node tools/check-v0-distribution.mjs
+
+      - name: Common schemas and fixtures are executable
+        run: node tools/check-schemas.mjs
+
+      - name: Schema compatibility baseline has no breaking drift
+        run: node tools/compatibility-check.mjs
+
+      - name: Consumer compatibility matrix is complete
+        run: node tools/check-consumers.mjs
+
+      - name: Release manifest matches generated artifacts
+        run: node tools/generate-release-manifest.mjs --check
+
+      - name: Contract tooling gates have executable tests
+        run: node --test tools/contracts-tooling.test.mjs
+
+      - name: Rust contracts agree with the fixtures
+        run: cargo test --manifest-path crates/rust/Cargo.toml
 
   # 总则 1: every normative clause names what makes it fail, and what it names
   # has to be real. Separate job because it gates the DOCUMENTS, not the

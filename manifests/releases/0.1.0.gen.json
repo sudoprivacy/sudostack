@@ -1,0 +1,94 @@
+{
+  "created_at": "1970-01-01T00:00:00Z",
+  "generated_artifacts": [
+    {
+      "digest": "sha256:2a1afa23047347ee2e6aed2b93a8e866622aadbe41213c38abfb05cc6d021f62",
+      "language": "typescript",
+      "package": "@sudo/contracts",
+      "path": "contracts/common/v1/common.gen.ts",
+      "version": "0.1.0"
+    },
+    {
+      "digest": "sha256:61706fad6d209094dc530e9354b888e4e8e3bb03ddb7641245cb5ea2c2ed60bd",
+      "language": "json",
+      "package": "@sudo/contracts",
+      "path": "contracts/zone-id/vectors.gen.json",
+      "version": "0.1.0"
+    },
+    {
+      "digest": "sha256:18bbb10068d3b16be9d8e03e6a1779b6bc1b094772f6d79fcea7d5f19d8a774a",
+      "language": "typescript",
+      "package": "@sudo/contracts",
+      "path": "contracts/zone-id/zone-id.gen.ts",
+      "version": "0.1.0"
+    }
+  ],
+  "git_commit": "WORKTREE",
+  "package_version": "0.1.0",
+  "schema_bundle_digest": "sha256:4b8ed74b9b059e103545fcf700add068bf1e78b6542ceccd9334ab0254aa9883",
+  "schemas": [
+    {
+      "api_version": "common.sudo.dev/v1",
+      "compatibility": {
+        "status": "experimental"
+      },
+      "consumers": [
+        "moss",
+        "sudowork",
+        "sudocode",
+        "nexus"
+      ],
+      "data_classification": "metadata",
+      "family": "common",
+      "kind": "ErrorInfo",
+      "large_payload_policy": "details-must-be-redacted",
+      "owner": "sudostack",
+      "producers": [
+        "moss",
+        "sudowork",
+        "sudocode",
+        "nexus"
+      ],
+      "retention_policy": "event-or-response-owner-policy",
+      "schema_digest": "sha256:0bcf8c8ed8a7427e30a3decdb7dfc192fa0765a92ad4394ce59af976fb56d98d",
+      "schema_id": "https://contracts.sudo.dev/schemas/common/v1/error-info.schema.json",
+      "secrets_allowed": false,
+      "security_owner": "platform-security",
+      "semantic_adr_refs": [
+        "docs/adr/ADR-005-product-contract-versioning.md#error-contract"
+      ]
+    },
+    {
+      "api_version": "common.sudo.dev/v1",
+      "compatibility": {
+        "status": "experimental"
+      },
+      "consumers": [
+        "moss",
+        "sudowork",
+        "sudocode",
+        "nexus"
+      ],
+      "data_classification": "metadata",
+      "family": "common",
+      "kind": "ResourceRef",
+      "large_payload_policy": "ref-only",
+      "owner": "sudostack",
+      "producers": [
+        "moss",
+        "sudowork",
+        "sudocode",
+        "nexus"
+      ],
+      "retention_policy": "resource-owner-policy",
+      "schema_digest": "sha256:f68e6726c334a5d966598bbea77b56942ed8574a6fa6423fa58fd02e5e830ad7",
+      "schema_id": "https://contracts.sudo.dev/schemas/common/v1/resource-ref.schema.json",
+      "secrets_allowed": false,
+      "security_owner": "platform-security",
+      "semantic_adr_refs": [
+        "docs/adr/ADR-002-zone-and-tenancy-model.md#resource-identity",
+        "docs/adr/ADR-005-product-contract-versioning.md#large-payload-与-resourceref"
+      ]
+    }
+  ]
+}

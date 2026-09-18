@@ -18,8 +18,9 @@
  * The generated files carry `.gen.` in the name and say where they came from,
  * but that is a courtesy, not the enforcement. The enforcement is the CI diff.
  */
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 // Node's built-in fetch is undici, and undici does NOT read HTTP_PROXY /
@@ -36,12 +37,16 @@ import { fileURLToPath } from 'node:url'
 const PROXY = process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY
 
 const HERE = dirname(fileURLToPath(import.meta.url))
+const REPO = resolve(HERE, '..')
 const CHECK = process.argv.includes('--check')
 
 const pin = JSON.parse(readFileSync(join(HERE, 'zone-id/pin.json'), 'utf8'))
 const { rev, specs } = pin['nexus-vfs']
 
 async function fetchSpec(path) {
+  const local = readLocalPinnedSpec(path)
+  if (local) return local
+
   const url = `https://raw.githubusercontent.com/nexi-lab/nexus-vfs/${rev}/${path}`
   let res
   try {
@@ -64,6 +69,24 @@ async function fetchSpec(path) {
     )
   }
   return JSON.parse(await res.text())
+}
+
+function readLocalPinnedSpec(path) {
+  const reposRoot = process.env.SUDOSTACK_REPOS_ROOT
+    ? resolve(process.env.SUDOSTACK_REPOS_ROOT)
+    : resolve(REPO, '..')
+  const repo = join(reposRoot, 'nexus-vfs')
+  if (!existsSync(join(repo, '.git'))) return null
+
+  const object = `${rev}:${path}`
+  const present = spawnSync('git', ['-C', repo, 'cat-file', '-e', object], { encoding: 'utf8' })
+  if (present.status !== 0) return null
+
+  const shown = spawnSync('git', ['-C', repo, 'show', object], { encoding: 'utf8', maxBuffer: 1024 * 1024 })
+  if (shown.status !== 0) {
+    throw new Error(`cannot read local nexus-vfs object ${object}: ${shown.stderr.trim()}`)
+  }
+  return JSON.parse(shown.stdout)
 }
 
 /** Cases derived from the spec, so they cannot describe a rule the spec does not have. */
