@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
+import { requireVerifiedAvailabilityProof, verifyAvailability } from './availability.mjs'
 import { requireFullCommitSha } from './source.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -62,11 +63,46 @@ export function verifyActivationRecords({
   precursorManifestBytes,
   currentBytes,
   candidateBytes,
+  operationalOverride,
+  availabilityProof,
 }) {
   const candidateRevision = requireFullCommitSha(
     activation.candidate_content_revision,
     'candidate content revision',
   )
+  if (operationalOverride) {
+    const proof = requireVerifiedAvailabilityProof(availabilityProof)
+    assert.equal(
+      proof.candidateRevision,
+      candidateRevision,
+      'availability proof candidate revision does not match activation',
+    )
+    assert.equal(
+      operationalOverride.sourceLockPath,
+      'contracts/sources.lock.json',
+      'operational override source-lock path',
+    )
+    assert.equal(
+      operationalOverride.sourceClosurePath,
+      'manifests/source-closure.gen.json',
+      'operational override source-closure path',
+    )
+    assert.deepEqual(
+      operationalOverride.sourceAvailability,
+      proof.sourceAvailability,
+      'operational override availability does not match verified availability proof',
+    )
+    assert.equal(
+      operationalOverride.sourceLockSha256,
+      proof.sourceLockSha256,
+      'operational override source-lock digest does not match verified availability proof',
+    )
+    assert.equal(
+      operationalOverride.sourceClosureSha256,
+      proof.sourceClosureSha256,
+      'operational override source-closure digest does not match verified availability proof',
+    )
+  }
   assert.equal(activation.activation_version, 1)
   assert.equal(activation.state, 'candidate_content_revision_recorded')
   assert.equal(activation.commit_binding, 'activated_by_containing_commit')
@@ -103,16 +139,25 @@ export function verifyActivationRecords({
     'package',
     'fixtures',
     'compatibility',
-    'source_availability',
     'deferred',
   ]) {
     assert.deepEqual(currentManifest[key], precursorManifest[key], `${key} changed during activation`)
   }
+  assert.deepEqual(
+    currentManifest.source_availability,
+    operationalOverride?.sourceAvailability ?? precursorManifest.source_availability,
+    'source_availability changed outside operational override',
+  )
   assert.equal(currentManifest.manifest_version, precursorManifest.manifest_version)
   assert.equal(currentManifest.sudostack.g0_revision, precursorManifest.sudostack.g0_revision)
-  assert.deepEqual(
-    currentManifest.sudostack.assembly_source_lock,
-    precursorManifest.sudostack.assembly_source_lock,
+  assert.equal(
+    currentManifest.sudostack.assembly_source_lock.path,
+    precursorManifest.sudostack.assembly_source_lock.path,
+  )
+  assert.equal(
+    currentManifest.sudostack.assembly_source_lock.sha256,
+    operationalOverride?.sourceLockSha256 ??
+      precursorManifest.sudostack.assembly_source_lock.sha256,
   )
   for (const key of [
     'source_loader',
@@ -127,7 +172,19 @@ export function verifyActivationRecords({
   ]) {
     assert.deepEqual(currentManifest.toolchain[key], precursorManifest.toolchain[key], `${key} changed`)
   }
-  assert.deepEqual(currentManifest.generated_artifacts, precursorManifest.generated_artifacts)
+  const normalizedGeneratedArtifacts = structuredClone(currentManifest.generated_artifacts)
+  if (operationalOverride) {
+    const sourceClosure = normalizedGeneratedArtifacts.find(
+      (artifact) => artifact.path === operationalOverride.sourceClosurePath,
+    )
+    const precursorSourceClosure = precursorManifest.generated_artifacts.find(
+      (artifact) => artifact.path === operationalOverride.sourceClosurePath,
+    )
+    assert.ok(sourceClosure && precursorSourceClosure, 'source closure artifact is missing')
+    assert.equal(sourceClosure.sha256, operationalOverride.sourceClosureSha256)
+    sourceClosure.sha256 = precursorSourceClosure.sha256
+  }
+  assert.deepEqual(normalizedGeneratedArtifacts, precursorManifest.generated_artifacts)
   assert.deepEqual(
     currentManifest.internal_generation_artifacts,
     precursorManifest.internal_generation_artifacts,
@@ -148,9 +205,17 @@ export function verifyActivationRecords({
     }
     const fromCommit = candidateBytes(path)
     const current = currentBytes(path)
-    assert.deepEqual(current, fromCommit, `${path} differs from candidate content revision`)
     const recordedDigest = precursorDigests.get(path)
     if (recordedDigest) assert.equal(sha256(fromCommit), recordedDigest, path)
+    if (operationalOverride && path === operationalOverride.sourceLockPath) {
+      assert.equal(sha256(current), operationalOverride.sourceLockSha256)
+      continue
+    }
+    if (operationalOverride && path === operationalOverride.sourceClosurePath) {
+      assert.equal(sha256(current), operationalOverride.sourceClosureSha256)
+      continue
+    }
+    assert.deepEqual(current, fromCommit, `${path} differs from candidate content revision`)
   }
   assert.equal(
     sha256(candidateBytes('package.json')),
@@ -171,12 +236,19 @@ export function verifyActivationRecords({
   return {
     candidateRevision,
     attributedPathCount: attributed.size,
+    operationalOverridePathCount: operationalOverride ? 2 : 0,
+    contentMatchedPathCount: attributed.size - (operationalOverride ? 2 : 0),
     precursorManifest,
   }
 }
 
-export function assertNoActivationSelfReference({ head, candidateRevision, text }) {
-  if (head !== candidateRevision) {
+export function assertNoActivationSelfReference({
+  head,
+  candidateRevision,
+  text,
+  allowedRevisions = [],
+}) {
+  if (head !== candidateRevision && !allowedRevisions.includes(head)) {
     assert.equal(text.includes(head), false, 'activation metadata must not embed its containing commit SHA')
   }
 }
@@ -194,6 +266,22 @@ export function verifyActivation({
   const manifestPath = activation.precursor_candidate_manifest.path
   const precursorManifestBytes = readCommitBlob(repository, candidateRevision, manifestPath)
   const currentManifest = JSON.parse(readFileSync(join(repository, manifestPath), 'utf8'))
+  const operationPath = 'manifests/operations/source-availability.json'
+  let operationalOverride
+  let availabilityActivationRevision
+  let availabilityProof
+  if (existsSync(join(repository, operationPath))) {
+    const availability = verifyAvailability({ repository, operationPath })
+    availabilityActivationRevision = availability.activationRevision
+    availabilityProof = availability
+    operationalOverride = {
+      sourceAvailability: availability.sourceAvailability,
+      sourceLockPath: 'contracts/sources.lock.json',
+      sourceLockSha256: availability.sourceLockSha256,
+      sourceClosurePath: 'manifests/source-closure.gen.json',
+      sourceClosureSha256: availability.sourceClosureSha256,
+    }
+  }
   const result = verifyActivationRecords({
     activation,
     activationBytes,
@@ -202,12 +290,15 @@ export function verifyActivation({
     precursorManifestBytes,
     currentBytes: (path) => readFileSync(join(repository, path)),
     candidateBytes: (path) => readCommitBlob(repository, candidateRevision, path),
+    operationalOverride,
+    availabilityProof,
   })
   const relation = relationToHead(repository, candidateRevision)
   assertNoActivationSelfReference({
     head: relation.head,
     candidateRevision,
     text: `${activationBytes.toString('utf8')}\n${JSON.stringify(currentManifest)}`,
+    allowedRevisions: availabilityActivationRevision ? [availabilityActivationRevision] : [],
   })
   return { ...result, ...relation }
 }
@@ -215,6 +306,7 @@ export function verifyActivation({
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const result = verifyActivation()
   console.log(
-    `activation verified: ${result.candidateRevision}, ${result.attributedPathCount} attributed paths, ${result.relation}`,
+    `activation verified: ${result.candidateRevision}, ${result.contentMatchedPathCount} content paths, ` +
+      `${result.operationalOverridePathCount} operational overrides, ${result.relation}`,
   )
 }

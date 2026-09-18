@@ -7,9 +7,11 @@ import {
   REPO,
   assertNoActivationSelfReference,
   readCommitBlob,
+  sha256,
   verifyActivation,
   verifyActivationRecords,
 } from './activation.mjs'
+import { verifyAvailability } from './availability.mjs'
 
 const activationPath = 'manifests/activations/0.2.0-candidate.json'
 const activation = JSON.parse(readFileSync(join(REPO, activationPath), 'utf8'))
@@ -20,6 +22,14 @@ const precursorManifestBytes = readCommitBlob(
   manifestPath,
 )
 const currentManifest = JSON.parse(readFileSync(join(REPO, manifestPath), 'utf8'))
+const availabilityProof = verifyAvailability({ repository: REPO })
+const operationalOverride = {
+  sourceAvailability: availabilityProof.sourceAvailability,
+  sourceLockPath: 'contracts/sources.lock.json',
+  sourceLockSha256: availabilityProof.sourceLockSha256,
+  sourceClosurePath: 'manifests/source-closure.gen.json',
+  sourceClosureSha256: availabilityProof.sourceClosureSha256,
+}
 const candidateBytes = (path) => readCommitBlob(REPO, activation.candidate_content_revision, path)
 const currentBytes = (path) => readFileSync(join(REPO, path))
 
@@ -30,6 +40,8 @@ const verify = (overrides = {}) =>
     precursorManifestBytes,
     candidateBytes,
     currentBytes,
+    operationalOverride,
+    availabilityProof,
     ...overrides,
   })
 
@@ -71,6 +83,49 @@ test('changed current attributed bytes fail activation', () => {
   )
 })
 
+test('forged operational hashes cannot authorize unrelated source-lock changes', () => {
+  const sourceLockPath = 'contracts/sources.lock.json'
+  const changedSourceLock = JSON.parse(currentBytes(sourceLockPath).toString('utf8'))
+  changedSourceLock.repositories.nexus.revision = '0'.repeat(40)
+  const changedSourceLockBytes = Buffer.from(`${JSON.stringify(changedSourceLock, null, 2)}\n`)
+  const changedSourceLockSha256 = sha256(changedSourceLockBytes)
+  const changedManifest = structuredClone(currentManifest)
+  changedManifest.sudostack.assembly_source_lock.sha256 = changedSourceLockSha256
+  changedManifest.sudostack.source_availability_override.source_lock_sha256 =
+    changedSourceLockSha256
+
+  assert.throws(
+    () =>
+      verify({
+        currentManifest: changedManifest,
+        currentBytes: (path) =>
+          path === sourceLockPath ? changedSourceLockBytes : currentBytes(path),
+        operationalOverride: {
+          ...operationalOverride,
+          sourceLockSha256: changedSourceLockSha256,
+        },
+      }),
+    /source-lock digest does not match verified availability proof/,
+  )
+  assert.throws(
+    () =>
+      verify({
+        availabilityProof: {
+          ...availabilityProof,
+          sourceLockSha256: changedSourceLockSha256,
+        },
+        currentManifest: changedManifest,
+        currentBytes: (path) =>
+          path === sourceLockPath ? changedSourceLockBytes : currentBytes(path),
+        operationalOverride: {
+          ...operationalOverride,
+          sourceLockSha256: changedSourceLockSha256,
+        },
+      }),
+    /operational override requires strict availability proof/,
+  )
+})
+
 test('changed candidate blob or recorded artifact digest fails activation', () => {
   const changedPath = 'contracts/zone-id/zone-id.gen.js'
   assert.throws(
@@ -79,7 +134,7 @@ test('changed candidate blob or recorded artifact digest fails activation', () =
         candidateBytes: (path) =>
           path === changedPath ? Buffer.concat([candidateBytes(path), Buffer.from(' ')]) : candidateBytes(path),
       }),
-    /differs from candidate content revision|Expected values to be strictly equal/,
+    /differs from candidate content revision|Expected values to be strictly equal|contracts\/zone-id\/zone-id\.gen\.js/,
   )
 
   const changedManifest = structuredClone(currentManifest)

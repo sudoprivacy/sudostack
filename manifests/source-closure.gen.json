@@ -99,8 +99,8 @@
   },
   "source_availability": {
     "local": "requires_SUDOSTACK_REPOS_ROOT",
-    "reason": "The pinned Nexus and nexus-vfs owner commits are immutable local commits but are not available on their remotes.",
-    "remote": "blocked_unpublished"
+    "reason": "Exact Nexus and nexus-vfs owner commits are published and remotely byte-verifiable.",
+    "remote": "available"
   },
   "sudostack_g0_revision": "fe27da807594da85f8bc26c5b5394c516f21c80e"
 }

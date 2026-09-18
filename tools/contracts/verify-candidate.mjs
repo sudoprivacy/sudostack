@@ -6,6 +6,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { verifyActivation } from './activation.mjs'
+import { verifyAvailability } from './availability.mjs'
 import { verifyCompatibilityBaseline } from './baseline.mjs'
 import { loadSourceLock } from './source.mjs'
 
@@ -95,6 +96,7 @@ for (const tool of [
   manifest.toolchain.baseline_verifier,
   manifest.toolchain.node_version_gate,
   manifest.toolchain.activation_verifier,
+  manifest.toolchain.availability_verifier,
 ]) {
   assert.equal(sha256(read(tool.path)), tool.sha256, tool.path)
 }
@@ -118,11 +120,13 @@ assert.equal(closure.repositories['nexus-vfs'].revision, manifest.owners['nexus-
 assert.deepEqual(closure.owner_manifest.actual_consumers, [])
 assert.equal(closure.owner_manifest.lifecycle.artifact_publication, 'unpublished')
 
+const availabilityResult = verifyAvailability({ repository: REPO })
 const activationResult = verifyActivation({ repository: REPO })
 
 console.log(
   `candidate manifest verified: ${manifest.generated_artifacts.length} distribution artifacts, ` +
     `${manifest.internal_generation_artifacts.length} internal artifacts, ` +
     `${manifest.fixtures.resource_ref + manifest.fixtures.zone_id + manifest.fixtures.zone_path} fixtures; ` +
-    `candidate ${activationResult.candidateRevision} (${activationResult.relation})`,
+    `candidate ${activationResult.candidateRevision} (${activationResult.relation}); ` +
+    `sources ${availabilityResult.relation}`,
 )

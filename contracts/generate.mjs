@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 
 import { readCommitBlob, verifyActivationRecords } from '../tools/contracts/activation.mjs'
+import { verifyAvailabilityRecords } from '../tools/contracts/availability.mjs'
 import { verifyCompatibilityBaseline } from '../tools/contracts/baseline.mjs'
 import { requireSupportedNode } from '../tools/contracts/node-version.mjs'
 import { renderResourceRefTypeScript } from '../tools/contracts/runtime-template.mjs'
@@ -39,9 +40,19 @@ const CANDIDATE_MANIFEST_PATH = `manifests/releases/${PACKAGE_JSON.version}-cand
 const ACTIVATION_PATH = `manifests/activations/${PACKAGE_JSON.version}-candidate.json`
 const ACTIVATION_BYTES = readFileSync(join(REPO, ACTIVATION_PATH))
 const ACTIVATION = parseJson(ACTIVATION_BYTES, ACTIVATION_PATH)
+const AVAILABILITY_OPERATION_PATH = 'manifests/operations/source-availability.json'
+const AVAILABILITY_OPERATION_BYTES = readFileSync(join(REPO, AVAILABILITY_OPERATION_PATH))
+const AVAILABILITY_OPERATION = parseJson(
+  AVAILABILITY_OPERATION_BYTES,
+  AVAILABILITY_OPERATION_PATH,
+)
 const CANDIDATE_CONTENT_REVISION = requireFullCommitSha(
   ACTIVATION.candidate_content_revision,
   'candidate content revision',
+)
+const ACTIVATION_REVISION = requireFullCommitSha(
+  AVAILABILITY_OPERATION.activation_revision,
+  'activation revision',
 )
 const HISTORY_REPO = process.env.SUDOSTACK_BASE_REPO ?? REPO
 const PRECURSOR_MANIFEST_BYTES = readCommitBlob(
@@ -396,6 +407,18 @@ function candidateManifest(closure, outputs) {
         metadata_sha256: sha256(ACTIVATION_BYTES),
         precursor_candidate_manifest: ACTIVATION.precursor_candidate_manifest,
       },
+      source_availability_override: {
+        state: AVAILABILITY_OPERATION.state,
+        metadata_path: AVAILABILITY_OPERATION_PATH,
+        metadata_sha256: sha256(AVAILABILITY_OPERATION_BYTES),
+        activation_revision: ACTIVATION_REVISION,
+        previous_candidate_manifest_sha256:
+          AVAILABILITY_OPERATION.previous.candidate_manifest_sha256,
+        source_lock_sha256: sha256(
+          readFileSync(join(REPO, 'contracts', 'sources.lock.json')),
+        ),
+        source_closure_sha256: sha256(outputs.get('manifests/source-closure.gen.json')),
+      },
       assembly_source_lock: {
         path: 'contracts/sources.lock.json',
         sha256: sha256(readFileSync(join(REPO, 'contracts', 'sources.lock.json'))),
@@ -458,6 +481,10 @@ function candidateManifest(closure, outputs) {
         path: 'tools/contracts/activation.mjs',
         sha256: sha256(readFileSync(join(REPO, 'tools', 'contracts', 'activation.mjs'))),
       },
+      availability_verifier: {
+        path: 'tools/contracts/availability.mjs',
+        sha256: sha256(readFileSync(join(REPO, 'tools', 'contracts', 'availability.mjs'))),
+      },
       node: PACKAGE_JSON.engines.node,
       runtime_validator: `ajv@${PACKAGE_JSON.dependencies.ajv}`,
       raw_json_parser: `jsonc-parser@${PACKAGE_JSON.dependencies['jsonc-parser']}`,
@@ -489,6 +516,29 @@ function candidateManifest(closure, outputs) {
       'unrequested language packages',
     ],
   }
+  const availability = verifyAvailabilityRecords({
+    operation: AVAILABILITY_OPERATION,
+    previousSourceLockBytes: readCommitBlob(
+      HISTORY_REPO,
+      ACTIVATION_REVISION,
+      'contracts/sources.lock.json',
+    ),
+    previousSourceClosureBytes: readCommitBlob(
+      HISTORY_REPO,
+      ACTIVATION_REVISION,
+      'manifests/source-closure.gen.json',
+    ),
+    previousCandidateManifestBytes: readCommitBlob(
+      HISTORY_REPO,
+      ACTIVATION_REVISION,
+      CANDIDATE_MANIFEST_PATH,
+    ),
+    currentSourceLockBytes: readFileSync(join(REPO, 'contracts', 'sources.lock.json')),
+    currentSourceClosureBytes: outputs.get('manifests/source-closure.gen.json'),
+    currentCandidateManifest: manifest,
+    operationBytes: AVAILABILITY_OPERATION_BYTES,
+    currentToolBytes: readFileSync(join(REPO, 'tools', 'contracts', 'availability.mjs')),
+  })
   verifyActivationRecords({
     activation: ACTIVATION,
     activationBytes: ACTIVATION_BYTES,
@@ -497,6 +547,14 @@ function candidateManifest(closure, outputs) {
     precursorManifestBytes: PRECURSOR_MANIFEST_BYTES,
     currentBytes: (path) => outputs.get(path) ?? readFileSync(join(REPO, path)),
     candidateBytes: (path) => readCommitBlob(HISTORY_REPO, CANDIDATE_CONTENT_REVISION, path),
+    operationalOverride: {
+      sourceAvailability: AVAILABILITY_OPERATION.current.source_availability,
+      sourceLockPath: 'contracts/sources.lock.json',
+      sourceLockSha256: availability.sourceLockSha256,
+      sourceClosurePath: 'manifests/source-closure.gen.json',
+      sourceClosureSha256: availability.sourceClosureSha256,
+    },
+    availabilityProof: availability,
   })
   return manifest
 }
