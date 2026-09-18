@@ -64,7 +64,7 @@ flowchart TB
     RVEC["向量测试<br/><i>规则数据不漂 · 这里管逻辑不漂</i>"]
   end
 
-  subgraph SS["sudostack — 装配与分发，不定义"]
+  subgraph SS["sudostack — 装配与分发；默认不定义 owner 语义"]
     direction TB
     PIN["pin.json<br/><b>指定 rev，不复制 spec</b>"]
     GEN["generate.mjs"]
@@ -88,7 +88,7 @@ flowchart TB
 
 **读这张图的三个要点：**
 
-1. **左边那条虚线是全图的关键** —— sudostack **不持有定义**，只按 rev 取。复制就是第二份真相，从复制那天开始漂。而「用哪个 rev」由我们**已经在做**的 nexus-vfs pin 回答，不新增一个需要有人记得的东西。
+1. **左边那条虚线是全图的关键** —— sudostack **不持有 semantic owner 的可编辑定义**，只按 rev 取；它只为跨家族装配自身的 meta-contract（例如来源、release 和 compatibility manifest）维护定义。复制 owner source 就是第二份真相，从复制那天开始漂。而「用哪个 rev」由 pin 回答，不新增一个需要有人记得的东西。
 2. **Rust 侧没有可手改的文件**（产物在 `OUT_DIR`），TS 侧有 —— 因为 TypeScript 没有等价的编译期钩子。所以 TS 那半靠 CI 的 `--check` 兜底，这是两种语言能力差异决定的，不是偏好。
 3. **底下那条虚线管的是另一件事**：共用 spec 让**规则数据**不可能漂，但**逻辑**会 —— 两种语言是两份实现，一份可能在读着相同常量的情况下漏掉某个 case。同一组向量两边都跑，才把这条堵上。
 
@@ -130,7 +130,10 @@ flowchart LR
 | 概念 | 住哪 | 为什么 |
 |---|---|---|
 | `zone_id`、共识边界、路径 | **nexus-vfs** | zone 是它的内核概念，`create_zone` 在它那里。放别处会让上游依赖下游，且成环 |
-| Task / Attempt 生命周期、产品契约版本 | **sudostack** | 我们的产品语义，nexus 里没有对应概念 |
+| Product Zone / ZoneGrant / ResourceRef | **Nexus（Proposed）** | 产品授权与资源引用属于 Nexus service/security 边界；owner/security review 前不视为已接受 |
+| Org / Membership / OrgZoneBinding | **Moss（Proposed）** | IAM/control-plane 语义归 Moss；只有真实跨仓 consumer 出现时才分发 |
+| ContractEnvelope / SchemaManifest / ReleaseManifest / CompatibilityMatrix | **sudostack meta-contracts（Proposed）** | 描述跨 owner 装配、版本、兼容与发布 provenance，不是业务 runtime 对象 |
+| Task / Attempt 等产品 family | **待对应 ADR 与 owner review** | ADR-005 不提前替未接受的产品语义指定 owner |
 
 反过来放会出两个问题：**依赖成环**（sudostack 装配 Base product，Base product 又依赖 sudostack），
 以及**规则和执行点不在同一个仓库** —— 那样 `build.rs` 这类编译期强制根本没法用。

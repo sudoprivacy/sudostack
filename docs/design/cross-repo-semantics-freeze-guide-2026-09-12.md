@@ -821,39 +821,46 @@ Event/Trace Protocol 定义整个系统统一的事件轨迹。
 
 ## 6.7 六契约如何工程化
 
-建议建立语言无关的契约目录，例如未来 `sudostack/contracts`：
+canonical editable definition 住在 semantic owner repo；owner 按自己的语言和构建系统选择 source path，并在本仓维护 fixtures 与 owner-local validation。`sudostack` 不复制这些定义，而是按 owner repository、完整 commit、source path 与 digest 固定来源，再派生和分发真实 consumer 所需的 artifact：
 
 ```text
-contracts/
-  task/v1/schema.json
-  tool/v1/schema.json
-  context/v1/schema.json
-  memory/v1/schema.json
-  verify/v1/schema.json
-  event/v1/schema.json
-  fixtures/
-  compatibility/
+semantic owner repo
+  <actual-source-path>       # canonical definition
+  owner fixtures
+  owner-local validation
+           ↓ exact repo / commit / path / digest
+sudostack
+  contracts/<family-or-primitive>/
+    pin.json
+    *.gen.*                  # 可重现派生产物
+    fixture-index.gen.json   # owner fixture provenance（启用后）
+  compatibility/             # 真实 producer/consumer 支持矩阵（启用后）
+  manifests/                 # baseline/artifact/release provenance（启用后）
+  @sudo/contracts / offline artifact
+           ↓ exact revision / digest
+consumer production boundary
 ```
 
-然后生成或维护：
+owner repo 不需要复制统一目录模板。derived bundle 可以物化 owner schema 供安装或离线使用，但只能从精确来源重建，不能成为第二份可编辑定义。没有 owner baseline 或真实 consumer 时，不创建 placeholder family 或语言 artifact。
 
-- TypeScript 类型；
-- Zod runtime validators；
-- Rust serde 类型；
-- JSON Schema validators；
-- API 文档；
-- golden fixtures。
+按真实 consumer 启用：
 
-不要直接把现有 [`sudowork/packages/contracts`](https://github.com/sudoprivacy/sudowork/tree/9f7a5fca1e6cc114d02b26af76f791d449f40779/packages/contracts) 重命名后就宣布完成。它已有 auth/conversation DTO，可以作为迁移起点，但六契约的作用域更大。
+- owner machine-readable definition 与 fixtures；
+- TypeScript 类型和 runtime validators；
+- Rust serde 类型或其他语言 artifact；
+- API 文档和可安装/离线 bundle；
+- fixture index、compatibility matrix 与 release provenance。
 
-CI 至少需要：
+不要直接把现有 [`sudowork/packages/contracts`](https://github.com/sudoprivacy/sudowork/tree/9f7a5fca1e6cc114d02b26af76f791d449f40779/packages/contracts) 重命名后就宣布完成。它已有 auth/conversation DTO，可以作为迁移期 consumer/adapter，但 package 分发位置不取得 semantic ownership。
 
-1. schema lint；
-2. fixture validation；
-3. TypeScript/Rust 双语言 round trip；
+启用的 CI 至少需要：
+
+1. owner definition/schema lint 与引用解析；
+2. non-empty fixture validation；
+3. 已启用语言的真实 adapter round trip；
 4. 老版本 fixture 能被新 minor 版本读取；
-5. breaking change 必须升 major；
-6. provider/consumer compatibility matrix；
+5. breaking change 必须升 family major；
+6. exact source/pin 与 provider/consumer compatibility matrix；
 7. 禁止正式事件使用 `version: unknown`。
 
 ---
@@ -1052,9 +1059,11 @@ ADR-006 Transcript and UI Overlay
 | 企业 IAM/Org | Moss | Moss | 映射到 Nexus Grants |
 | Secrets Bytes | Nexus Vault | Credential Service | Moss 管理 Metadata/Policy |
 
-## 8.3 契约仓与兼容矩阵
+## 8.3 Contract 分发与兼容矩阵
 
-记录每个服务当前支持：
+`sudostack` 聚合并记录 derived distribution 的支持矩阵，不接管 semantic owner 的 editable definition。矩阵只列真实 producer/consumer 已验证的 family major，并分别标明 owner revision、artifact revision 与 deployment evidence。
+
+记录格式示意（以下不是当前支持声明）：
 
 ```text
 moss       task/v1, event/v1

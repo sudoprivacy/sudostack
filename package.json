@@ -1,21 +1,65 @@
 {
   "name": "@sudo/contracts",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Derived cross-repo contract artifacts. Generated from upstream specs at the revisions named in contracts/*/pin.json — do not edit the .gen.* files.",
+  "description": "Derived cross-repo contract artifacts from exact-pinned semantic-owner definitions.",
   "type": "module",
+  "engines": {
+    "node": ">=22.21.0"
+  },
   "exports": {
-    "./zone-id": "./contracts/zone-id/zone-id.gen.ts"
+    "./zone-id": {
+      "types": "./contracts/zone-id/zone-id.gen.d.ts",
+      "import": "./contracts/zone-id/zone-id.gen.js",
+      "require": "./contracts/zone-id/zone-id.gen.js",
+      "default": "./contracts/zone-id/zone-id.gen.js"
+    },
+    "./common/v1/resource-ref": {
+      "types": "./contracts/common/v1/resource-ref/resource-ref.gen.d.ts",
+      "import": "./contracts/common/v1/resource-ref/resource-ref.gen.js",
+      "require": "./contracts/common/v1/resource-ref/resource-ref.gen.js",
+      "default": "./contracts/common/v1/resource-ref/resource-ref.gen.js"
+    }
   },
   "files": [
-    "contracts/**/*.gen.ts",
-    "contracts/**/*.gen.json"
+    "contracts/zone-id/zone-id.gen.js",
+    "contracts/zone-id/zone-id.gen.d.ts",
+    "contracts/zone-id/schema.gen.json",
+    "contracts/zone-id/vectors.source.gen.json",
+    "contracts/zone-path/schema.gen.json",
+    "contracts/zone-path/meta-schema.gen.json",
+    "contracts/zone-path/cases.source.gen.json",
+    "contracts/common/v1/resource-ref/resource-ref.gen.js",
+    "contracts/common/v1/resource-ref/resource-ref.gen.d.ts",
+    "contracts/common/v1/resource-ref/schema.gen.json",
+    "contracts/common/v1/resource-ref/owner-manifest.source.gen.json",
+    "contracts/common/v1/resource-ref/fixtures/",
+    "contracts/common/v1/resource-ref/fixture-index.gen.json",
+    "compatibility/current.gen.json",
+    "manifests/source-closure.gen.json",
+    "manifests/releases/"
   ],
   "scripts": {
-    "generate": "node --use-env-proxy contracts/generate.mjs",
+    "generate": "node contracts/generate.mjs",
+    "generate:check": "node contracts/generate.mjs --check",
     "check": "node contracts/generate.mjs --check",
-    "test": "node --experimental-strip-types --test contracts/zone-id/conformance.test.mjs",
+    "generate:check-offline": "node contracts/generate.mjs --check --offline",
+    "source:verify": "node contracts/generate.mjs --verify-sources",
+    "source:verify-remote": "node --use-env-proxy contracts/generate.mjs --verify-remote",
+    "test": "node --test contracts/zone-id/conformance.test.mjs contracts/common/v1/resource-ref/conformance.test.mjs tools/contracts/*.test.mjs",
+    "compatibility:test": "node --test tools/contracts/compatibility.test.mjs",
+    "manifest:check": "node tools/contracts/verify-candidate.mjs",
+    "package:smoke": "node tools/contracts/package-smoke.mjs",
+    "typecheck": "tsc --noEmit --allowImportingTsExtensions --module esnext --moduleResolution bundler --target es2022 --types node contracts/zone-id/zone-id.gen.ts contracts/common/v1/resource-ref/resource-ref.gen.ts",
     "adr:enforced-by": "node docs/adr/enforced-by.mjs",
     "adr:enforced-by:test": "node --test docs/adr/enforced-by.test.mjs"
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "jsonc-parser": "3.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.3",
+    "typescript": "5.9.3"
   }
 }

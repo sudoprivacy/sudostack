@@ -1,9 +1,10 @@
-# ADR-005：跨仓产品契约的版本、分发与兼容规则
+# ADR-005：跨仓产品契约的来源、版本、分发与兼容规则
 
 - 状态：Proposed
 - 日期：2026-09-12
-- 决策范围：Sudo 全产品族与 `sudo-contracts`
-- 首个发布阶段：`sudo-contracts` v0.x；语义接受后进入 v1.x
+- 本次修订：2026-09-17（G0 架构修订，仍待 owner / 架构 / 安全联合评审）
+- 决策范围：Sudo 全产品族的跨仓 Contract 定义来源、装配、分发、兼容与迁移
+- 当前实现范围：`sudostack` 中的 v0.x `@sudo/contracts` 私有 Git package 仅包含已接入的派生产物；不代表 Contract draft 已冻结、稳定发布或部署
 - 相关文档：
   - [`Sudo 跨仓语义与六契约设计`](../design/cross-repo-contracts-semantics-design-v1.0.md)
   - [`ADR-001：标识及生命周期`](./ADR-001-identifiers-and-lifecycle.md)
@@ -16,855 +17,322 @@
 
 ## 1. 背景
 
-Sudo 的跨仓 payload 当前由不同技术栈分别定义：
+Sudo 的跨仓 payload 由 TypeScript、Rust、Python、Go 等多种技术栈生产和消费。现有同名 `contracts` 目录分别服务浏览器 DTO、Nexus 内部分层或 nexus-vfs kernel/ABI；目录名相同不代表语义相同，也不构成全产品 SSOT。
 
-- SudoWork TypeScript/Zod；
-- Moss TypeScript types 和手写 HTTP/WS DTO；
-- sudocode Rust serde/ACP types；
-- Nexus Python dataclass/Pydantic/SQLAlchemy types；
-- Nexus/nexus-vfs Rust structs 与 protobuf；
-- SudoRouter Go/OpenAI-compatible payload；
-- 未来 SudoEvolve 和潜在 C# consumer。
+旧版 ADR-005 提议建立独立 `sudo-contracts` 仓库，把所有 canonical schema、语言 package、fixtures 与发布流程集中到该仓库。后续 ZoneId 实践证明，定义如果离开语义 owner，就会造成依赖倒置或可编辑的第二份真相。当前架构改为：定义留在语义 owner；`sudostack` 固定来源、派生、聚合、版本化、分发与发布。
 
-现有 `contracts` 名称也已被不同层占用：
+本 ADR 只决定 Contract 工程边界。它不改变业务对象的 runtime writer、canonical runtime store，也不接受 ADR-001/002/003/004/006 中仍待评审的产品语义。
 
-- `sudowork/packages/contracts`：浏览器/WebUI DTO；
-- `nexus/src/nexus/contracts`：Nexus Python 内部 layer contract；
-- `nexus-vfs/rust/contracts`：kernel/ABI types。
+## 2. 四种独立状态
 
-这些目录都不是全产品语言无关 SSOT。
+以下状态不得合并为一个“完成”结论：`[enforced_by: none]`
 
-六类产品契约需要解决的是：
+- **ADR maturity**：`Proposed`、`Accepted`、`Superseded`；本文件当前仍为 `Proposed`。`[enforced_by: none]`
+- **Contract baseline**：`unfrozen`、`draft-frozen`；`draft-frozen` 只表示一组精确来源与规则可供 consumer pin。`[enforced_by: none]`
+- **Artifact publication**：`unpublished`、`candidate`、`released`；package 可安装不等于稳定 release。`[enforced_by: none]`
+- **Deployment evidence**：`not-deployed`、`deployed`、`rollback-verified`；只能由具体环境的版本清单、smoke 与 rollback 证据确认。`[enforced_by: none]`
 
-- Task；
-- Tool；
-- Context；
-- Memory；
-- Verify；
-- Event/Trace/Audit。
+`draft-frozen` baseline 可以在 ADR 仍为 `Proposed` 时供 owner/consumer 协作，但任何报告都必须分别写明上述四种状态。`[enforced_by: none]`
 
-此外还需要公共 Agent、Zone、Session、Runtime、Resource、Error 类型，以及 ADR-006 定义的 Transcript/Overlay 支撑契约。支撑契约同样需要 schema、版本和 conformance，但不改变“六类核心 Agent 执行契约”的产品划分。
+## 3. 定义来源与装配边界
 
-如果继续由每个 repo 手写等价 DTO，会出现：
+### 3.1 核心决策
 
-- 字段名和 optional/required 漂移；
-- 同一 `session_id` 含义不同；
-- TypeScript 接受但 Rust 拒绝；
-- enum 新值让旧 consumer 崩溃；
-- protobuf、OpenAPI、Zod 成为互相冲突的多份 SSOT；
-- breaking change 未升 major；
-- 正式事件继续使用 `version: unknown`；
-- 只写 interface，没有 runtime validation、fixtures 和 consumer compatibility。
+- **ADR005-SOURCE-01**：每个跨仓定义的 canonical editable source 必须位于该概念的 semantic owner repository；consumer 或 `sudostack` 不得另存一份可独立编辑的 owner definition。`[enforced_by: none]`
+- **ADR005-SOURCE-02**：`sudostack` 必须按 owner repository、完整 Git commit、source path 与 source digest 固定来源；branch、工作树状态或“latest” 不能成为可复现输入。`[enforced_by: none]`
+- **ADR005-SOURCE-03**：`sudostack` 可以保存由 owner source 可重现生成的 bundle、语言 artifact、fixture index、兼容矩阵和 release metadata；这些派生产物必须携带 provenance，不能反向覆盖 owner source。`[enforced_by: none]`
+- **ADR005-SOURCE-04**：统一 consumer 安装入口与定义存放位置是两个维度；`@sudo/contracts` 可以聚合多 owner 的派生产物，但 package 名不取得这些概念的 semantic ownership。`[enforced_by: none]`
+- **ADR005-SOURCE-05**：当前目标中不得新建、恢复或要求独立 `sudo-contracts` repository；这个名称只保留为历史方案或语言 artifact 名称。`[enforced_by: none]`
+- **ADR005-SOURCE-06**：owner repository 不得为了定义自身概念而依赖 `sudostack` 的派生 package，避免形成 `owner → sudostack → owner` 环；owner 引用其他 owner 的原语时使用可复现的精确来源。`[enforced_by: none]`
 
----
+### 3.2 Ownership-aware 物理布局
 
-## 2. 决策
+owner repository 自行选择适合其语言与构建系统的 source path；`sudostack` manifest 记录该实际 path，而不是要求所有 owner 复制同一目录模板。`[enforced_by: none]`
 
-### 2.1 建立独立 `sudo-contracts` 仓库
-
-跨仓产品契约的物理 SSOT 为：
+`sudostack` 的逻辑装配布局为：`[enforced_by: none]`
 
 ```text
-sudo-contracts
+contracts/
+  <family-or-primitive>/
+    pin.json                 # owner repo + exact commit + source path + digest
+    *.gen.*                  # 可重现派生产物；不可作为 editable source
+    fixture-index.gen.json   # owner fixtures 的来源与 digest（启用后）
+compatibility/               # 已启用 producer/consumer 的支持窗口（启用后）
+manifests/                   # baseline / artifact / release provenance（启用后）
+package metadata             # 统一 consumer 分发入口
 ```
 
-约束：
+- **ADR005-LAYOUT-01**：目录出现本身不构成完成；只有真实 owner source、非空 fixtures、可重现派生、真实 consumer 和对应 gate 同时存在时，family 才能进入支持矩阵。`[enforced_by: none]`
+- **ADR005-LAYOUT-02**：不得为了“目录齐全”提交未被真实边界使用的 family、语言 package 或 placeholder schema。`[enforced_by: none]`
+- **ADR005-LAYOUT-03**：derived bundle 可以物化 owner schema 内容以供安装与离线使用，但必须从精确来源重建并标明 provenance；它不是第二个可编辑 canonical source。`[enforced_by: none]`
 
-- 独立 Git repository；
-- 零业务 repo 依赖；
-- 独立 release/tag；
-- 可离线镜像；
-- 不运行产品服务；
-- 不连接业务数据库；
-- 不持有 Secret；
-- 不从 consumer repo 反向 import 类型。
+### 3.3 角色定义
 
-现有 `sudowork/packages/contracts` 保留为迁移期 TypeScript consumer/adapter，不直接改名为全局 SSOT。
+| 角色 | 含义 | 与其他角色的区别 |
+|---|---|---|
+| Semantic owner | 决定概念含义、生命周期与安全边界的 repo/team | 不因谁分发 package 而改变 |
+| Authoritative definition writer | 在 semantic owner repo 修改 canonical machine-readable definition 的维护者 | 不是 runtime data writer |
+| Canonical definition store | owner repo 的 exact commit + path + digest | 不是运行时数据库 |
+| Runtime writer | 创建或改变业务对象实例的服务 | 可以把对象写到另一个服务管理的 store |
+| Canonical runtime store | 持久保存业务对象实例的系统 | 不自动拥有对象语义 |
+| Producer | 在 wire boundary 发出对象的程序 | 可以不是 semantic owner |
+| Consumer | 解析、验证或使用对象的程序 | 不得把本地 DTO 升格为 canonical source |
+| Transport owner | 维护 HTTP、WebSocket、gRPC、ACP、SSE、IPC、MCP 等映射 | Transport 不等于 semantic Contract |
+| Assembly/distribution owner | 固定来源、派生、聚合、打包和发布；本 ADR 指 `sudostack` | 不接管 owner 定义 |
+| Compatibility owner | 协调 family major、artifact version 与 consumer window | 与单一 producer release 分开 |
+| Migration/rollback owner | 维护 adapter、cutover、回退与清理证据 | 不因目标设计存在而自动获得迁移授权 |
 
-### 2.2 JSON Schema 2020-12 是语言无关语义 SSOT
+- **ADR005-ROLE-01**：每个启用的 family/kind 必须记录上述适用角色；同一主体可承担多个角色，但记录中不能用“SSOT”一词掩盖 definition source 与 runtime store 的区别。`[enforced_by: none]`
+- **ADR005-ROLE-02**：本 G0 文档修订不得改变任何现有 runtime writer 或 canonical runtime store；这类变化需要 owner implementation、迁移与 rollback 的独立授权。`[enforced_by: none]`
 
-Canonical schema 使用 JSON Schema Draft 2020-12。
+## 4. G0 ownership baseline
 
-原因：
+下表是本次联合评审的 ownership baseline；`Proposed` 项在 owner/security review 前不是已接受事实。
 
-- 跨 TypeScript/Rust/Python/Go/C#；
-- 适合 HTTP/WS/ACP metadata/Event JSON；
-- 可生成或验证多语言 DTO；
-- 支持 `$id`、`$ref`、组合和 validation；
-- 不把某一种语言或 framework 设为上游真相。
+| 对象 | Semantic owner / canonical definition source | 状态 | Runtime writer / store 说明 |
+|---|---|---|---|
+| `ZoneId` | `nexus-vfs` | Confirmed-Code；owner source 已存在，仍需纳入完整 baseline provenance | nexus-vfs admission / persisted Zone identity；本 ADR 不改变 |
+| `ZonePath` | `nexus-vfs` | Proposed，使用前需从 owner 现有 path 语义冻结 | nexus-vfs path/routing boundary；本 ADR 不改变 |
+| Product `Zone` / `ZoneGrant` / `ResourceRef` | `nexus` | Proposed，待 Nexus owner 与安全评审 | Nexus service / RecordStore；物理 Zone primitive 仍属 nexus-vfs |
+| `Org` / `Membership` / `OrgZoneBinding` | `moss` | Proposed；只有真实跨仓 consumer 出现时才分发 | Moss IAM/control-plane store；本 ADR 不改变 |
+| `ContractEnvelope` / `SchemaManifest` / `ReleaseManifest` / `CompatibilityMatrix` | `sudostack` meta-contracts | Proposed | 装配与发布 metadata，不是 runtime 业务记录 |
+| `ErrorInfo` envelope shape | `sudostack` meta-contracts | Proposed，待架构/安全评审 | 各 producer 写 domain code/message；domain code 仍由 producer owner 定义 |
+| Task / Attempt / Runtime / Transcript / Overlay families | 由对应 ADR 与 owner review 决定 | Deferred in first MVP | 本 ADR 不提前改 writer/store |
 
-JSON Schema 定义 wire 数据。语言包可以提供 idiomatic API，但不得改变 wire 语义。
+- **ADR005-OWN-01**：`ZoneId` 的派生消费者不得复制其字符集、长度或边界规则作为新的可编辑 source；`sudostack` 只固定 nexus-vfs owner revision 并生成需要的投影。`[enforced_by: none]`
+- **ADR005-OWN-02**：`ZonePath`、Product Zone/ZoneGrant/ResourceRef、Moss IAM 对象和 ErrorInfo ownership 在标为 `Proposed` 期间不得被 completion report 写成 Accepted 或稳定发布。`[enforced_by: none]`
+- **ADR005-OWN-03**：domain error code 的 owner 必须仍是产生该 domain 行为的 producer owner；统一 ErrorInfo envelope 不得把 code 含义集中到 `sudostack`。`[enforced_by: none]`
 
-### 2.3 目录结构
+## 5. Wire schema、引用与安全边界
 
-```text
-sudo-contracts/
-  schemas/
-    common/v1/
-    agent/v1/
-    auth/v1/
-    runtime/v2/
-    task/v1/
-    tool/v1/
-    context/v1/
-    memory/v1/
-    verify/v1/
-    event/v1/
-    transcript/v1/
-    overlay/v1/
-  packages/
-    typescript/
-  crates/
-    rust/
-  python/
-    sudo_contracts/
-  go/
-    contracts/
-  csharp/
-    Sudo.Contracts/           # 有 consumer 需求时启用
-  fixtures/
-    valid/
-    invalid/
-    roundtrip/
-    compatibility/
-  compatibility/
-    consumers.yaml
-  docs/
-    adr/
-    event-types.md
-    error-codes.md
-    versioning.md
-  tools/
-    generate/
-    compatibility-check/
-```
+### 5.1 Canonical representation
 
-首批 E0 只要求：
-
-```text
-common/v1
-agent/v1
-auth/v1
-runtime/v2
-TypeScript/Rust artifacts
-fixtures/CI
-```
-
-六个核心 Agent 执行契约由对应后续 Epic 增量加入；`common`、`agent`、`auth`、`runtime`、`transcript`、`overlay` 是这些核心契约共享的基础/支撑契约族。Transcript/Overlay 虽分别在 Epic 6 实现，也必须在同一 contract repository 中版本化。不得为了“目录齐全”提交空洞占位 schema。
-
-### 2.4 Contract family 与 `api_version`
-
-每个 wire object 必须包含：
+- **ADR005-WIRE-01**：跨仓 product object 的 canonical wire definition 应使用 JSON Schema 2020-12；owner 已有更底层的机器可读 primitive spec 时，owner spec 保持 canonical，JSON Schema 投影由精确 pin 派生。`[enforced_by: none]`
+- **ADR005-WIRE-02**：每个版本化 product object 根必须包含 `api_version` 与 `kind`；嵌入式 primitive（例如一个 `zone_id` string）不因此被包装成独立 envelope。`[enforced_by: none]`
 
 ```json
 {
-  "api_version": "task.sudo.dev/v1",
-  "kind": "TaskSpec"
+  "api_version": "common.sudo.dev/v1",
+  "kind": "ResourceRef"
 }
 ```
 
-格式：
+family major 格式为：`[enforced_by: none]`
 
 ```text
 {family}.sudo.dev/v{major}
 ```
 
-示例：
+- **ADR005-WIRE-03**：跨 owner `$ref` 必须解析到 draft-frozen baseline 中记录的 exact source closure；运行时不得依赖联网获取 mutable schema。`[enforced_by: none]`
+- **ADR005-WIRE-04**：wire JSON property 使用 `snake_case`；时间使用 RFC 3339 UTC string；opaque ID 使用 string；digest 带算法前缀；null 与 absent、map key 与 path normalization 必须由 owner definition 明确。`[enforced_by: none]`
+- **ADR005-WIRE-05**：语言 artifact 可以暴露 idiomatic API，但 serializer、validator 与 adapter 不得改变 canonical wire 语义。`[enforced_by: none]`
+
+### 5.2 Validation 不等于 authorization
+
+- **ADR005-SEC-01**：schema validation 只回答 payload 是否符合已声明的形状和局部约束；它不得被当作 identity、authorization、Zone policy、delegation、retention 或 side-effect approval。`[enforced_by: none]`
+- **ADR005-SEC-02**：`ResourceRef` 只标识资源；每次 dereference 必须按 authenticated principal、目标 `zone_id + path` 与当前 policy 重新授权。`[enforced_by: none]`
+- **ADR005-SEC-03**：Secret bytes 不得进入普通 Task、Context、Event、Transcript、Agent Version 或 ErrorInfo details；使用 credential/resource reference 或短期最小 scope token。`[enforced_by: none]`
+- **ADR005-SEC-04**：validation failure 不得自动降级为 `any`、未校验 passthrough 或合法空值；失败结果必须与合法业务值可区分。`[enforced_by: none]`
+
+## 6. First MVP：只覆盖真实边界
+
+### 6.1 B0 客户演示保底基线
+
+- **ADR005-B0-01**：开始 consumer rollout 前必须记录当前可工作的 sudostack、Moss、SudoWork、sudowork-server、Nexus、sudocode、nexus-vfs 版本/制品/配置、关键 smoke 与可恢复 rollback target。`[enforced_by: none]`
+- **ADR005-B0-02**：Contract MVP 不得强制现有客户环境立即迁移数据库、重命名历史 Zone、删除 legacy route 或全仓替换 DTO。`[enforced_by: none]`
+- **ADR005-B0-03**：新路径启用后必须保留显式选择的 legacy/demo profile，直到 mixed-version smoke 与回退演练通过；不得用静默 fallback 隐藏新路径失败。`[enforced_by: none]`
+
+### 6.2 B1 Contract MVP included scope
+
+B1 的最小闭包是：
+
+- `ZoneId`；`ZonePath` 仅在真实 `ResourceRef` boundary 需要且 owner 语义已冻结时纳入；`[enforced_by: none]`
+- `ResourceRef`，前提是 Nexus ownership/security review 通过并引用 exact-pinned Zone primitives；`[enforced_by: none]`
+- 通用 `api_version` / `kind` 规则；`[enforced_by: none]`
+- 选定真实 API error boundary 所需的 `ErrorInfo` envelope，前提是 proposed ownership/security review 通过；`[enforced_by: none]`
+- `ContractEnvelope`、`SchemaManifest`、`ReleaseManifest`、`CompatibilityMatrix` 中完成上述闭包所需的 meta-contract 子集；`[enforced_by: none]`
+- 只为实际存在的 producer/consumer boundary 生成的 artifact、fixture 与 adapter。`[enforced_by: none]`
+
+### 6.3 Deferred scope
+
+- **ADR005-MVP-01**：完整 Product Zone/ZoneGrant、Org/IAM、Task、Attempt、Runtime、Tool、Context、Memory、Verify、Event、Transcript、Overlay families 默认 deferred；只有 owner 语义与真实跨仓边界 ready 后才单独纳入。`[enforced_by: none]`
+- **ADR005-MVP-02**：TypeScript 之外的 Rust、Python、Go、C# artifact 只在该语言有真实 production consumer 时启用；不得生成无人消费的空 package。`[enforced_by: none]`
+- **ADR005-MVP-03**：没有生产调用的 test-local parser、fixture runner 或 adapter prototype 只能记为 conformance preparation，不能进入 consumer support matrix。`[enforced_by: none]`
+
+## 7. Draft-frozen baseline
+
+一个 family/kind 只有同时记录以下内容才可标为 `draft-frozen`：`[enforced_by: none]`
+
+- owner repository identity、完整 commit、canonical source path 与 source digest；`[enforced_by: none]`
+- 所有直接和传递 `$ref` / primitive reference 的 owner、commit、path 与 digest；`[enforced_by: none]`
+- family major、kind、字段语义、required/optional/null/absent 规则与 wire examples；`[enforced_by: none]`
+- semantic owner、authoritative definition writer、producer、consumer、transport mapping、security reviewer、migration/rollback owner；`[enforced_by: none]`
+- data classification、Secret policy、large-payload policy、Zone/authorization rule、retention 与 redaction rule；`[enforced_by: none]`
+- non-empty valid、invalid、boundary、unknown-major、unknown-optional、previous-minor fixtures 的 index 与 digest；`[enforced_by: none]`
+- owner validator/conformance command、默认 CI job 与结果；`[enforced_by: none]`
+- sudostack generator/validator version、package source revision、artifact digest 与可重现命令；`[enforced_by: none]`
+- compatibility result、支持窗口、legacy adapter、cutover 和 rollback target；`[enforced_by: none]`
+- 明确的 deferred family、language、consumer、security rule 与 release capability。`[enforced_by: none]`
+
+- **ADR005-FREEZE-01**：缺失来源、空 fixtures、未闭合 reference、无法判定兼容或没有真实 consumer 时必须 fail closed，保持 `unfrozen`。`[enforced_by: none]`
+- **ADR005-FREEZE-02**：`draft-frozen` 不表示 ADR Accepted、artifact released、consumer adopted 或 environment deployed；这些状态必须单独举证。`[enforced_by: none]`
+
+## 8. 版本与兼容
+
+### 8.1 四种版本
+
+- **Family major**：`api_version` 中的 wire/semantic compatibility 边界。`[enforced_by: none]`
+- **Owner revision**：canonical definition 的 immutable Git commit + path + digest。`[enforced_by: none]`
+- **Artifact/package version**：聚合 package API 与所含 family support matrix 的版本。`[enforced_by: none]`
+- **Deployment version**：某环境实际运行的 producer、consumer、adapter、binary/image 与 Contract artifact 组合。`[enforced_by: none]`
+
+- **ADR005-VERSION-01**：这四种版本必须分别记录；package major 不要求等于每个 family major，package release notes/manifest 必须列出所含 family/kind/major 与 owner revision。`[enforced_by: none]`
+
+### 8.2 Family major 规则
+
+- **ADR005-COMPAT-01**：同一 major 可以新增 optional 字段、unknown-safe 的开放 code 或新 kind；删除字段、增加 required 字段、改变类型/含义/identity/lifecycle/default security，或收紧到拒绝既有合法 payload 时必须使用新 major。`[enforced_by: none]`
+- **ADR005-COMPAT-02**：consumer 必须验证 `api_version` 与 `kind`、拒绝未知 major，并按冻结策略处理已支持 major 下的未知 optional 字段。`[enforced_by: none]`
+- **ADR005-COMPAT-03**：producer 只能发送已声明支持的 major、填充 required 字段并记录真实 producer version；正式事件不得使用 `version: unknown`。`[enforced_by: none]`
+- **ADR005-COMPAT-04**：reason、event、capability、tool、domain error 等扩展点使用开放 code + unknown fallback；真正封闭 enum 增值默认按 breaking risk 评审。`[enforced_by: none]`
+- **ADR005-COMPAT-05**：compatibility checker 必须与前一个 immutable baseline/release 比较，并用删除 kind、required/type/const/enum、约束收紧、nullability、array item、`additionalProperties`、`$ref` target 等 mutation 证明能失败。`[enforced_by: none]`
+- **ADR005-COMPAT-06**：checker 无法确定兼容时不得默认通过；结果必须进入人工 compatibility review。`[enforced_by: none]`
+
+## 9. v0 分发与未来发布
+
+### 9.1 当前 v0.x 入口
+
+- **ADR005-DIST-01**：第一阶段统一 TypeScript consumer 入口为 `@sudo/contracts`，由 `sudostack` 装配；consumer 必须 pin `sudostack` 的 exact Git commit，不得依赖浮动 branch。`[enforced_by: none]`
+- **ADR005-DIST-02**：v0.x package 的 `private: true` 表示禁止误发布到 npm registry；它不表示访问控制、安全审查、稳定性或已发布状态。`[enforced_by: none]`
+- **ADR005-DIST-03**：package registry 不是 v0 prerequisite；exact Git revision 必须在 clean checkout 中可安装，并保留 owner source closure 与 artifact digest。`[enforced_by: none]`
+- **ADR005-DIST-04**：package 只导出已完成 owner baseline、派生、fixture 与真实 consumer gate 的 family；当前 ZoneId 产物不代表其他 family 已支持。`[enforced_by: none]`
+
+### 9.2 未来 artifact channel
+
+- **ADR005-DIST-05**：npm、crate registry、PyPI、Go module、NuGet 或离线 bundle 只在真实 consumer/部署需要时启用；channel 选择不得改变 canonical definition ownership。`[enforced_by: none]`
+- **ADR005-DIST-06**：发布 artifact 必须 immutable、可校验 digest、可追溯 owner revisions，并列出 schema/fixture/generated artifact/support matrix；Private/Edge 所需内容必须可离线解析和安装。`[enforced_by: none]`
+- **ADR005-DIST-07**：Contract artifact release 不得自动触发产品 release、deployment 或 migration。`[enforced_by: none]`
+
+## 10. Fixtures、生成与 CI
+
+- **ADR005-CI-01**：owner repository 必须独立验证自己的 canonical definition、引用、positive/negative/boundary fixtures 与 owner-local runtime behavior；不能依赖相邻 checkout 恰好存在。`[enforced_by: none]`
+- **ADR005-CI-02**：`sudostack` 必须从 exact-pinned owner sources 重建 derived artifacts，并在默认 CI 中以 clean-diff、fixture completeness、cross-language conformance、compatibility mutation 与 package-install smoke 失败阻止漂移。`[enforced_by: none]`
+- **ADR005-CI-03**：cross-repo integration job 必须显式 checkout manifest 中的 exact revisions；读取开发机父目录的 sibling checkout 不能成为 required CI 的隐藏前提。`[enforced_by: none]`
+- **ADR005-CI-04**：consumer adoption 必须发生在 production boundary，使用安装后的 artifact，并由默认 required CI 覆盖 unsupported major、unknown optional、legacy mapping、redaction 与失败无副作用；删除 production 调用必须使测试失败。`[enforced_by: none]`
+- **ADR005-CI-05**：一个 `enforced_by` target 只有在覆盖整条 clause、artifact 存在、默认 CI 执行且具体违规 mutation 会失败时才能使用非 `none`；部分实现或仅文件存在必须标为 `none`。`[enforced_by: none]`
+
+### 10.1 当前局部事实
+
+当前 `sudostack` 已有 ZoneId 的 nexus-vfs exact revision pin、派生 TypeScript artifact、generated vectors、conformance test 和默认 CI clean-diff。这证明 owner → pin → derive 模式可行，但尚未覆盖完整 draft-frozen metadata、跨 owner references、真实 consumer adoption、release manifest、兼容窗口或 deployment；因此本 ADR 的整条平台要求不以这些局部文件声明已强制。
+
+## 11. Legacy、迁移与 rollback
+
+- **ADR005-MIGRATE-01**：legacy wire 不得在原 major 静默改变字段语义；使用新 major/method/path 或显式 adapter，并在 support matrix 标出 legacy 与 canonical 方向。`[enforced_by: none]`
+- **ADR005-MIGRATE-02**：迁移顺序必须包含 B0 snapshot、provider 兼容面、draft-frozen artifact、dual-compatible consumer、shadow/compare（适用时）、小范围 cutover、mixed-version verification 与 rollback rehearsal。`[enforced_by: none]`
+- **ADR005-MIGRATE-03**：旧 major/route/write path 至少保留一个已验证稳定产品 release window；移除前必须证明目标流量为零、consumer 已迁移且 rollback window 已结束。`[enforced_by: none]`
+- **ADR005-MIGRATE-04**：若需要 database migration、历史 Zone rename、destructive cleanup 或不可逆 backfill，必须建立独立 Work Item、授权、备份/恢复与 rollback proof；本 G0 不授权这些操作。`[enforced_by: none]`
+- **ADR005-MIGRATE-05**：rollback target 必须固定 code、artifact、configuration、database migration level 与 smoke；“切回旧版本”但没有 exact assembly 不能算 rollback proof。`[enforced_by: none]`
+
+## 12. Governance 与发布顺序
+
+- **ADR005-GOV-01**：每个启用的 family 必须有 semantic owner、definition maintainer、security reviewer、producer/consumer owners、compatibility owner 与 migration/rollback owner。`[enforced_by: none]`
+- **ADR005-GOV-02**：定义变化先在 semantic owner repository 评审并形成 immutable source revision，再由 `sudostack` 升级 pin、派生 artifact、执行 compatibility/release gates，最后由 consumer 独立升级 exact pin。`[enforced_by: none]`
+- **ADR005-GOV-03**：breaking semantic change 必须通过对应 owner ADR/amendment、family major、迁移计划、双版本窗口、rollback 与 removal gate；普通 consumer PR 不得私自改变跨仓含义。`[enforced_by: none]`
+- **ADR005-GOV-04**：Proposed ADR 与 draft design 是评审输入，不得覆盖 Confirmed-Code/Confirmed-Deployment；实现与设计冲突时必须分别记录 `Expected`、`Confirmed-Code`、`Confirmed-Deployment`、`Inferred`、`Conflicting`、`Unknown` 或 `Legacy-Declared`。`[enforced_by: none]`
+
+建议发布顺序：
 
 ```text
-common.sudo.dev/v1
-agent.sudo.dev/v1
-auth.sudo.dev/v1
-runtime.sudo.dev/v2
-task.sudo.dev/v1
-tool.sudo.dev/v1
-context.sudo.dev/v1
-memory.sudo.dev/v1
-verify.sudo.dev/v1
-event.sudo.dev/v1
-transcript.sudo.dev/v1
-overlay.sudo.dev/v1
+owner semantic/security review
+→ owner canonical definition + fixtures + default CI
+→ immutable owner revision
+→ sudostack pin/reference-closure verification
+→ derived artifacts + compatibility + install smoke
+→ draft-frozen baseline
+→ candidate/release artifact（如获授权）
+→ consumer exact-pin PR + production boundary tests
+→ mixed-version assembly / B0 rollback
+→ deployment（如获授权）
+→ legacy cleanup（另行授权）
 ```
 
-`runtime` 从 v2 开始，因为当前 ManagedAgent v1 已有不可兼容且含义错误的 `session_id=pid`；不能以新的 v1 静默覆盖已存在 wire behavior。
+## 13. 被拒绝或已替代的方案
 
-### 2.5 Schema `$id`
+### 13.1 独立 `sudo-contracts` repository（已替代）
 
-每个 canonical schema 使用稳定 `$id`：
+2026-09-12 版本曾提议独立仓库，以获得中立依赖方向、独立 tag 和多语言发布。该提议把“consumer 统一分发”误等同于“所有 canonical definitions 集中存放”，并会让 kernel/domain owner 的规则离开真实执行与编译边界。
 
-```text
-https://contracts.sudo.dev/schemas/task/v1/task-spec.schema.json
-```
+本修订以“owner source + sudostack assembly/distribution”替代该提议。独立 repository 不再是当前目标、未来工作项、开放命名选择或 release prerequisite；历史提议保留在本节仅用于解释决策演进。`[not-normative]`
 
-仓库内 `$ref` 使用稳定相对结构；release artifact 中保持可离线解析，不要求运行时联网下载 schema。
+### 13.2 TypeScript/Zod 作为唯一 source
 
-### 2.6 Wire naming
+拒绝。它会让 Rust/Python/Go 成为手工同步 consumer，并把 WebUI DTO 误当产品语义 owner。
 
-- JSON property 使用 `snake_case`；
-- 时间使用 RFC 3339 UTC string；
-- opaque IDs 使用 string；
-- digest 明确算法前缀，如 `sha256:...`；
-- binary data 使用 ResourceRef，不嵌入无界 base64；
-- Secret value 禁止进入普通 contract；
-- null 与 absent 语义必须在 schema/doc 明确；
-- 数值可能超过 JavaScript safe integer 时使用 decimal string；
-- map key 和 path 的 normalization 必须明确。
+### 13.3 Protobuf 作为所有产品对象唯一 source
 
-语言层：
+拒绝作为总模型。Protobuf 可以是 gRPC transport mapping，但不能替代 owner 的产品语义或强迫 JSON/HTTP/WS/ACP 对象服从单一 transport。
 
-- TypeScript MAY 暴露 camelCase view，但 wire serializer 必须 snake_case；
-- Rust/Go/Python/C# MAY 使用 idiomatic field/property 名并通过 serde/tag/attribute 映射；
-- generated types 不应要求业务代码手写 casing conversion。
+### 13.4 每个 consumer 各写等价 DTO
 
-### 2.7 Schema major 与 package SemVer 分离但协调
+拒绝。consumer-local DTO 可以作为 adapter/view，但不能成为跨仓 authoritative definition。
 
-#### Schema major
+### 13.5 v0 在线 Contract Registry service
 
-`api_version` 表示某个 contract family 的语义 major。
+拒绝。exact Git source、immutable artifact 与离线 bundle 足以支撑第一阶段；在线 registry 会增加 runtime dependency 和故障面。
 
-同一 major 内允许：
+### 13.6 先生成所有 family 与语言
 
-- 新增 optional 字段；
-- 放宽合理上限且不改变安全边界；
-- 新增新 `kind`；
-- 修正文档但不改变含义；
-- 新增开放 registry code。
+拒绝。没有 owner baseline 或真实 consumer 的 schema/package 会制造虚假支持面和维护负担。
 
-必须新 major：
-
-- 新增 required 字段；
-- 删除字段；
-- 改字段类型；
-- 改字段语义；
-- 收紧会拒绝既有合法 payload 的 validation；
-- 改 identity/lifecycle/authority；
-- 改默认安全行为；
-- 将一个 `kind` 换成另一对象生命周期。
-
-#### Package SemVer
-
-语言 package 版本表示发布 artifact/API 的版本：
-
-- patch：bug/doc/generator fix，不改变接受 payload 集；
-- minor：新增 schema/kind/optional field/helper；
-- major：删除已支持 schema major、破坏生成 API、改变 validator behavior。
-
-一个 package MAY 同时包含多个 schema major：
-
-```text
-Task.V1
-Task.V2
-```
-
-因此 package major 不要求与每个 family major 数字完全相同，但 release notes 必须列出 schema support matrix。
-
-`sudo-contracts` 在 ADR 未接受和 codegen 尚不稳定时使用 `0.x`；第一组 schema 正式冻结后发布 `1.0.0`。
-
-### 2.8 兼容规则
-
-#### Consumer
-
-- MUST 验证 `api_version` 和 `kind`；
-- MUST 拒绝未知 major；
-- MUST 忽略支持 major 下未知 optional 字段；
-- SHOULD 保留未知字段用于 proxy/roundtrip，除非安全边界要求剥离；
-- MUST 对开放 status/reason code 有 Unknown/fallback；
-- MUST 不因字段顺序不同而改变含义；
-- MUST 不依赖 JSON serialization 的原始字符串形式。
-
-#### Producer
-
-- MUST 只发送已声明支持的 major；
-- MUST 填所有 required 字段；
-- MUST 使用真实 producer/service version；
-- MUST 不发送 `version: unknown` 的正式事件；
-- MUST 不把 Secret 或无界 payload 放进 Event/Task/Context；
-- SHOULD 支持 negotiated/downgrade major，或明确返回 unsupported-version error。
-
-### 2.9 Open code 与 closed enum
-
-预计会扩展的 code 使用开放 string registry，例如：
-
-```text
-reason_code
-event_type
-capability
-tool_id
-error_code
-```
-
-规则：
-
-- JSON Schema 可使用 pattern/registry reference，而不是封闭 enum；
-- SDK 提供 known constants + unknown string fallback；
-- consumer 不得 exhaustive-switch 后无 default；
-- 新 code 可在同 major 增加。
-
-真正封闭 enum 才使用 JSON Schema `enum`。向封闭 enum 增加值被视为潜在 breaking change，默认需要新 major，除非所有 consumer 已证明 unknown-safe。
-
-### 2.10 Error contract
-
-统一错误：
-
-```ts
-interface ErrorInfo {
-  code: string
-  message: string
-  retryable: boolean
-  details?: Record<string, unknown>
-  cause_ref?: ResourceRef
-}
-```
-
-规则：
-
-- `code` 稳定、机器可读、全大写 snake case；
-- message 面向人，可本地化，不作为程序判断依据；
-- retryable 是契约语义，不由 client 猜测 HTTP status；
-- details 不包含 Secret/未脱敏 payload；
-- error code registry 记录 owner、含义、retry、HTTP/gRPC mapping；
-- transport status 不替代 domain error。
-
-### 2.11 Transport adapter
-
-六契约不替代 transport：
-
-- OpenAPI 引用 canonical JSON schema；
-- gRPC/Protobuf 为传输映射；
-- ACP `_meta` 可承载 canonical object/ref；
-- MCP adapter 映射 ToolInvocation/ToolResult；
-- WebSocket event 使用 EventEnvelope；
-- IPC 使用 TS DTO，但跨进程产品对象仍验证 schema。
-
-禁止：
-
-- 在 protobuf 中重新定义不同语义；
-- OpenAPI、Zod、serde 各自成为独立 SSOT；
-- transport adapter 偷改 ID 或 lifecycle。
-
-### 2.12 Validation boundary
-
-runtime validation MUST 位于：
-
-- 外部 API ingress；
-- 跨 repo/process message ingress；
-- 持久对象读取；
-- 事件消费；
-- migration/backfill；
-- external provider response adapter。
-
-不要求每个内部函数重复验证；内部代码应尽快转换为 typed domain object。
-
-### 2.13 Large payload 与 ResourceRef
-
-Task、Tool、Context、Verify、Event 对大内容使用：
-
-```ts
-interface ResourceRef {
-  zone_id: string
-  path: string
-  version?: string
-  digest?: string
-  media_type?: string
-  size_bytes?: number
-}
-```
-
-- Tool result、Artifact、Evidence、Context item 大内容 offload；
-- contract 只携带 preview/summary/ref；
-- ResourceRef 访问再次授权；
-- digest 验证内容；
-- retention 由目标对象 policy 决定。
-
----
-
-### 2.14 Contract manifest 数据模型
-
-每个 schema kind 必须有一条 manifest，避免只有 JSON Schema 结构而没有 owner、数据分类和兼容信息：
-
-```ts
-interface ContractSchemaManifest {
-  family: string
-  api_version: string
-  kind: string
-  schema_id: string
-  schema_digest: string
-
-  semantic_adr_refs: string[]
-  owner: string
-  security_owner?: string
-  producers: string[]
-  consumers: string[]
-
-  data_classification: string
-  secrets_allowed: false
-  large_payload_policy?: string
-  retention_policy?: string
-
-  compatibility: {
-    status: 'experimental' | 'stable' | 'deprecated'
-    supersedes?: string[]
-    removal_not_before?: string
-  }
-}
-```
-
-每个 repository release 还必须生成 release manifest：
-
-```ts
-interface ContractReleaseManifest {
-  package_version: string
-  git_commit: string
-  schema_bundle_digest: string
-  schemas: ContractSchemaManifest[]
-  generated_artifacts: Array<{
-    language: string
-    package: string
-    version: string
-    digest: string
-  }>
-  created_at: string
-}
-```
-
-Release manifest 与 schema bundle、fixtures 和语言 artifacts 一起发布，供离线部署验证版本和 digest。
-
-### 2.15 权威 Writer、Reader 与冲突优先级
-
-| 对象 | 权威 writer | SSOT | Reader |
-|---|---|---|---|
-| 语义、生命周期、所有权决策 | 对应 contract family owner，经架构/安全评审 | Accepted ADR + contract docs | 所有 producer/consumer |
-| Wire 结构与 validation | `sudo-contracts` schema maintainer，经 family owner review | Canonical JSON Schema | codegen、validators、API adapters |
-| Event/error/code registry | 对应 registry owner | `sudo-contracts` registry docs/data | SDK 和 consumers |
-| Language DTO/validator | codegen 或语言 package maintainer | Generated/conformance-verified artifact，非独立 SSOT | 业务 repos |
-| Consumer support matrix | contract release owner + consumer owner | `compatibility/consumers.yaml` | release/CI/deployment |
-| Transport mapping | transport owner | 对应 adapter/proto/OpenAPI，必须引用 canonical schema | services/clients |
-
-冲突处理：
-
-1. Accepted ADR 定义语义、生命周期和安全边界；
-2. Canonical JSON Schema 定义 wire 结构与 validation；
-3. manifest 将 schema 绑定到 ADR、owner、classification 和 compatibility；
-4. 语言 artifact 与 schema 不一致时 artifact 构建失败，不能反向覆盖 schema；
-5. schema 与 Accepted ADR 不一致时该 release 不得发布，必须修复 schema或通过新 ADR/amendment 修改语义；
-6. consumer-local interface/type 不得成为新的跨仓权威源。
-
-## 3. 语言 Artifact
-
-### 3.1 TypeScript
-
-Package：
-
-```text
-@sudo/contracts
-```
-
-提供：
-
-- wire types；
-- runtime validators；
-- schema bundle；
-- known code constants；
-- parse/safeParse；
-- 可选 idiomatic adapters。
-
-当前 [`@sudowork/contracts`](https://github.com/sudoprivacy/sudowork/blob/9f7a5fca1e6cc114d02b26af76f791d449f40779/packages/contracts/package.json) 保持私有 adapter，逐步依赖 `@sudo/contracts`。
-
-### 3.2 Rust
-
-Crate：
-
-```text
-sudo-contracts
-```
-
-提供：
-
-- serde DTO；
-- ID newtypes；
-- validation helpers；
-- schema/version constants；
-- unknown code fallback。
-
-必须与 `nexus-vfs` 内部名为 `contracts` 的 kernel crate 区分；不得重命名 kernel crate 后冒充产品 contracts。
-
-### 3.3 Python
-
-Package：
-
-```text
-sudo-contracts
-```
-
-Import：
-
-```python
-from sudo_contracts import ...
-```
-
-提供 Pydantic models/validation，并与 Nexus internal `nexus.contracts` 分开。
-
-### 3.4 Go
-
-Module path 由 `sudo-contracts` repo 的正式 GitHub org 确定，例如：
-
-```text
-github.com/sudoprivacy/sudo-contracts/go
-```
-
-提供 structs、validation 和 known codes，供 SudoRouter/current `new-api` 使用。
-
-### 3.5 C#
-
-当出现正式 C# consumer 时发布：
-
-```text
-Sudo.Contracts
-```
-
-提供：
-
-- records/newtype-like value objects；
-- `System.Text.Json` snake_case mapping；
-- JSON Schema validation；
-- open code fallback；
-- NuGet SemVer 与 schema matrix。
-
-第一层没有 C# 生产 consumer 时不要求立即生成，避免维护无人使用的 artifact。
-
----
-
-## 4. Fixtures 与 Conformance
-
-目录：
-
-```text
-fixtures/
-  valid/{family}/{major}/{kind}/
-  invalid/{family}/{major}/{kind}/
-  roundtrip/{family}/{major}/{kind}/
-  compatibility/{family}/
-```
-
-每个 kind 至少有：
-
-- 最小合法 payload；
-- 完整合法 payload；
-- 每个 required 字段缺失；
-- 类型错误；
-- 非法 ID/version/digest/time；
-- unknown optional；
-- unknown major；
-- sensitive/large payload negative fixture；
-- previous minor fixture。
-
-Roundtrip 要求：
-
-```text
-JSON fixture
--> TS parse/serialize
--> Rust parse/serialize
--> Python/Go/C#（接入后）
--> 语义等价
-```
-
-不要求 JSON property 顺序或空白字节完全相同；要求解析后的规范语义等价。需要签名/哈希的对象另定义 canonical JSON serialization。
-
----
-
-## 5. Compatibility Matrix
-
-`compatibility/consumers.yaml` 记录：
-
-```yaml
-consumers:
-  sudowork:
-    task: [v1]
-    event: [v1]
-  moss:
-    runtime: [v2]
-    task: [v1]
-    event: [v1]
-  sudocode:
-    runtime: [v2]
-    tool: [v1]
-    context: [v1]
-  nexus:
-    agent: [v1]
-    auth: [v1]
-    runtime: [v2]
-```
-
-每次 release 必须更新：
-
-- producer versions；
-- consumer versions；
-- deprecated major；
-- removal date/version；
-- migration adapter；
-- last conformance result。
-
-矩阵是文档/CI input，不是运行时 service discovery。
-
----
-
-## 6. CI 决策
-
-### 6.1 Contract repo CI
-
-必须执行：
-
-1. JSON Schema lint；
-2. `$id/$ref` 离线解析；
-3. valid fixtures 全通过；
-4. invalid fixtures 必须失败；
-5. TS/Rust roundtrip；
-6. generated artifact clean diff；
-7. backward compatibility diff；
-8. duplicate kind/error/event code 检查；
-9. Secret-field denylist/annotation 检查；
-10. package/schema matrix 检查；
-11. release artifact reproducibility；
-12. license/SBOM/checksum。
-
-### 6.2 Consumer repo CI
-
-每个 consumer：
-
-- pin exact contract package/crate/module version；
-- 跑 shared fixtures；
-- provider/consumer contract tests；
-- unknown optional test；
-- unsupported major test；
-- adapter mapping test；
-- redaction/Secret test；
-- 正式 producer version 非 unknown；
-- lockfile/revision drift check。
-
-### 6.3 Cross-repo pin
-
-`nexus` 与 `sudocode` 当前同时 pin 同一 `nexus-vfs` revision，co-host 类型要求 revision 一致。Contract release 不消除该约束。
-
-CI 仍需检查：
-
-- nexus/sudocode 的 nexus-vfs rev 一致；
-- sudocode release 与 nexus cohost pin 一致；
-- Moss runtime-versions 指向已验证二进制；
-- SudoWork contract version 与 server supported matrix 兼容。
-
----
-
-## 7. 发布流程
-
-```text
-1. Schema/ADR change PR
-2. 标注 compatibility impact
-3. 更新 fixtures
-4. 生成语言 artifacts
-5. 跑 conformance/compatibility CI
-6. Review schema owner + affected consumer owner
-7. Merge
-8. Tag sudo-contracts release
-9. 发布 npm/crate/PyPI/Go/NuGet artifacts（按已启用语言）
-10. 发布 checksums/SBOM/offline bundle
-11. consumer 通过独立 PR 升级 pin
-12. compatibility matrix 记录 rollout
-```
-
-规则：
-
-- consumer 不依赖 `main`/`dev` 浮动分支；
-- Rust production 不长期依赖未 tag 的跨仓 branch；
-- Private/Edge 可从离线 bundle 安装；
-- contract release 不自动发布所有产品；
-- 一个 consumer 未升级不阻塞其他支持旧 major 的 consumer，但 provider 不能提前只发新 major。
-
----
-
-## 8. Governance
-
-每个 family 必须有：
-
-- semantic owner；
-- schema/code owner；
-- producer list；
-- consumer list；
-- security reviewer；
-- migration owner；
-- supported major policy。
-
-Breaking change 需要：
-
-- ADR 或 ADR amendment；
-- compatibility report；
-- provider/consumer migration plan；
-- 双版本窗口；
-- rollback；
-- removal gate。
-
-普通业务 repo PR 不得私自修改跨仓字段含义；应先修改 `sudo-contracts` 并发布。
-
----
-
-## 9. 安全与数据分类
-
-每个 schema 必须标注：
-
-- 是否可包含 user content；
-- data classification；
-- Secret allowed/forbidden；
-- audit requirements；
-- retention；
-- large payload offload；
-- redaction fields；
-- cross-Zone restrictions。
-
-全局规则：
-
-- Secret bytes 不进入 Task、Context、Event、Transcript、Agent Version；
-- credential 只用 ref/short-lived token；
-- unknown major 默认拒绝；
-- validator failure 不自动降级为 `any`；
-- proxy 不应无条件透传未验证敏感字段；
-- error/details 不回显 token、credential 或未经脱敏 payload；
-- schema validation 不能替代 authorization。
-
----
-
-## 10. 兼容与迁移策略
-
-### 10.1 Existing TypeScript DTO
-
-- `sudowork/packages/contracts` 依赖 `@sudo/contracts`；
-- 现有 auth/conversation browser whitelist DTO 保留；
-- 新产品对象从全局 package 引入；
-- 内部 camelCase 类型用 adapter；
-- 不全仓机械替换。
-
-### 10.2 Existing Rust types
-
-- `nexus-vfs/contracts` 保持 kernel identity/ABI；
-- `sudo-contracts` 只在跨仓/product boundary 使用；
-- 通过 `From/TryFrom` adapter 转 internal type；
-- 不让 product contracts 反向依赖 kernel；
-- Nexus/sudocode pin 同一 published contract version。
-
-### 10.3 Existing Python types
-
-- `nexus.contracts` 继续服务内部 architecture；
-- external/product API 使用 `sudo_contracts`；
-- boundary 明确转换；
-- Python/Rust mirror 类型逐步被 conformance fixture 替代手工注释“keep in sync”。
-
-### 10.4 Legacy wire
-
-- v1 字段语义不原地改；
-- 新语义新 major/method/path；
-- adapter 明确 legacy field；
-- 双读/双写/回填/切换/回滚；
-- 至少保留一个稳定产品 release 的兼容窗口，具体更长时间由 consumer matrix 决定；
-- 删除旧 major 前证明生产流量为零且 rollback window 结束。
-
----
-
-## 11. 被拒绝的方案
-
-### 11.1 Zod/TypeScript 作为唯一 SSOT
-
-拒绝。会把 Rust/Python/Go/C# 变成二等 consumer，并产生手工复制。
-
-### 11.2 Protobuf 作为所有产品对象唯一 SSOT
-
-拒绝作为当前六契约总模型。产品大量使用 JSON/HTTP/WS/ACP metadata，protobuf 可以是 gRPC transport adapter，但不应强迫所有 Event/Manifest 使用一套 transport-specific 模型。
-
-### 11.3 每个 repo 各自维护 DTO，只写文档对齐
-
-拒绝。无法通过 CI 阻止漂移。
-
-### 11.4 直接重命名 `sudowork/packages/contracts`
-
-拒绝。它当前是浏览器 DTO，作用域和依赖方向错误。
-
-### 11.5 直接复用 `nexus-vfs/rust/contracts`
-
-拒绝。它是 kernel/ABI 层，不能依赖或承载高层 Task/Rubric/Cloud 语义。
-
-### 11.6 v1 立即建立在线 Contract Registry 服务
-
-拒绝。Git + immutable release artifact + package registry 已满足第一阶段；在线 service 增加运行依赖和故障面。
-
-### 11.7 Consumer 忽略未知 major
-
-拒绝。字段/lifecycle/安全语义可能已改变，必须显式升级。
-
-### 11.8 所有 enum 永久封闭
-
-拒绝。reason/event/capability 等扩展点会迫使频繁 major；使用开放 code registry。
-
----
-
-## 12. 后果
+## 14. 后果
 
 ### 正面
 
-- 跨仓语义有唯一源；
-- 多语言可自动/可验证同步；
-- breaking change 可见；
-- provider/consumer 独立发布仍可兼容；
-- Private/Edge 支持离线分发；
-- 运行时可严格验证；
-- 文档、fixtures、类型、API 不再各自漂移。
+- 定义与真实语义/执行 owner 同仓，降低依赖倒置和规则漂移；
+- consumer 仍获得统一安装入口和跨语言派生 artifact；
+- owner revision、family major、package version 与 deployment version 可分别追踪；
+- `sudostack` 可以统一做 reference closure、兼容、离线分发和 release provenance；
+- MVP 只覆盖真实边界，不用 placeholder 假装平台完成。
 
 ### 成本
 
-- 新增独立 repo 和发布流程；
-- 需要维护 codegen/conformance；
-- consumer 升级需要 pin PR；
-- 一段时间内存在 internal type + contract adapter；
-- schema design 需要跨语言评审；
-- 新字段发布速度需遵守兼容规则。
+- 跨 owner reference closure、pin 升级和 release coordination 更复杂；
+- owner repository 必须具备自己的 definition/fixture/conformance gate；`[enforced_by: none]`
+- `sudostack` 需要维护可重现派生与跨仓 compatibility；
+- consumer 升级通过独立 exact-pin PR，不能依赖浮动主分支；
+- 在迁移期会同时存在 owner-native types、derived artifact 与 legacy adapter。
 
----
+## 15. G0 与后续验收
 
-## 13. 验收标准
+### 15.1 本次 G0 文档修订
 
-1. `sudo-contracts` 仓库零业务依赖；
-2. common/agent/auth/runtime schema 有稳定 `$id`；
-3. TypeScript/Rust artifacts 发布；
-4. valid/invalid/roundtrip fixtures 通过；
-5. 同 major unknown optional 被接受；
-6. unknown major 被拒绝；
-7. 新增 required 字段被 compatibility CI 判为 breaking；
-8. open code 可处理 unknown value；
-9. 正式 Event producer version 不能是 unknown；
-10. SudoWork/Moss/sudocode/Nexus 至少各有一个 boundary adapter test；
-11. consumer matrix 可回答每个 repo 支持哪些 family major；
-12. release 具有 checksum/SBOM/offline artifact；
-13. 旧 v1 payload fixture 能被兼容 adapter 读取；
-14. Secret negative fixtures 被拒绝或强制 ref/offload。
+- ADR 状态保持 `Proposed`，并与索引和 draft design 一致；`[enforced_by: none]`
+- active text 不再把独立 `sudo-contracts` repository 作为目标、目录、release source、future work 或 open question；`[enforced_by: none]`
+- owner/source、assembly/distribution、runtime writer/store、producer/consumer、transport、version/compatibility 与 migration/rollback 角色可区分；`[enforced_by: none]`
+- first MVP 与 deferred scope 足以拆出 owner Work Item，且不声称 schema/package/consumer/release/deployment 已完成；`[enforced_by: none]`
+- 所有规范性 clause 有且只有一个诚实 enforcement tag，ADR-005 的 untagged baseline 为零。`[enforced_by: none]`
 
----
+### 15.2 后续 F1 / consumer / demo
 
-## 14. 开放实现选择
+- F1 必须满足第 7 节完整 draft-frozen baseline 后才能供 consumer pin；`[enforced_by: none]`
+- consumer 必须满足第 10 节 production boundary/default CI 条件后才能写入 supported matrix；`[enforced_by: none]`
+- customer-demo MVP 必须完成 exact assembly、mixed-version smoke、existing-data restart 与 B0 rollback rehearsal；`[enforced_by: none]`
+- 通过某个子集时只能声明该子集和对应状态，不能宣称 ADR-005、全 Contract 平台或所有环境已完成。`[enforced_by: none]`
 
-不改变本 ADR 的实现选择：
+## 16. 开放实现选择
 
-- JSON Schema 到各语言的具体 generator；
-- npm/crates/PyPI/NuGet registry 的托管位置；
-- canonical JSON 签名算法；
-- package 是否 mono-version；
-- compatibility checker 的具体工具；
-- C# artifact 在第一个真实 consumer 出现时再启用。
+以下选择不改变本 ADR 的 owner/source 边界：
 
----
+- owner JSON Schema 与各语言 generator/validator 的具体工具；
+- 未来 npm/crate/PyPI/Go/NuGet/离线 artifact channel 的托管位置；
+- canonical JSON serialization/signature 算法；
+- package mono-version 或独立 version；
+- compatibility checker 的具体实现；
+- 真实 consumer 出现后启用哪种语言 artifact。
 
-## 15. 生效与替代
+独立 Contract repository 不在开放选择中。`[enforced_by: none]`
 
-本 ADR 被接受后：
+## 17. 生效与替代
 
-- `sudo-contracts` 是跨仓产品语义 SSOT；
-- consumer repo 不得私自改变跨仓字段含义；
-- Zod/protobuf/dataclass/serde 变为生成物或 conformance-verified adapter；
-- breaking semantic change 必须发布新 schema major；
-- 正式生产不允许未版本化 payload 或 `version: unknown` 事件；
-- 第一层完成前，首批 common/agent/auth/runtime contracts 以 v0.x package 迭代，接受后进入稳定 v1.x package release。
+本 ADR 只有在联合评审显式改为 `Accepted` 后才成为已接受决策。接受时必须记录评审日期、semantic/security/consumer owners、适用的 draft-frozen baseline、兼容/迁移/rollback 计划，以及仍 deferred 的 scope。`[enforced_by: none]`
+
+接受后，若要把 canonical definitions 从 semantic owners 移走、改变分发 ownership、改变 compatibility 语义或取消 rollback window，必须通过新 ADR 或 amendment；不得由单仓实现 PR 隐式改变。`[enforced_by: none]`

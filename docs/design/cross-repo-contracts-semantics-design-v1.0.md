@@ -3,7 +3,7 @@
 > 文档版本：v1.0-draft
 > 日期：2026-09-12
 > 状态：**架构评审稿，可作为开发计划拆分母版；尚未代表所有 ADR 已接受**
-> 规范优先级：Accepted ADR 定义语义、生命周期与所有权；canonical JSON Schema 定义 wire 结构与 validation；本文提供评审上下文，不覆盖已接受 ADR。
+> 规范优先级：Accepted ADR 定义语义、生命周期与所有权；canonical editable definition 位于 semantic owner repo；`sudostack` exact-pin 并派生 wire schema/artifact；本文提供评审上下文，不覆盖已接受 ADR。
 > 范围：`sudowork`、`moss`、`sudocode`、`nexus`、`nexus-vfs`、`sudowork-server`、SudoRouter/current `new-api`、未来 `sudoevolve`
 > 上游依据：
 > - `sudo-product-architecture` v2.2：产品与技术架构 SSOT
@@ -63,7 +63,7 @@
    ```
 
 10. `nexus-vfs` MUST 保持底层，只依赖公共 identity/runtime primitives；不得把产品 Rubric、充值、Cloud 模式等业务对象压进 kernel。
-11. 六契约的语言无关 SSOT 建议放在独立 `sudo-contracts` 仓库；现有 [`sudowork/packages/contracts`](https://github.com/sudoprivacy/sudowork/tree/9f7a5fca1e6cc114d02b26af76f791d449f40779/packages/contracts) 作为迁移期 TypeScript consumer/adapter，不直接升格为全局 SSOT。
+11. 跨仓定义的 canonical editable source 建议留在 semantic owner repo；`sudostack` exact-pin owner revision，派生并统一分发 `@sudo/contracts` 等 consumer artifacts。现有 [`sudowork/packages/contracts`](https://github.com/sudoprivacy/sudowork/tree/9f7a5fca1e6cc114d02b26af76f791d449f40779/packages/contracts) 作为迁移期 TypeScript consumer/adapter，不直接升格为全局 SSOT。
 12. 第一条参考实现应选择单 Agent、单 Zone，但 MUST 同时贯通 Task、Session、PID、Context、Tool、Event、Verify 和 UI Overlay，而不是只做 schema。
 
 ## 1.2 与上一版分析结论的对比
@@ -71,7 +71,7 @@
 ### 保持不变的结论
 
 - 六契约不替代 ACP/MCP；
-- JSON Schema 应成为语言无关语义源；
+- owner machine-readable definition（product wire object 优先 JSON Schema）应成为语言无关语义源；
 - Moss 是改造量最大的控制面仓库；
 - `nexus-vfs` 只引用六契约中的最小公共子集；
 - TaskSpec 与 Event/Trace 应优先落地；
@@ -89,7 +89,7 @@
 5. 明确 UI messages 当前比 scode transcript 更丰富，因此迁移必须先设计 Overlay 和 shadow rebuild；
 6. 明确 Event、Trace、Audit 共用 envelope，但存储、采样和 retention 不同；
 7. 明确跨 Zone ResourceRef 使用 `zone_id + path`，不强迫所有普通调用写全局 `/{zone}/...` 路径；
-8. 明确合同仓先是 Git + release artifact，不在 v1 建在线“契约注册中心服务”。
+8. 明确第一阶段以 owner exact Git revision + `sudostack` 派生 artifact 分发，不在 v1 建在线“契约注册中心服务”。
 
 ---
 
@@ -1269,89 +1269,80 @@ Local 模式保持同一 Task/Context/Tool/Event schema，但：
 
 ---
 
-# 13. 语言无关契约仓与引用方式
+# 13. Semantic-owner definitions 与统一分发
 
-## 13.1 物理位置
+## 13.1 物理位置与依赖方向
 
-### 冻结建议
+### 修订建议
 
-新建独立仓库：
+canonical editable definition 住在 semantic owner repo；`sudostack` 作为 assembly/distribution owner：
 
 ```text
-sudo-contracts
+semantic owner repo
+  canonical definition + owner fixtures + owner-local validation
+          ↓ exact repo / commit / path / digest
+sudostack
+  pins + reference closure + derived artifacts + fixture index
+  + compatibility/release metadata + @sudo/contracts distribution
+          ↓ exact package/artifact revision
+producer / consumer boundary
 ```
 
 理由：
 
-- 所有仓库都依赖，不能属于任一 consumer；
-- 无运行时和业务依赖，可防止循环依赖；
-- 可独立 tag、发布和做 compatibility gate；
-- 不把 TypeScript/Zod 设为 Rust/Go/Python 的上游真相。
+- 定义与真实语义、编译或 admission boundary 同仓，避免依赖倒置；
+- `sudostack` 可以统一聚合、版本化、兼容、release 与离线分发，而不取得 owner 语义；
+- consumer 使用一个 package 不代表所有 editable definitions 住在 package repo；
+- owner repo 不反向依赖 `sudostack` 来定义自身概念，避免环依赖。
 
-如果组织最终坚持 `sudostack/contracts`，必须满足同样的“独立发布、零业务依赖、语言无关 SSOT”约束；目录名称不是核心，依赖方向才是核心。
+独立 `sudo-contracts` repository 是旧提议，已由上述模型替代；它不再是当前目标或开放命名选择。逻辑 package / crate 名仍可保留 `@sudo/contracts` / `sudo-contracts`。
 
-## 13.2 目录
+## 13.2 Ownership-aware 布局
+
+owner repo 不被强制复制统一目录模板；`sudostack` manifest 记录 owner 的实际 source path。`sudostack` 的逻辑布局为：
 
 ```text
-sudo-contracts/
-  schemas/
-    common/v1/
-    agent/v1/
-    auth/v1/
-    runtime/v2/
-    task/v1/
-    tool/v1/
-    context/v1/
-    memory/v1/
-    verify/v1/
-    event/v1/
-    transcript/v1/
-    overlay/v1/
-  packages/typescript/
-  crates/rust/
-  go/contracts/
-  python/sudo_contracts/
-  fixtures/
-    valid/
-    invalid/
-    roundtrip/
-  compatibility/
-    consumers.yaml
-  docs/
-    event-types.md
-    error-codes.md
-    versioning.md
+contracts/<family-or-primitive>/
+  pin.json                 # owner repo + exact commit + path + digest
+  *.gen.*                  # 可重现派生产物
+  fixture-index.gen.json   # owner fixtures provenance（启用后）
+compatibility/             # 真实 producer/consumer 支持矩阵（启用后）
+manifests/                 # baseline/artifact/release provenance（启用后）
+package metadata           # consumer 统一分发入口
 ```
+
+不得为了目录齐全创建没有 owner baseline 或真实 consumer 的 placeholder family/language artifact。derived bundle 可以物化 owner schema 供安装/离线使用，但只能由 exact source 重建，不能成为第二份可编辑定义。
 
 ## 13.3 SSOT 与生成物
 
-- Accepted ADR + contract docs：语义、生命周期、所有权和安全边界权威；
-- Canonical JSON Schema 2020-12：wire 结构与 validation SSOT；
-- TypeScript：`@sudo/contracts`，类型 + runtime validator；
-- Rust：`sudo-contracts`，serde types + validation helper；
-- Go：Go module structs；
-- Python：Pydantic models；
-- OpenAPI 引用 schema；
-- Protobuf/gRPC 仅作为 transport adapter，不成为第二套语义源。
+- Accepted ADR：语义、生命周期、ownership 与安全边界的已接受理由；
+- semantic owner repo 的 canonical machine-readable definition：authoritative editable source；
+- owner-native primitive spec：底层原语的 canonical source；product object 优先使用 owner JSON Schema 2020-12；
+- `sudostack` pin/manifest：source revision、path、digest、reference closure 与 compatibility provenance；
+- TypeScript `@sudo/contracts`、Rust `sudo-contracts` 及其他语言 artifact：按真实 consumer 派生的 distribution，不是独立 SSOT；
+- OpenAPI / Protobuf / gRPC：transport adapter，不能反向改变 owner 语义。
 
-是否使用生成器由契约仓实现计划决定，但 CI MUST 验证语言 DTO 与 JSON fixtures 一致。
+生成/验证方式由 owner 与 `sudostack` 的实施计划决定，但默认 CI 必须证明 owner definition、derived artifact、fixtures 和真实 adapter 没有漂移。
 
 ## 13.4 版本与依赖
 
-- 每个 repo 精确 pin package/crate/module 版本；
-- Renovate/Dependabot 或统一机器人提交升级 PR；
-- 合同 major 升级必须附 provider/consumer matrix；
-- 不使用未固定分支的跨仓 git dependency 进入 production build；
-- release artifact 必须可离线镜像，满足 Private/Edge 部署。
+- owner source 使用完整 Git commit + path + digest；
+- 每个 consumer 精确 pin package/crate/module artifact revision；
+- family major、owner revision、package version 与 deployment version 分开记录；
+- Contract major 升级附 provider/consumer matrix、legacy window 与 rollback；
+- production build 不使用浮动 branch；
+- release artifact 可离线验证和镜像，满足 Private/Edge 部署。
 
 ## 13.5 各 repo 引用子集
 
-| Repo | 引用 |
+下表只描述目标消费面，不代表各 family 已 draft-frozen、released 或 adopted；first MVP 只启用有真实边界的最小闭包。
+
+| Repo | 可能引用的目标子集 |
 |---|---|
 | `sudowork` | common、agent ref、runtime ref、task、context view、verify、event、transcript、overlay |
 | `moss` | common、agent、runtime、task、tool policy、context request、memory policy、verify、event、transcript projection |
 | `sudocode` | common、agent ref、runtime、task、tool、context、memory、event/evidence、transcript |
-| `nexus-vfs` | common identity、runtime IDs、ResourceRef；不导入完整产品契约 |
+| `nexus-vfs` | 自有 common identity/Zone/path/runtime primitives；不导入高层产品契约来定义这些原语 |
 | `nexus` | common、agent、auth、runtime、memory、event/audit、transcript；承载持久服务但不把业务 policy 下沉 kernel |
 | SudoRouter/new-api | common trace、AgentRef、Tool/Model invocation、classification、usage event |
 | `sudowork-server` | 迁移 adapter 所需 task/event/agent ref，禁止继续扩自有目标契约 |
@@ -1470,25 +1461,22 @@ GET  /v2/tasks/{task_id}/events
 
 # 16. 各仓库主要修改点
 
-## 16.1 `sudo-contracts`（新仓）
+## 16.1 Semantic owners 与 `sudostack` Contract assembly
 
-### 必做
+### Semantic owner 必做
 
-- common identities/IDs/ResourceRef/ErrorInfo；
-- 六契约 v1 schema；
-- Agent Principal/Version 与 runtime refs；
-- valid/invalid/golden fixtures；
-- TypeScript/Rust/Go/Python packages；
-- compatibility checker；
-- event type/error code registry；
-- release 与离线分发。
+- 在 owner repo 维护 canonical machine-readable definition、owner fixtures 与 owner-local validation；
+- 为跨 owner 引用提供 immutable commit、source path 与 digest；
+- 记录 semantic/security owner、runtime writer/store 和真实 producer/consumer；
+- 不反向依赖 `sudostack` package 来定义自身原语。
 
-### 不做
+### `sudostack` 必做
 
-- 不实现 Task scheduler；
-- 不实现 Registry 数据库；
-- 不持有 Secret；
-- 不依赖任何业务 repo。
+- exact pins、reference closure、派生 artifact 与 fixture index；
+- 只为真实 consumer 启用的语言 package；
+- compatibility/support matrix；
+- release provenance 与离线分发；
+- 不复制 owner 的 editable definition，不实现 Task scheduler/业务 Registry，也不持有 Secret。
 
 ## 16.2 `sudowork`
 
@@ -1560,7 +1548,7 @@ GET  /v2/tasks/{task_id}/events
 
 ### Runtime boundary
 
-1. 引用 Rust `sudo-contracts`；
+1. 只有识别出真实 Rust product-object boundary 后，才 exact-pin `sudostack` 分发的 `sudo-contracts` artifact；owner primitives 继续直接来自 owner；
 2. 支持 `ExecutionStart`/Task/Attempt/AgentVersion；
 3. runtime 不理解 Cloud/Private/充值等产品政策；
 4. ACP、CLI、co-host 都适配到同一内部 execution model。
@@ -1822,16 +1810,20 @@ Transcript + Overlay -> same rendered conversation
 
 # 19. Contract 与跨仓 CI
 
-## 19.1 契约仓 CI
+## 19.1 Owner 与 sudostack assembly CI
 
-1. JSON Schema lint；
+Owner repository 对 canonical definition、references、valid/invalid/boundary fixtures 和 owner-local behavior 负责；`sudostack` 对 exact source closure、派生产物、跨语言/跨 family 组合、兼容与可安装分发负责。启用的最小 checks 包括：
+
+1. owner definition/schema lint 与 reference 解析；
 2. valid fixture 全通过；
 3. invalid fixture 必须失败；
-4. TS/Rust/Go/Python round trip；
+4. 已启用语言的真实 adapter round trip；
 5. generated artifact clean diff；
-6. backward compatibility check；
-7. event/error registry uniqueness；
-8. package version 与 schema change 规则检查。
+6. 与前一个 immutable baseline 的 backward compatibility mutation check；
+7. 已启用 event/error registry uniqueness；
+8. package version、family major 与 support matrix 规则检查。
+
+没有真实 owner baseline、语言 consumer 或 registry 时不创建 placeholder check。
 
 ## 19.2 Consumer CI
 
@@ -1885,9 +1877,10 @@ SudoWork WebUI
 - ADR-004 Task/Resolution；
 - ADR-005 Product Contract Versioning；
 - ADR-006 Transcript/UI Overlay；
-- `sudo-contracts` skeleton；
-- common IDs/refs/envelope；
-- consumer matrix。
+- first-MVP semantic-owner map 与 owner Work Items；
+- owner exact-source baseline（先从真实 ZoneId/ResourceRef/meta-contract 边界开始）；
+- `sudostack` pins/derived distribution skeleton；
+- 只含真实 producer/consumer 的 compatibility matrix。
 
 ### 依赖
 
@@ -1895,7 +1888,7 @@ SudoWork WebUI
 
 ### 出口
 
-六 ADR accepted；common fixtures 可在 TS/Rust 跑通。
+G0 ownership/security review完成；included owner definitions 可识别并由 `sudostack` exact-pin。ADR 是否 Accepted、Contract 是否 draft-frozen 与 artifact 是否 released 分开记录。
 
 ## Epic 1：Identity、Zone 与 Authenticated Service Context
 
@@ -1947,7 +1940,7 @@ Epic 0、Epic 1。
 
 ### Repo
 
-`sudo-contracts`、`sudowork`、`moss`、`nexus`、`sudocode`。
+对应 semantic owner repo、`sudostack`、`sudowork`、`moss`、`nexus`、`sudocode`。
 
 ### 产物
 
@@ -2064,7 +2057,7 @@ Epic 1、2、5。
 
 ### Repo
 
-`sudo-contracts`、future `sudoevolve`、`moss`、`nexus`、`sudowork`、`sudocode`。
+对应 semantic owner repo、`sudostack`、future `sudoevolve`、`moss`、`nexus`、`sudowork`、`sudocode`。
 
 ### 产物
 
@@ -2111,7 +2104,7 @@ Epic 3、4，部分依赖 5/6。
 
 这些问题必须进入 ADR 评审，不能由单仓实现者私自决定。
 
-1. Contract repo 最终名称是 `sudo-contracts` 还是 `sudostack/contracts`？本文推荐前者，但约束比名称重要。
+1. First MVP 中 Product Zone/ZoneGrant/ResourceRef 与 ErrorInfo envelope 的 proposed semantic/security ownership 是否通过 review？独立 `sudo-contracts` repository 已不再是开放选择；consumer package 由 `sudostack` 分发。
 2. Session Service 物理实现落 `nexus` 还是 `nexus-vfs` 的哪个 service tier？kernel 只提供 primitives，产品 Session API 不应进入 core。
 3. Attempt 因 infrastructure restart 产生多个 pid 的恢复边界：模型调用进行中是否重放，Tool side effect 如何去重？
 4. Grant 撤销是否立即终止已运行 pid，还是只阻止下一次 syscall/tool call？建议按资源密级 policy 化。

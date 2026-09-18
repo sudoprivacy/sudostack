@@ -1,0 +1,38 @@
+{
+  "baseline_version": 1,
+  "package": {
+    "name": "@sudo/contracts",
+    "version": "0.1.0",
+    "sudostack_revision": "fe27da807594da85f8bc26c5b5394c516f21c80e",
+    "delivery_state": "immutable_local_git_baseline",
+    "release_state": "unpublished"
+  },
+  "artifacts": {
+    "contracts/zone-id/zone-id.gen.ts": "18bbb10068d3b16be9d8e03e6a1779b6bc1b094772f6d79fcea7d5f19d8a774a",
+    "contracts/zone-id/vectors.gen.json": "61706fad6d209094dc530e9354b888e4e8e3bb03ddb7641245cb5ea2c2ed60bd",
+    "contracts/zone-id/EXAMPLES.gen.md": "09691ad259a6127397ad1137785286930de7048cd17bc971e900e2071476a957"
+  },
+  "families": {
+    "zone_id": {
+      "state": "existing_baseline",
+      "owner_revision": "21789169d207abeef727768ce94d7a2484361a4b",
+      "owner_spec_sha256": "1fe16c51578a59c9e5c50b8df9674dda682a25566d85684e2b5a34ef21f22e04",
+      "rule_data": {
+        "length": {
+          "min": 3,
+          "max": 63
+        },
+        "charset": {
+          "allowed": "abcdefghijklmnopqrstuvwxyz0123456789-"
+        },
+        "edges": {
+          "no_leading": "-",
+          "no_trailing": "-"
+        }
+      }
+    },
+    "resource_ref": {
+      "state": "absent_initial_baseline"
+    }
+  }
+}
