@@ -1,0 +1,234 @@
+{
+  "operation_version": 1,
+  "state": "zone_id_consumer_integration_verified",
+  "candidate_content_revision": "30da0ddd953268ff8a9a0f0980276300ab153003",
+  "activation_revision": "60bd8dda6fb2d348ec8571b9b1a4eaa535e36dc5",
+  "source_availability_revision": "aec52e9dc5438946dd83d5c56c07149a4800120a",
+  "previous": {
+    "baseline_revision": "93e72878fc7b246d7f7f2418ff19ac41a02b5a66",
+    "candidate_manifest": {
+      "path": "manifests/releases/0.2.0-candidate.gen.json",
+      "sha256": "2a13fdaf59d26bc4af7db4a2f58f6956555b1d61b1da81bd03b4b879fb1c548c"
+    },
+    "compatibility_manifest": {
+      "path": "compatibility/current.gen.json",
+      "sha256": "ca9dd590d9e0983eda99ba223a13dd1ab4b704fcb72b3d72dc389823d5361d15"
+    }
+  },
+  "consumer_evidence": {
+    "repository": "sudoprivacy/moss",
+    "repository_url": "https://github.com/sudoprivacy/moss.git",
+    "pull_request": "https://github.com/sudoprivacy/moss/pull/276",
+    "base_ref": "refs/heads/dev",
+    "merged_at": "2026-09-20T03:25:41Z",
+    "feature_revision": "71be276ebe1ea58882db9caaa6c42d8df5a67ad0",
+    "feature_parent_revision": "d8f6dd8d5ff7872fcf98f9b407f9081de6b75b2f",
+    "integration_revision": "604a78ee27b290fc40e85fe0eb469e5a4cb13c91",
+    "integration_parents": [
+      "550223370dad1159780f23b683bace0a11fb0d24",
+      "71be276ebe1ea58882db9caaa6c42d8df5a67ad0"
+    ],
+    "changed_paths": [
+      {
+        "path": "deploy/README.md",
+        "sha256": "19d9c7241a273e55faf19f9d14587be063f3add726061f953cc5e9e5cf3d2fd5"
+      },
+      {
+        "path": "deploy/docker-compose.yml",
+        "sha256": "24d4e7baf6bddd4a6e6da8ea080a66b63a7a06235a8153f9927c914e409f8b03"
+      },
+      {
+        "path": "deploy/install.sh",
+        "sha256": "a9f868c5cd06bddcbbe729283e88c9ec4cd9c3a7f5ca69adb23c6e2f3a213430"
+      },
+      {
+        "path": "src/server/__tests__/contractsActivation.test.ts",
+        "sha256": "fcbd79e5cb942f7a4bf9034931a89a2e5c2c33a16d95e7c56ba1a589b52d7f68"
+      },
+      {
+        "path": "src/server/nexus/__tests__/nexusManager.test.ts",
+        "sha256": "9ed0881c882e070c66a2e4d7b61ebed6aef675887e5b2e2e19e6052edd9f9e80"
+      },
+      {
+        "path": "src/server/nexus/nexusManager.ts",
+        "sha256": "1452bf1fdec6ad1d33602133faab474b539fdb164af98e5666485074551860a7"
+      }
+    ],
+    "package_binding": {
+      "name": "@sudo/contracts",
+      "version": "0.2.0",
+      "dependency_spec": "github:sudoprivacy/sudostack#60bd8dda6fb2d348ec8571b9b1a4eaa535e36dc5",
+      "activation_revision": "60bd8dda6fb2d348ec8571b9b1a4eaa535e36dc5",
+      "package_json": {
+        "path": "package.json",
+        "sha256": "65a702361af33f6fd0cd3667e35629aee9de78e887a061a9b4bf497989fcf27b"
+      },
+      "lockfile": {
+        "path": "bun.lock",
+        "sha256": "ca4021b9b3db4655d0d3acaa91b266b77ae0445df7c6cd0461d4aa700a8c170c"
+      }
+    },
+    "boundary": {
+      "family": "zone_id",
+      "family_major": 1,
+      "runtime_mode": "embedded",
+      "entrypoint": "NexusManager.start()",
+      "source_path": "src/server/nexus/nexusManager.ts",
+      "test_path": "src/server/nexus/__tests__/nexusManager.test.ts",
+      "installed_package_test_path": "src/server/__tests__/contractsActivation.test.ts",
+      "consumer_symbol": "validateZoneId",
+      "transport": "environment -> immutable Moss binding -> embedded Nexus argv",
+      "argument_name": "--cluster-init",
+      "cardinality": "exactly_one_after_exact_immutable_binding",
+      "external_mode": "excluded",
+      "semantic_owner": "nexi-lab/nexus-vfs@24f6730ec90fab8a035b2f5400ed313bda343fbe",
+      "authoritative_input_writer": "operator configuration via MOSS_NEXUS_ZONE_ID",
+      "canonical_runtime_store": "Nexus persisted topology",
+      "consumer_role": "installed ZoneId validator and embedded argv consumer",
+      "producer_role": "embedded Nexus launch argument producer",
+      "security_review_owner": "Moss maintainers through PR 276 review",
+      "migration_rollback_owner": "Moss deployment owner"
+    },
+    "hosted_checks": {
+      "feature_revision": [
+        {
+          "id": 106012947304,
+          "name": "lint",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/sudoprivacy/moss/actions/runs/35486208150/job/106012947304"
+        },
+        {
+          "id": 106012947922,
+          "name": "server-tests",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/sudoprivacy/moss/actions/runs/35486208320/job/106012947922"
+        },
+        {
+          "id": 106012948095,
+          "name": "build-amd64",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/sudoprivacy/moss/actions/runs/35486208320/job/106012948095"
+        },
+        {
+          "id": 106013502369,
+          "name": "publish-server-release",
+          "status": "completed",
+          "conclusion": "skipped",
+          "url": "https://github.com/sudoprivacy/moss/actions/runs/35486208320/job/106013502369"
+        }
+      ],
+      "integration_revision": [
+        {
+          "id": 106013862586,
+          "name": "server-tests",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/sudoprivacy/moss/actions/runs/35486541867/job/106013862586"
+        },
+        {
+          "id": 106013862470,
+          "name": "build-amd64",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/sudoprivacy/moss/actions/runs/35486541867/job/106013862470"
+        },
+        {
+          "id": 106014563708,
+          "name": "publish-server-release",
+          "status": "completed",
+          "conclusion": "skipped",
+          "url": "https://github.com/sudoprivacy/moss/actions/runs/35486541867/job/106014563708"
+        }
+      ]
+    }
+  },
+  "freeze_evidence": {
+    "family": "zone_id",
+    "owner_revision": "24f6730ec90fab8a035b2f5400ed313bda343fbe",
+    "owner_spec_path": "contracts/zone-id/spec.json",
+    "owner_spec_sha256": "6f5fb408d08de19172ac1d10b793a143588494ec6dae5326e60f9de5a2bce4d7",
+    "fixture_count": 12,
+    "fixture_index_sha256": "e1cd69b3033a0ed593d1e4c5b8dd4ec66678cd4d633438eae50624b46425fcee",
+    "reference_closure": "closed",
+    "compatibility_result": "compatible_behavior",
+    "consumer_boundary": "production",
+    "consumer_default_ci": "passed",
+    "candidate_support_embedding": "absent_activation_era_empty",
+    "artifact_publication": "candidate_unpublished",
+    "deployment_evidence": "not_deployed"
+  },
+  "current": {
+    "support_matrix": {
+      "support_matrix_version": 1,
+      "actual_consumers": [
+        {
+          "id": "moss-zone-id-embedded-start",
+          "repository": "sudoprivacy/moss",
+          "integration_revision": "604a78ee27b290fc40e85fe0eb469e5a4cb13c91",
+          "family": "zone_id",
+          "family_major": 1,
+          "boundary": "src/server/nexus/nexusManager.ts::NexusManager.start()",
+          "role": "installed_validator_and_argv_consumer",
+          "support_state": "integrated_tested",
+          "artifact_publication": "candidate_unpublished",
+          "deployment_evidence": "not_deployed"
+        }
+      ],
+      "actual_producers": [
+        {
+          "id": "moss-zone-id-embedded-launch",
+          "repository": "sudoprivacy/moss",
+          "integration_revision": "604a78ee27b290fc40e85fe0eb469e5a4cb13c91",
+          "family": "zone_id",
+          "family_major": 1,
+          "boundary": "embedded nexusd --cluster-init argument",
+          "role": "launch_argument_producer",
+          "support_state": "integrated_tested",
+          "artifact_publication": "candidate_unpublished",
+          "deployment_evidence": "not_deployed"
+        }
+      ],
+      "families": {
+        "zone_id": {
+          "support_state": "integrated_tested",
+          "runtime_modes": [
+            "embedded"
+          ],
+          "excluded_runtime_modes": [
+            "external"
+          ]
+        },
+        "resource_ref": {
+          "support_state": "deferred_no_current_production_provider_or_consumer",
+          "actual_consumers": [],
+          "actual_producers": []
+        },
+        "zone_path": {
+          "support_state": "deferred_owner_dependency_only_for_resource_ref",
+          "actual_consumers": [],
+          "actual_producers": []
+        }
+      },
+      "publication_scope": "standalone_operation_only",
+      "note": "Moss ZoneId integration is verified only at embedded Nexus start. The activated 0.2.0 candidate and package bytes remain unchanged with empty embedded support arrays; artifact release and deployment remain unproven."
+    }
+  },
+  "lifecycle_constraints": {
+    "adr_maturity": "proposed",
+    "contract_baseline": "draft-frozen",
+    "artifact_publication": "candidate_unpublished",
+    "deployment_evidence": "not_deployed",
+    "candidate_package_support_metadata": "activation_era_empty",
+    "resource_ref_support": "deferred",
+    "zone_path_runtime_support": "deferred"
+  },
+  "verification_toolchain": [
+    {
+      "path": "tools/contracts/support.mjs",
+      "sha256": "881004f781397ef96b1a16fad1c14e08e9a784cbbca785cbc9d8d1cb5cd44a21"
+    }
+  ]
+}

@@ -222,9 +222,9 @@ B1 的最小闭包是：
 
 ### 10.1 当前局部事实
 
-当前 `sudostack` 已形成可复现的 F1 局部实现证据：Nexus 与 nexus-vfs 的 exact-pinned owner closure 已闭合，并可通过本地 checkout、物化的 offline bundle 和已发布的远端 revisions 验证；generated candidate/source-closure manifests、activation metadata 与 source-availability operation 记录候选内容、激活关系和 availability-only override；默认 gates 已提供 conformance、compatibility mutation、manifest/digest 以及 clean pack/install/import evidence。
+当前 `sudostack` 已形成可复现的 F1 局部实现证据：Nexus 与 nexus-vfs 的 exact-pinned owner closure 已闭合，并可通过本地 checkout、物化的 offline bundle 和已发布的远端 revisions 验证；generated candidate/source-closure manifests、activation metadata 与 source-availability operation 记录候选内容、激活关系和 availability-only override；Moss PR 276 又由独立、versioned consumer-support operation 验证 exact `@sudo/contracts@0.2.0` pin、真实 `NexusManager.start()` embedded boundary 与默认 CI 结果。该 operation 位于 package 外，且 verifier 明确要求 activation-era candidate、compatibility 与全部 package-included bytes 保持不变。默认 gates 提供 conformance、compatibility mutation、manifest/digest、support mutation 以及 clean pack/install/import evidence。
 
-这些证据证明 owner → exact closure → derive → candidate activation/availability → package verification 链路，但不改变治理、发布或部署状态：本 ADR 仍为 `Proposed`，所有规范性条款仍标记为 `enforced_by: none`，artifact 仍为 `candidate_unpublished`，deployment evidence 仍为 `not_deployed`，actual producers/consumers 仍为空，production-boundary adoption 仍未得到证明。因此这些局部证据不构成 ADR `Accepted`、registry release、真实 consumer adoption 或 deployment 完成。
+这些证据证明 owner → exact closure → derive → candidate activation/availability → package verification 链路，并独立证明 Moss `ZoneId` embedded-boundary integration。Moss 在该边界是 installed validator/argv consumer 与 embedded launch producer；operator config 是 authoritative input writer，Nexus persisted topology 是 canonical runtime store，external mode、`ResourceRef` 与 runtime `ZonePath` adoption 均不在该证据范围内。activation-era candidate/package 的 actual producers/consumers 仍为空，因此 standalone operation 不冒充 package 内 support update，也不单独关闭该 metadata gap。治理、发布与部署状态不变：本 ADR 仍为 `Proposed`，所有规范性条款仍标记为 `enforced_by: none`，artifact 仍为 `candidate_unpublished`，deployment evidence 仍为 `not_deployed`；这些局部证据不构成 ADR `Accepted`、registry release 或 deployment 完成。
 
 ## 11. Legacy、迁移与 rollback
 

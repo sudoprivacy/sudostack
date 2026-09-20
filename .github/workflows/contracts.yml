@@ -26,6 +26,8 @@ jobs:
         run: npm run typecheck
       - name: Candidate manifest digests and lifecycle are truthful
         run: npm run manifest:check
+      - name: Post-activation consumer support is exact and bounded
+        run: node tools/contracts/support.mjs
       - name: Candidate content revision matches immutable parent bytes
         run: node tools/contracts/activation.mjs
       - name: Packed artifact installs and imports from a clean directory
@@ -48,6 +50,10 @@ jobs:
       # published; the verifier will then fetch and hash every immutable owner blob.
       - name: Exact owner revisions are remotely available
         run: npm run source:verify-remote
+      - name: Exact Moss consumer revision, boundary, and checks are remotely verified
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/contracts/support.mjs --remote
 
   every-clause-names-what-enforces-it:
     runs-on: ubuntu-latest

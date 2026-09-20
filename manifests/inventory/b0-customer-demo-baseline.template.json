@@ -62,16 +62,16 @@
       "rollback_to_b0"
     ],
     "single_component_transition_rule": "Create one row for every applicable component changed by the candidate; unsupported combinations remain explicit rows.",
-    "candidate_contract_authority": "The exact release/source-closure manifests referenced under source_cut are authoritative for Contract owner revisions, paths, digests, and support metadata. This inventory does not redefine them."
+    "candidate_contract_authority": "The exact release/source-closure manifests referenced under source_cut remain authoritative for package-embedded support metadata. The standalone consumer-support operation proves integration evidence but does not rewrite the activated 0.2.0 package or close C-03."
   },
   "source_cut": {
-    "prepared_on": "2026-09-18",
+    "prepared_on": "2026-09-20",
     "inventory_base": {
       "repository": "sudoprivacy/sudostack",
-      "revision": "1c26d4c3044efe4fcd0d88ed61201c3e1d828fc1",
+      "revision": "93e72878fc7b246d7f7f2418ff19ac41a02b5a66",
       "evidence_status": "Confirmed-Code",
       "evidence_refs": [
-        "https://github.com/sudoprivacy/sudostack/commit/1c26d4c3044efe4fcd0d88ed61201c3e1d828fc1"
+        "https://github.com/sudoprivacy/sudostack/commit/93e72878fc7b246d7f7f2418ff19ac41a02b5a66"
       ]
     },
     "adr_maturity": {
@@ -83,12 +83,12 @@
     },
     "candidate_release_manifest": {
       "identity": {
-        "uri": "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/manifests/releases/0.2.0-candidate.gen.json",
-        "repository_revision": "b966826edada1c2c1086ab6ee46cec9f85a398b5",
+        "path": "../releases/0.2.0-candidate.gen.json",
+        "support_operation_ref": "../operations/consumer-support.json",
+        "transition_baseline_revision": "93e72878fc7b246d7f7f2418ff19ac41a02b5a66",
         "evidence_status": "Confirmed-Code",
         "evidence_refs": [
-          "https://github.com/sudoprivacy/sudostack/commit/b966826edada1c2c1086ab6ee46cec9f85a398b5",
-          "https://github.com/sudoprivacy/sudostack/pull/18"
+          "#/source_cut/consumer_support_operation"
         ]
       },
       "observed_manifest_digest": {
@@ -96,7 +96,7 @@
         "value": "2a13fdaf59d26bc4af7db4a2f58f6956555b1d61b1da81bd03b4b879fb1c548c",
         "evidence_status": "Confirmed-Code",
         "evidence_refs": [
-          "#/source_cut/artifact_stability"
+          "#/source_cut/consumer_support_operation"
         ]
       }
     },
@@ -104,20 +104,29 @@
       "candidate_content_revision": "30da0ddd953268ff8a9a0f0980276300ab153003",
       "activation_revision": "60bd8dda6fb2d348ec8571b9b1a4eaa535e36dc5",
       "source_availability_revision": "aec52e9dc5438946dd83d5c56c07149a4800120a",
-      "current_docs_corrected_head": "b966826edada1c2c1086ab6ee46cec9f85a398b5",
+      "consumer_support_baseline_revision": "93e72878fc7b246d7f7f2418ff19ac41a02b5a66",
+      "moss_feature_revision": "71be276ebe1ea58882db9caaa6c42d8df5a67ad0",
+      "moss_integration_revision": "604a78ee27b290fc40e85fe0eb469e5a4cb13c91",
       "evidence_status": "Confirmed-Code",
       "evidence_refs": [
-        "https://github.com/sudoprivacy/sudostack/commit/b966826edada1c2c1086ab6ee46cec9f85a398b5",
-        "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/manifests/releases/0.2.0-candidate.gen.json"
+        "#/source_cut/consumer_support_operation",
+        "https://github.com/sudoprivacy/moss/pull/276"
+      ]
+    },
+    "consumer_support_operation": {
+      "path": "../operations/consumer-support.json",
+      "sha256": "21508ae15abf7dda253cc0d0de9f71afe500f2da98577809297302e7987c9dd5",
+      "state": "zone_id_consumer_integration_verified",
+      "evidence_status": "Confirmed-Code",
+      "evidence_refs": [
+        "../operations/consumer-support.json",
+        "../../tools/contracts/support.mjs"
       ]
     },
     "artifact_stability": {
-      "compared_from_revision": "aec52e9dc5438946dd83d5c56c07149a4800120a",
-      "compared_to_revision": "b966826edada1c2c1086ab6ee46cec9f85a398b5",
-      "changed_paths": [
-        "contracts/common/v1/resource-ref/README.md",
-        "docs/adr/ADR-005-product-contract-versioning.md"
-      ],
+      "compared_from_revision": "93e72878fc7b246d7f7f2418ff19ac41a02b5a66",
+      "compared_to_operation_ref": "#/source_cut/consumer_support_operation",
+      "changed_generated_artifacts": [],
       "unchanged_sha256": {
         "package.json": "8e719f716b2f9b961c656a543af329709ff6b5a6b663e12fd3002bacf26fad6d",
         "package-lock.json": "d4ea67ef19cf877ef30a1ac7cef5fa5ee90adeb3d0b6405eb34f34ebed057738",
@@ -130,22 +139,24 @@
       },
       "evidence_status": "Confirmed-Code",
       "evidence_refs": [
-        "https://github.com/sudoprivacy/sudostack/compare/aec52e9dc5438946dd83d5c56c07149a4800120a...b966826edada1c2c1086ab6ee46cec9f85a398b5"
+        "../../tools/contracts/support.mjs",
+        "../../tools/contracts/support.test.mjs"
       ]
     },
     "declared_contract_baseline": {
       "value": "draft-frozen",
       "evidence_status": "Conflicting",
       "evidence_refs": [
-        "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/docs/adr/ADR-005-product-contract-versioning.md#L162-L178",
-        "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/manifests/releases/0.2.0-candidate.gen.json#L218-L223"
+        "../../docs/adr/ADR-005-product-contract-versioning.md#7-draft-frozen-baseline",
+        "../releases/0.2.0-candidate.gen.json",
+        "#/source_cut/consumer_support_operation"
       ]
     },
     "declared_artifact_publication": {
       "value": "candidate_unpublished",
       "evidence_status": "Confirmed-Code",
       "evidence_refs": [
-        "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/manifests/releases/0.2.0-candidate.gen.json#L218-L223"
+        "../releases/0.2.0-candidate.gen.json"
       ]
     },
     "manifest_declared_deployment_state": {
@@ -153,7 +164,7 @@
       "meaning": "This is a source-manifest declaration, not an observation that no out-of-band deployment exists.",
       "evidence_status": "Confirmed-Code",
       "evidence_refs": [
-        "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/manifests/releases/0.2.0-candidate.gen.json#L218-L223"
+        "../releases/0.2.0-candidate.gen.json"
       ]
     }
   },
@@ -163,17 +174,35 @@
         "id": "moss-zone-id",
         "repository": "sudoprivacy/moss",
         "contract_family": "ZoneId",
-        "candidate_revision": "69615e049b8b7dbfc44f5362c1418d5fd715d8ab",
-        "target_boundary": "production process-argument construction",
-        "production_boundary_evidence_status": "Conflicting",
+        "feature_revision": "71be276ebe1ea58882db9caaa6c42d8df5a67ad0",
+        "integration_revision": "604a78ee27b290fc40e85fe0eb469e5a4cb13c91",
+        "target_boundary": "NexusManager.start() embedded process-argument construction",
+        "production_boundary_evidence_status": "Confirmed-Code",
+        "artifact_publication": "candidate_unpublished",
+        "deployment_evidence": "not_deployed",
         "evidence_refs": [
-          "https://github.com/sudoprivacy/moss/blob/69615e049b8b7dbfc44f5362c1418d5fd715d8ab/src/server/nexus/nexusManager.ts#L136-L159",
-          "https://github.com/sudoprivacy/moss/blob/69615e049b8b7dbfc44f5362c1418d5fd715d8ab/src/server/nexus/nexusManager.ts#L313-L346",
-          "https://github.com/sudoprivacy/moss/blob/69615e049b8b7dbfc44f5362c1418d5fd715d8ab/src/server/__tests__/nexusZoneId.test.ts#L25-L58"
+          "#/source_cut/consumer_support_operation",
+          "https://github.com/sudoprivacy/moss/pull/276"
         ]
       }
     ],
-    "confirmed_production_consumers": [],
+    "confirmed_production_consumers": [
+      {
+        "id": "moss-zone-id-embedded-start",
+        "repository": "sudoprivacy/moss",
+        "integration_revision": "604a78ee27b290fc40e85fe0eb469e5a4cb13c91",
+        "contract_family": "ZoneId",
+        "scope": "integrated_and_default_ci_tested_code_boundary",
+        "runtime_mode": "embedded",
+        "excluded_runtime_modes": [
+          "external"
+        ],
+        "evidence_status": "Confirmed-Code",
+        "evidence_refs": [
+          "#/source_cut/consumer_support_operation"
+        ]
+      }
+    ],
     "deferred": [
       {
         "contract_family": "ResourceRef",
@@ -218,46 +247,39 @@
       "evidence_status": "Confirmed-Code",
       "evidence_refs": [
         "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/contracts/common/v1/resource-ref/README.md#L34-L42",
-        "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/manifests/operations/source-availability.json#L6-L35"
+        "../operations/source-availability.json"
+      ]
+    },
+    {
+      "id": "C-04",
+      "previous_state": "Moss PR 272 tested buildNexusArgs directly while the production embedded startup caller omitted clusterInit and external mode bypassed the boundary.",
+      "resolution": "Moss PR 276 feature 71be276ebe1ea58882db9caaa6c42d8df5a67ad0, merged as 604a78ee27b290fc40e85fe0eb469e5a4cb13c91, binds and validates ZoneId in NexusManager.start(), emits exactly one embedded --cluster-init argument, excludes external mode, and passed lint/server-tests/build; publication was skipped by design.",
+      "resolved_against_revision": "93e72878fc7b246d7f7f2418ff19ac41a02b5a66",
+      "resolution_operation_ref": "#/source_cut/consumer_support_operation",
+      "evidence_status": "Confirmed-Code",
+      "evidence_refs": [
+        "https://github.com/sudoprivacy/moss/pull/276",
+        "#/source_cut/consumer_support_operation"
       ]
     }
   ],
   "known_conflicts": [
     {
       "id": "C-03",
-      "summary": "The candidate declares draft-frozen with empty actual producer/consumer arrays while ADR005-FREEZE-01 requires a real consumer.",
+      "summary": "Standalone evidence proves the Moss ZoneId production boundary, but the immutable activated @sudo/contracts@0.2.0 package and candidate manifest still embed empty producer/consumer arrays.",
       "assembly_blocking": true,
       "allowed_resolution_outcomes": [
-        "resolved"
+        "resolved_by_new_candidate_and_consumer_repin"
       ],
       "resolution": {
         "outcome": null,
-        "authority_ref": null,
+        "authority_ref": "../../docs/adr/ADR-005-product-contract-versioning.md#7-draft-frozen-baseline",
         "decision_ref": null
       },
       "evidence_status": "Conflicting",
       "evidence_refs": [
-        "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/docs/adr/ADR-005-product-contract-versioning.md#L162-L178",
-        "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/manifests/releases/0.2.0-candidate.gen.json#L275-L287"
-      ]
-    },
-    {
-      "id": "C-04",
-      "summary": "Moss candidate tests pass ZoneIds directly to buildNexusArgs, but the production embedded startup call omits clusterInit and external mode bypasses the boundary.",
-      "assembly_blocking": true,
-      "allowed_resolution_outcomes": [
-        "resolved"
-      ],
-      "resolution": {
-        "outcome": null,
-        "authority_ref": null,
-        "decision_ref": null
-      },
-      "evidence_status": "Conflicting",
-      "evidence_refs": [
-        "https://github.com/sudoprivacy/moss/blob/69615e049b8b7dbfc44f5362c1418d5fd715d8ab/src/server/nexus/nexusManager.ts#L136-L159",
-        "https://github.com/sudoprivacy/moss/blob/69615e049b8b7dbfc44f5362c1418d5fd715d8ab/src/server/nexus/nexusManager.ts#L313-L346",
-        "https://github.com/sudoprivacy/moss/blob/69615e049b8b7dbfc44f5362c1418d5fd715d8ab/src/server/__tests__/nexusZoneId.test.ts#L25-L58"
+        "../releases/0.2.0-candidate.gen.json",
+        "#/source_cut/consumer_support_operation"
       ]
     }
   ],
