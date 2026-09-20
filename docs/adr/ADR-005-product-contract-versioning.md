@@ -222,7 +222,9 @@ B1 的最小闭包是：
 
 ### 10.1 当前局部事实
 
-当前 `sudostack` 已有 ZoneId 的 nexus-vfs exact revision pin、派生 TypeScript artifact、generated vectors、conformance test 和默认 CI clean-diff。这证明 owner → pin → derive 模式可行，但尚未覆盖完整 draft-frozen metadata、跨 owner references、真实 consumer adoption、release manifest、兼容窗口或 deployment；因此本 ADR 的整条平台要求不以这些局部文件声明已强制。
+当前 `sudostack` 已形成可复现的 F1 局部实现证据：Nexus 与 nexus-vfs 的 exact-pinned owner closure 已闭合，并可通过本地 checkout、物化的 offline bundle 和已发布的远端 revisions 验证；generated candidate/source-closure manifests、activation metadata 与 source-availability operation 记录候选内容、激活关系和 availability-only override；默认 gates 已提供 conformance、compatibility mutation、manifest/digest 以及 clean pack/install/import evidence。
+
+这些证据证明 owner → exact closure → derive → candidate activation/availability → package verification 链路，但不改变治理、发布或部署状态：本 ADR 仍为 `Proposed`，所有规范性条款仍标记为 `enforced_by: none`，artifact 仍为 `candidate_unpublished`，deployment evidence 仍为 `not_deployed`，actual producers/consumers 仍为空，production-boundary adoption 仍未得到证明。因此这些局部证据不构成 ADR `Accepted`、registry release、真实 consumer adoption 或 deployment 完成。
 
 ## 11. Legacy、迁移与 rollback
 
