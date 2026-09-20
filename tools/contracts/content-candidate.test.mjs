@@ -145,11 +145,12 @@ test('generated candidate encodes the terminating C to M to A contract without c
   assert.equal(manifest.support_evidence.prior_classification, 'historical_only_not_candidate_support')
 })
 
-test('B0 keeps C-03 active, 13 live inputs unknown, zero deployment, and deferred families', () => {
+test('B0 records scoped C-03 resolution while preserving live and rollback blockers', () => {
   const templatePath = join(REPO, 'manifests/inventory/b0-customer-demo-baseline.template.json')
   const template = JSON.parse(readFileSync(templatePath, 'utf8'))
   const supportOperationBytes = read('manifests/operations/consumer-support.json')
-  const supportOperation = JSON.parse(supportOperationBytes)
+  const activationOperationBytes = read('manifests/operations/0.2.1-activation-support.json')
+  const activationOperation = JSON.parse(activationOperationBytes)
   assert.equal(
     template.source_cut.consumer_support_operation.sha256,
     sha256(supportOperationBytes),
@@ -158,18 +159,29 @@ test('B0 keeps C-03 active, 13 live inputs unknown, zero deployment, and deferre
     template.source_cut.candidate_release_manifest.observed_manifest_digest.value,
     sha256(read(HISTORICAL_CANDIDATE_PATH)),
   )
+  assert.equal(
+    template.source_cut.package_external_activation.operation_sha256,
+    sha256(activationOperationBytes),
+  )
   assert.equal(template.contract_scope.confirmed_production_consumers.length, 1)
   assert.equal(
-    template.contract_scope.confirmed_production_consumers[0].integration_revision,
-    supportOperation.consumer_evidence.integration_revision,
+    template.contract_scope.confirmed_production_consumers[0].content_revision,
+    activationOperation.content_evidence.content_revision,
   )
-  assert.deepEqual(template.known_conflicts.map(({ id }) => id), ['C-03'])
-  assert.equal(template.known_conflicts[0].assembly_blocking, true)
-  assert.equal(template.known_conflicts[0].resolution.outcome, null)
+  assert.equal(
+    template.contract_scope.confirmed_production_consumers[0].integration_revision,
+    activationOperation.consumer_evidence.integration_revision,
+  )
+  assert.deepEqual(template.known_conflicts, [])
   assert.deepEqual(
     template.resolved_conflict_history.map(({ id }) => id),
-    ['C-01', 'C-02', 'C-04'],
+    ['C-01', 'C-02', 'C-04', 'C-03'],
   )
+  const c03 = template.resolved_conflict_history.find(({ id }) => id === 'C-03')
+  assert.equal(c03.resolution_scope, 'included_moss_zone_id_embedded_only')
+  assert.equal(c03.resolved_against_content_revision, activationOperation.content_evidence.content_revision)
+  assert.equal(c03.resolved_by_consumer_revision, activationOperation.consumer_evidence.feature_revision)
+  assert.equal(c03.resolved_by_integration_revision, activationOperation.consumer_evidence.integration_revision)
   assert.equal(template.required_live_inputs.length, 13)
   assert.ok(template.required_live_inputs.every(({ evidence_status }) => evidence_status === 'Unknown'))
   assert.equal(template.source_cut.staged_candidate.content_revision, null)
@@ -177,6 +189,24 @@ test('B0 keeps C-03 active, 13 live inputs unknown, zero deployment, and deferre
   assert.equal(template.source_cut.staged_candidate.support_state, 'pending_moss_repin')
   assert.deepEqual(template.source_cut.staged_candidate.actual_consumers, [])
   assert.deepEqual(template.source_cut.staged_candidate.actual_producers, [])
+  assert.equal(
+    template.source_cut.package_external_activation.content_revision,
+    activationOperation.content_evidence.content_revision,
+  )
+  assert.equal(
+    template.source_cut.package_external_activation.moss_feature_revision,
+    activationOperation.consumer_evidence.feature_revision,
+  )
+  assert.equal(
+    template.source_cut.package_external_activation.moss_integration_revision,
+    activationOperation.consumer_evidence.integration_revision,
+  )
+  assert.equal(
+    template.source_cut.package_external_activation.c03_resolution,
+    'resolved_for_included_moss_zone_id_scope',
+  )
+  assert.equal(template.source_cut.package_external_activation.consumer_repin_after_activation, false)
+  assert.equal(template.source_cut.package_external_activation.deployment_evidence, 'not_deployed')
   assert.equal(template.candidate_assembly.source_readiness.evidence_status, 'Unknown')
   assert.equal(template.candidate_assembly.built_artifacts.evidence_status, 'Unknown')
   assert.equal(template.rollback_rehearsal.change_authorization_ref, null)
@@ -236,10 +266,20 @@ test('B0 keeps C-03 active, 13 live inputs unknown, zero deployment, and deferre
       `staging document is missing current digest for ${path}`,
     )
   }
+  for (const path of [
+    'manifests/operations/0.2.1-activation-support.json',
+    'tools/contracts/activation-0.2.1.mjs',
+  ]) {
+    assert.ok(
+      stagingDocumentation.includes(sha256(read(path))),
+      `activation outcome is missing current digest for ${path}`,
+    )
+  }
 
   const documentation = read('docs/inventory/b0-customer-demo-baseline.md').toString('utf8')
-  assert.ok(documentation.includes('C-03 remains assembly-blocking'))
-  assert.ok(documentation.includes('C-04 is resolved'))
+  assert.ok(documentation.includes('C-03 is resolved only for the included Moss/`ZoneId` embedded boundary'))
+  assert.ok(documentation.includes('Assembly and G3 remain blocked'))
+  assert.ok(documentation.includes('C-04 remains resolved'))
   assert.ok(documentation.includes('13 Unknown live inputs'))
   assert.ok(documentation.includes('Confirmed deployment records | **0**'))
   assert.ok(documentation.includes('ResourceRef'))

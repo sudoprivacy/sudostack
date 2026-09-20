@@ -26,6 +26,8 @@ jobs:
         run: npm run typecheck
       - name: Staged candidate manifest, immutable baseline, and historical chain are truthful
         run: npm run manifest:check
+      - name: Package-external 0.2.1 activation record and C bytes are internally consistent
+        run: node tools/contracts/activation-0.2.1.mjs
       - name: Historical 0.2.0 generation, tests, typecheck, activation, support, and package remain reproducible
         run: node tools/contracts/history-0.2.0.mjs --full
       - name: Packed artifacts are deterministic, exact-delta, installable, and importable
@@ -51,6 +53,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: node tools/contracts/history-0.2.0.mjs --remote
+      - name: Exact Candidate2 and Moss repin evidence are remotely verified
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/contracts/activation-0.2.1.mjs --remote
 
   every-clause-names-what-enforces-it:
     runs-on: ubuntu-latest

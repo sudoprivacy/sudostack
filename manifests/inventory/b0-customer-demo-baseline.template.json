@@ -62,7 +62,7 @@
       "rollback_to_b0"
     ],
     "single_component_transition_rule": "Create one row for every applicable component changed by the candidate; unsupported combinations remain explicit rows.",
-    "candidate_contract_authority": "Historical 0.2.0 release and support records remain immutable. The staged 0.2.1 content candidate remains unfrozen with empty support until Moss exact-pins C at M and package-external activation A binds C+M; only A may decide C-03 without rewriting C."
+    "candidate_contract_authority": "Historical 0.2.0 records and immutable 0.2.1 content C remain unchanged. Package-external activation/support A binds exact C and Moss M for the included ZoneId embedded boundary; it resolves only C-03's candidate-specific metadata gap and does not rewrite C, publish, deploy, or approve assembly/G3."
   },
   "source_cut": {
     "prepared_on": "2026-09-20",
@@ -114,12 +114,34 @@
       "support_state": "pending_moss_repin",
       "actual_consumers": [],
       "actual_producers": [],
-      "next_gate": "Moss exact-pins C at M; package-external activation A then binds C+M and decides C-03 without changing C package bytes.",
+      "external_activation_ref": "#/source_cut/package_external_activation",
+      "snapshot_meaning": "Immutable C-stage package metadata; external A does not rewrite these null/pending/empty fields.",
       "evidence_status": "Confirmed-Code",
       "evidence_refs": [
         "../releases/0.2.1-candidate.gen.json",
         "../candidates/0.2.1-content.json",
         "../../docs/design/contracts-0.2.1-content-stage.md"
+      ]
+    },
+    "package_external_activation": {
+      "operation_path": "../operations/0.2.1-activation-support.json",
+      "operation_sha256": "ae956ef3c0cc4f97b1601395e89464006453a01b50f0df7856a464529b65f4ed",
+      "state": "zone_id_candidate_support_admitted",
+      "content_revision": "273fd4097cbc33c1c049c39bb1fb60cef2663e2b",
+      "content_integration_revision": "dc9cf01acf61dff586d292d15710332d35a5f811",
+      "moss_feature_revision": "e9660ed1483cf01f96fe06c45ba7e070e0223ec3",
+      "moss_integration_revision": "18a0a069b808c295287675afc6346f411be971a5",
+      "scope": "included_moss_zone_id_embedded_only",
+      "c03_resolution": "resolved_for_included_moss_zone_id_scope",
+      "candidate_package_bytes": "unchanged_from_content_revision",
+      "consumer_repin_after_activation": false,
+      "artifact_publication": "candidate_unpublished",
+      "deployment_evidence": "not_deployed",
+      "evidence_status": "Confirmed-Code",
+      "evidence_refs": [
+        "../operations/0.2.1-activation-support.json",
+        "../../tools/contracts/activation-0.2.1.mjs",
+        "https://github.com/sudoprivacy/moss/pull/278"
       ]
     },
     "f1_revision_chain": {
@@ -168,7 +190,8 @@
     "declared_contract_baseline": {
       "value": "draft-frozen",
       "scope": "historical_0.2.0_manifest",
-      "evidence_status": "Conflicting",
+      "meaning": "Historical package declaration preserved as code evidence; current 0.2.1 included-scope admission is recorded separately and does not rewrite package metadata.",
+      "evidence_status": "Confirmed-Code",
       "evidence_refs": [
         "../../docs/adr/ADR-005-product-contract-versioning.md#7-draft-frozen-baseline",
         "../releases/0.2.0-candidate.gen.json",
@@ -187,50 +210,56 @@
       "value": "candidate_unpublished",
       "evidence_status": "Confirmed-Code",
       "evidence_refs": [
-        "../releases/0.2.0-candidate.gen.json"
+        "../releases/0.2.0-candidate.gen.json",
+        "../releases/0.2.1-candidate.gen.json",
+        "#/source_cut/package_external_activation"
       ]
     },
     "manifest_declared_deployment_state": {
       "value": "not_deployed",
-      "meaning": "This is a source-manifest declaration, not an observation that no out-of-band deployment exists.",
+      "meaning": "This is a source-manifest and package-external evidence declaration, not an observation that no out-of-band deployment exists.",
       "evidence_status": "Confirmed-Code",
       "evidence_refs": [
-        "../releases/0.2.0-candidate.gen.json"
+        "../releases/0.2.0-candidate.gen.json",
+        "../releases/0.2.1-candidate.gen.json",
+        "#/source_cut/package_external_activation"
       ]
     }
   },
   "contract_scope": {
     "target_consumers": [
       {
-        "id": "moss-zone-id",
+        "id": "moss-zone-id-0.2.1",
         "repository": "sudoprivacy/moss",
         "contract_family": "ZoneId",
-        "feature_revision": "71be276ebe1ea58882db9caaa6c42d8df5a67ad0",
-        "integration_revision": "604a78ee27b290fc40e85fe0eb469e5a4cb13c91",
+        "feature_revision": "e9660ed1483cf01f96fe06c45ba7e070e0223ec3",
+        "integration_revision": "18a0a069b808c295287675afc6346f411be971a5",
+        "content_revision": "273fd4097cbc33c1c049c39bb1fb60cef2663e2b",
         "target_boundary": "NexusManager.start() embedded process-argument construction",
         "production_boundary_evidence_status": "Confirmed-Code",
         "artifact_publication": "candidate_unpublished",
         "deployment_evidence": "not_deployed",
         "evidence_refs": [
-          "#/source_cut/consumer_support_operation",
-          "https://github.com/sudoprivacy/moss/pull/276"
+          "#/source_cut/package_external_activation",
+          "https://github.com/sudoprivacy/moss/pull/278"
         ]
       }
     ],
     "confirmed_production_consumers": [
       {
-        "id": "moss-zone-id-embedded-start",
+        "id": "moss-zone-id-embedded-start-0.2.1",
         "repository": "sudoprivacy/moss",
-        "integration_revision": "604a78ee27b290fc40e85fe0eb469e5a4cb13c91",
+        "content_revision": "273fd4097cbc33c1c049c39bb1fb60cef2663e2b",
+        "integration_revision": "18a0a069b808c295287675afc6346f411be971a5",
         "contract_family": "ZoneId",
-        "scope": "integrated_and_default_ci_tested_code_boundary",
+        "scope": "integrated_and_default_ci_tested_exact_candidate_boundary",
         "runtime_mode": "embedded",
         "excluded_runtime_modes": [
           "external"
         ],
         "evidence_status": "Confirmed-Code",
         "evidence_refs": [
-          "#/source_cut/consumer_support_operation"
+          "#/source_cut/package_external_activation"
         ]
       }
     ],
@@ -292,29 +321,24 @@
         "https://github.com/sudoprivacy/moss/pull/276",
         "#/source_cut/consumer_support_operation"
       ]
-    }
-  ],
-  "known_conflicts": [
+    },
     {
       "id": "C-03",
-      "summary": "Historical evidence proves the Moss ZoneId production boundary for 0.2.0, but staged 0.2.1 is unfrozen with empty support arrays and no candidate-specific Moss pin or activation evidence.",
-      "assembly_blocking": true,
-      "allowed_resolution_outcomes": [
-        "resolved_by_package_external_activation_A_binding_content_C_and_moss_M"
-      ],
-      "resolution": {
-        "outcome": null,
-        "authority_ref": "../../docs/adr/ADR-005-product-contract-versioning.md#7-draft-frozen-baseline",
-        "decision_ref": null
-      },
-      "evidence_status": "Conflicting",
+      "previous_state": "Historical 0.2.0 evidence and immutable 0.2.1 C-stage package metadata had empty support arrays, so the exact candidate-specific Moss pin and admission evidence were absent.",
+      "resolution": "Package-external activation/support A verifies exact content C, Moss M, integration, installed 0.2.1 identity, unchanged embedded production boundary, default CI, and zero C package-byte changes. Resolution is limited to the included Moss/ZoneId embedded scope.",
+      "resolved_against_content_revision": "273fd4097cbc33c1c049c39bb1fb60cef2663e2b",
+      "resolved_by_consumer_revision": "e9660ed1483cf01f96fe06c45ba7e070e0223ec3",
+      "resolved_by_integration_revision": "18a0a069b808c295287675afc6346f411be971a5",
+      "resolution_operation_ref": "#/source_cut/package_external_activation",
+      "resolution_scope": "included_moss_zone_id_embedded_only",
+      "evidence_status": "Confirmed-Code",
       "evidence_refs": [
-        "../releases/0.2.0-candidate.gen.json",
-        "#/source_cut/consumer_support_operation",
-        "#/source_cut/staged_candidate"
+        "#/source_cut/package_external_activation",
+        "https://github.com/sudoprivacy/moss/pull/278"
       ]
     }
   ],
+  "known_conflicts": [],
   "baseline": {
     "baseline_id": null,
     "baseline_revision": null,
