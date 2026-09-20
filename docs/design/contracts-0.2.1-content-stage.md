@@ -1,7 +1,7 @@
 # `@sudo/contracts@0.2.1` content-stage candidate
 
 Date: 2026-09-20
-Scope: `SW-20260917-001-SUDOSTACK-CANDIDATE2` content stage only
+Scope: immutable `SW-20260917-001-SUDOSTACK-CANDIDATE2` content-stage record plus package-external `SUDOSTACK-ACTIVATE2` outcome
 
 This document is a staging record, not a second Contract source of truth. Canonical definitions remain with their semantic owners, and the generated SudoStack artifacts remain the distribution source of record.
 
@@ -12,11 +12,12 @@ This document is a staging record, not a second Contract source of truth. Canoni
 | Historical package | `@sudo/contracts@0.2.0`, 42 files, 37,901 bytes, SHA-1 `2aa7a118da0adf6b7b486f9538fe20204001dcae`, SHA-256 `6f3b1bbbcc669b0b9dadd2dbdbc2c01fc5eb473a4839ddad45e0d172343073f8` | Confirmed-Code |
 | Candidate package version | `0.2.1` | Confirmed-Code |
 | Runtime Contract, Schema, fixture, validator and owner-source bytes | Byte-identical to the immutable `0.2.0` baseline | Confirmed-Code |
-| Candidate content revision | `null`; resolved only after content commit C exists | Unknown |
-| Candidate lifecycle | `staged`, `unfrozen`, `candidate_unpublished`, `not_deployed` | Confirmed-Code |
-| Candidate producer/consumer support | Empty; `pending_moss_repin` | Confirmed-Code |
-| Moss support evidence already present | Applies only to the historical `0.2.0` pin and is not `0.2.1` adoption evidence | Confirmed-Code |
-| C-03 | Active and assembly-blocking | Conflicting |
+| Embedded candidate revision | `null`; immutable C-stage metadata preserved at content C `273fd4097cbc33c1c049c39bb1fb60cef2663e2b` | Confirmed-Code |
+| Candidate lifecycle | Package metadata remains `staged`, `unfrozen`, `candidate_unpublished`, `not_deployed` | Confirmed-Code |
+| Embedded producer/consumer support | Empty; the exact C package is unchanged | Confirmed-Code |
+| Candidate-specific Moss evidence | M `e9660ed1483cf01f96fe06c45ba7e070e0223ec3`, integrated as `18a0a069b808c295287675afc6346f411be971a5`, exact-pins C and passes required CI | Confirmed-Code |
+| Package-external activation | [`0.2.1-activation-support.json`](../../manifests/operations/0.2.1-activation-support.json) verifies exact C+M, unchanged package bytes and no repin A | Confirmed-Code |
+| C-03 | Resolved only for the included Moss/ZoneId embedded boundary; package-wide freeze and assembly remain out of scope | Confirmed-Code; scope-bounded |
 | Release or deployment | None | Confirmed-Code for manifest declarations; live deployment remains Unknown |
 
 A patch version is appropriate because the candidate changes package/version metadata, compatibility and provenance metadata, and staging verification only. It makes no wire, runtime, Schema, fixture, validator, owner-source, dependency, export, or package-script change.
@@ -51,7 +52,7 @@ No stage embeds a future revision. A must not record its own containing commit S
 
 - repository: `sudoprivacy/sudostack`;
 - package: `@sudo/contracts@0.2.1`;
-- exact dependency form: `github:sudoprivacy/sudostack#<C full SHA>`;
+- exact dependency: `github:sudoprivacy/sudostack#273fd4097cbc33c1c049c39bb1fb60cef2663e2b`;
 - candidate manifest: `manifests/releases/0.2.1-candidate.gen.json`;
 - candidate manifest SHA-256: `956a19cbc6b42ebc3c4e1c9ebe93e0842e1c295d1f6465e0d42d532d45785a9b`;
 - compatibility manifest SHA-256: `a27553991ab8bd57d66bc12aaca4b08f52cd8def13a1f971d698fa3f435b35ad`;
@@ -60,11 +61,13 @@ No stage embeds a future revision. A must not record its own containing commit S
 - required boundary: installed ZoneId validator at the real embedded `NexusManager.start()` path, immutable binding, exactly one `--cluster-init` argument, invalid-value rejection before process creation, no side effects, and explicit external-mode exclusion;
 - forbidden claims: `ResourceRef` adoption, runtime `ZonePath` adoption, release, deployment, or C-03 closure.
 
-The content revision itself is intentionally absent here until C exists. The coordinator must substitute the full C SHA and independently verify the manifest/package digests from that commit before issuing the Moss work item.
+The content-stage manifest intentionally retains `candidate_revision: null`; immutable C is resolved externally as `273fd4097cbc33c1c049c39bb1fb60cef2663e2b`. Moss M `e9660ed1483cf01f96fe06c45ba7e070e0223ec3`, integrated as `18a0a069b808c295287675afc6346f411be971a5`, consumed that exact C without requiring an A repin.
 
-## Later activation inputs
+## Package-external activation outcome
 
-`SUDOSTACK-ACTIVATE2` must receive the full C and M SHAs and evidence for the exact Moss dependency/lock bytes and required CI. Its package-external record must bind those two prior revisions, preserve all C package bytes, keep release/deployment facts separate, and leave `ResourceRef`, runtime `ZonePath`, B0 live inputs, mixed-version smoke, and rollback gates unchanged. C-03 can close only if that verification passes.
+`SUDOSTACK-ACTIVATE2` records exact C, M and integration evidence in [`0.2.1-activation-support.json`](../../manifests/operations/0.2.1-activation-support.json) (SHA-256 `ae956ef3c0cc4f97b1601395e89464006453a01b50f0df7856a464529b65f4ed`), verified by [`activation-0.2.1.mjs`](../../tools/contracts/activation-0.2.1.mjs) (SHA-256 `17778b6796f135de80ace0becb99e6e30d4fac947805a736b96f3f4f2ae933ab`). Its offline mode validates the record, all 43 C package paths and tarball identity; local mode additionally verifies the exact three-file Moss repin, unchanged production source/caller tests, installed `0.2.1` identity and default runner/workflow bytes from an explicit repository; only remote mode verifies the pinned GitHub PR, workflow attempts and check-run IDs. The record contains no A SHA, changes no C package byte, and requires no Moss repin.
+
+This evidence resolves C-03 only for the included Moss/ZoneId embedded boundary. C remains internally staged/unfrozen with empty package support; `ResourceRef`, runtime `ZonePath`, external topology, B0 live inputs, mixed-version smoke, rollback, release and deployment remain unchanged or pending.
 
 ## Reproducible checks
 
@@ -75,6 +78,7 @@ The content stage is checked by:
 - staged candidate digest and lifecycle verification;
 - runtime/schema/fixture/source/provenance and version-forgery mutation tests;
 - deterministic pack, exact package delta, fresh install, TypeScript import, ESM import, and CommonJS import;
-- strict ADR audit and B0 invariant tests.
+- strict ADR audit and B0 invariant tests;
+- package-external A verification in offline, explicit local-repository, and GitHub remote modes, including exact C/M/merge/check-run attribution and no package delta.
 
 These checks establish reproducible code and package evidence only. They do not publish, release, deploy, migrate, approve assembly, or prove a live environment.

@@ -1,0 +1,371 @@
+{
+  "operation_version": 1,
+  "state": "zone_id_candidate_support_admitted",
+  "publication_scope": "package_external_activation_support",
+  "commit_binding": "recorded_by_containing_commit_without_self_sha",
+  "content_evidence": {
+    "repository": "sudoprivacy/sudostack",
+    "repository_url": "https://github.com/sudoprivacy/sudostack.git",
+    "pull_request": "https://github.com/sudoprivacy/sudostack/pull/23",
+    "base_ref": "refs/heads/main",
+    "merged_at": "2026-09-20T08:21:14Z",
+    "content_revision": "273fd4097cbc33c1c049c39bb1fb60cef2663e2b",
+    "content_parent_revision": "5a2a53130e37d1c63993ebf8ba1253b15eb9eebf",
+    "integration_revision": "dc9cf01acf61dff586d292d15710332d35a5f811",
+    "integration_parents": [
+      "5a2a53130e37d1c63993ebf8ba1253b15eb9eebf",
+      "273fd4097cbc33c1c049c39bb1fb60cef2663e2b"
+    ],
+    "changed_file_count": 22,
+    "package": {
+      "name": "@sudo/contracts",
+      "version": "0.2.1",
+      "dependency_spec": "github:sudoprivacy/sudostack#273fd4097cbc33c1c049c39bb1fb60cef2663e2b",
+      "package_json": {
+        "path": "package.json",
+        "sha256": "5800916d364e6f32dee97e9d58bfbccb932338a4ba148fe4a673c6cca8ac9fcb"
+      },
+      "package_lock": {
+        "path": "package-lock.json",
+        "sha256": "1a6782d8059230a98ffcf1a497783cd31e25a3adeac1374ecac4f59272afe519"
+      },
+      "candidate_manifest": {
+        "path": "manifests/releases/0.2.1-candidate.gen.json",
+        "sha256": "956a19cbc6b42ebc3c4e1c9ebe93e0842e1c295d1f6465e0d42d532d45785a9b"
+      },
+      "compatibility_manifest": {
+        "path": "compatibility/current.gen.json",
+        "sha256": "a27553991ab8bd57d66bc12aaca4b08f52cd8def13a1f971d698fa3f435b35ad"
+      },
+      "historical_baseline": {
+        "path": "compatibility/baselines/0.2.0-package.json",
+        "sha256": "9ec2cffbcb19f3e728a6691176ed739bab6de52a56b60abe4217420d2ce0c17c"
+      },
+      "content_stage": {
+        "path": "manifests/candidates/0.2.1-content.json",
+        "sha256": "0b648ce7d7d7e83cd1e63a34ec66776545ca2b60949d0c72b5c8e70c7a69df27"
+      },
+      "tarball": {
+        "file_count": 43,
+        "size": 39541,
+        "unpacked_size": 182315,
+        "sha1": "5774dcb821d483bf8848ba0bda511ec728ae6cf9",
+        "sha256": "1c6b2794de3572bffb59e3dd3f0a504c68a23fd2531c7838773bf78d01469c5e",
+        "integrity": "sha512-l8Y3HJRiAkS8D75T3cFIdS9wwqhVcd91qurk0necAYZRlTfEoD9fynapLk+ZxjPgGnu7LVX28aNoyaoh1hmgnQ=="
+      },
+      "package_bytes": "unchanged_from_content_revision",
+      "consumer_repin_after_activation": false
+    },
+    "workflow": {
+      "path": ".github/workflows/contracts.yml",
+      "sha256": "53b2b49ace0982151bbecab11c8e4d9a1da48cff5f0757a5afae26c27a6834f2"
+    },
+    "hosted_runs": [
+      {
+        "id": 35498989206,
+        "event": "pull_request",
+        "head_sha": "273fd4097cbc33c1c049c39bb1fb60cef2663e2b",
+        "status": "completed",
+        "conclusion": "success",
+        "workflow_id": 357134505,
+        "path": ".github/workflows/contracts.yml",
+        "run_attempt": 1,
+        "url": "https://github.com/sudoprivacy/sudostack/actions/runs/35498989206"
+      },
+      {
+        "id": 35499323894,
+        "event": "push",
+        "head_sha": "dc9cf01acf61dff586d292d15710332d35a5f811",
+        "status": "completed",
+        "conclusion": "success",
+        "workflow_id": 357134505,
+        "path": ".github/workflows/contracts.yml",
+        "run_attempt": 1,
+        "url": "https://github.com/sudoprivacy/sudostack/actions/runs/35499323894"
+      }
+    ],
+    "hosted_checks": {
+      "content_revision": [
+        {
+          "id": 106047213029,
+          "name": "candidate-offline-gates",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/sudoprivacy/sudostack/actions/runs/35498989206/job/106047213029"
+        },
+        {
+          "id": 106047213027,
+          "name": "every-clause-names-what-enforces-it",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/sudoprivacy/sudostack/actions/runs/35498989206/job/106047213027"
+        },
+        {
+          "id": 106047212875,
+          "name": "owner-source-availability",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/sudoprivacy/sudostack/actions/runs/35498989206/job/106047212875"
+        }
+      ],
+      "integration_revision": [
+        {
+          "id": 106048129098,
+          "name": "owner-source-availability",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/sudoprivacy/sudostack/actions/runs/35499323894/job/106048129098"
+        },
+        {
+          "id": 106048129078,
+          "name": "candidate-offline-gates",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/sudoprivacy/sudostack/actions/runs/35499323894/job/106048129078"
+        },
+        {
+          "id": 106048128991,
+          "name": "every-clause-names-what-enforces-it",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/sudoprivacy/sudostack/actions/runs/35499323894/job/106048128991"
+        }
+      ]
+    }
+  },
+  "consumer_evidence": {
+    "repository": "sudoprivacy/moss",
+    "repository_url": "https://github.com/sudoprivacy/moss.git",
+    "pull_request": "https://github.com/sudoprivacy/moss/pull/278",
+    "base_ref": "refs/heads/dev",
+    "merged_at": "2026-09-20T09:30:12Z",
+    "feature_revision": "e9660ed1483cf01f96fe06c45ba7e070e0223ec3",
+    "feature_parent_revision": "57339dfecb3dae2a4c9ddcca7d68ec1a2a8b6f8e",
+    "integration_revision": "18a0a069b808c295287675afc6346f411be971a5",
+    "integration_parents": [
+      "57339dfecb3dae2a4c9ddcca7d68ec1a2a8b6f8e",
+      "e9660ed1483cf01f96fe06c45ba7e070e0223ec3"
+    ],
+    "changed_paths": [
+      {
+        "path": "bun.lock",
+        "sha256": "d7ec8444e15e459f12d9e90e65e69e82208cbadbca93804f872333d603bcd17b"
+      },
+      {
+        "path": "package.json",
+        "sha256": "3ddac89824e4b233179f66cb674258288e5cbde55d0643fff907251f063dda3b"
+      },
+      {
+        "path": "src/server/__tests__/contractsActivation.test.ts",
+        "sha256": "e6a0d6fae50df014d11d9a19a6d3b06511510b98746c79c1055f158ffe61b90d"
+      }
+    ],
+    "preserved_boundary_paths": [
+      {
+        "path": "src/server/nexus/nexusManager.ts",
+        "sha256": "1452bf1fdec6ad1d33602133faab474b539fdb164af98e5666485074551860a7"
+      },
+      {
+        "path": "src/server/nexus/__tests__/nexusManager.test.ts",
+        "sha256": "9ed0881c882e070c66a2e4d7b61ebed6aef675887e5b2e2e19e6052edd9f9e80"
+      }
+    ],
+    "package_binding": {
+      "name": "@sudo/contracts",
+      "version": "0.2.1",
+      "dependency_spec": "github:sudoprivacy/sudostack#273fd4097cbc33c1c049c39bb1fb60cef2663e2b",
+      "content_revision": "273fd4097cbc33c1c049c39bb1fb60cef2663e2b",
+      "package_json_path": "package.json",
+      "lockfile_path": "bun.lock",
+      "installed_package_test_path": "src/server/__tests__/contractsActivation.test.ts"
+    },
+    "boundary": {
+      "family": "zone_id",
+      "family_major": 1,
+      "runtime_mode": "embedded",
+      "entrypoint": "NexusManager.start()",
+      "source_path": "src/server/nexus/nexusManager.ts",
+      "test_path": "src/server/nexus/__tests__/nexusManager.test.ts",
+      "consumer_symbol": "validateZoneId",
+      "transport": "environment -> immutable Moss binding -> embedded Nexus argv",
+      "argument_name": "--cluster-init",
+      "cardinality": "exactly_one_after_exact_immutable_binding",
+      "external_mode": "excluded",
+      "semantic_owner": "nexi-lab/nexus-vfs@24f6730ec90fab8a035b2f5400ed313bda343fbe",
+      "authoritative_input_writer": "operator configuration via MOSS_NEXUS_ZONE_ID",
+      "canonical_runtime_store": "Nexus persisted topology",
+      "consumer_role": "installed ZoneId validator and embedded argv consumer",
+      "producer_role": "embedded Nexus launch argument producer"
+    },
+    "default_runner": {
+      "package_script": "node scripts/test-server.js",
+      "runner_path": "scripts/test-server.js",
+      "runner_sha256": "ed9eb4ce14204f4be8c3925ace8697a4a31a8ad6ffcfd9fbaa9c3ca66ba15680",
+      "server_workflow_path": ".github/workflows/build-release.yml",
+      "server_workflow_sha256": "73934b1cf1ed26fd133fb4ffd578811734c0413222bf8d948d1513a24cfc0a17",
+      "lint_workflow_path": ".github/workflows/lint.yml",
+      "lint_workflow_sha256": "d66ce0c056eb47edd165895f1f57ccc7c8c7d69d80d2b00b0741ad28c60502b3"
+    },
+    "hosted_runs": [
+      {
+        "id": 35502080415,
+        "event": "pull_request",
+        "head_sha": "e9660ed1483cf01f96fe06c45ba7e070e0223ec3",
+        "status": "completed",
+        "conclusion": "success",
+        "workflow_id": 274466330,
+        "path": ".github/workflows/build-release.yml",
+        "run_attempt": 1,
+        "url": "https://github.com/sudoprivacy/moss/actions/runs/35502080415"
+      },
+      {
+        "id": 35502080423,
+        "event": "pull_request",
+        "head_sha": "e9660ed1483cf01f96fe06c45ba7e070e0223ec3",
+        "status": "completed",
+        "conclusion": "success",
+        "workflow_id": 360150290,
+        "path": ".github/workflows/lint.yml",
+        "run_attempt": 1,
+        "url": "https://github.com/sudoprivacy/moss/actions/runs/35502080423"
+      },
+      {
+        "id": 35502485198,
+        "event": "push",
+        "head_sha": "18a0a069b808c295287675afc6346f411be971a5",
+        "status": "completed",
+        "conclusion": "success",
+        "workflow_id": 274466330,
+        "path": ".github/workflows/build-release.yml",
+        "run_attempt": 1,
+        "url": "https://github.com/sudoprivacy/moss/actions/runs/35502485198"
+      }
+    ],
+    "hosted_checks": {
+      "feature_revision": [
+        {
+          "id": 106055515618,
+          "name": "lint",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/sudoprivacy/moss/actions/runs/35502080423/job/106055515618"
+        },
+        {
+          "id": 106055515466,
+          "name": "server-tests",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/sudoprivacy/moss/actions/runs/35502080415/job/106055515466"
+        },
+        {
+          "id": 106055515292,
+          "name": "build-amd64",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/sudoprivacy/moss/actions/runs/35502080415/job/106055515292"
+        },
+        {
+          "id": 106056158891,
+          "name": "publish-server-release",
+          "status": "completed",
+          "conclusion": "skipped",
+          "url": "https://github.com/sudoprivacy/moss/actions/runs/35502080415/job/106056158891"
+        }
+      ],
+      "integration_revision": [
+        {
+          "id": 106056622021,
+          "name": "server-tests",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/sudoprivacy/moss/actions/runs/35502485198/job/106056622021"
+        },
+        {
+          "id": 106056621920,
+          "name": "build-amd64",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/sudoprivacy/moss/actions/runs/35502485198/job/106056621920"
+        },
+        {
+          "id": 106057301138,
+          "name": "publish-server-release",
+          "status": "completed",
+          "conclusion": "skipped",
+          "url": "https://github.com/sudoprivacy/moss/actions/runs/35502485198/job/106057301138"
+        }
+      ]
+    }
+  },
+  "effective_support": {
+    "scope": "included_moss_zone_id_embedded_only",
+    "c03_resolution": "resolved_for_included_moss_zone_id_scope",
+    "actual_consumers": [
+      {
+        "id": "moss-zone-id-embedded-start-0.2.1",
+        "repository": "sudoprivacy/moss",
+        "content_revision": "273fd4097cbc33c1c049c39bb1fb60cef2663e2b",
+        "integration_revision": "18a0a069b808c295287675afc6346f411be971a5",
+        "family": "zone_id",
+        "family_major": 1,
+        "boundary": "src/server/nexus/nexusManager.ts::NexusManager.start()",
+        "role": "installed_validator_and_argv_consumer",
+        "support_state": "integrated_tested_exact_candidate"
+      }
+    ],
+    "actual_producers": [
+      {
+        "id": "moss-zone-id-embedded-launch-0.2.1",
+        "repository": "sudoprivacy/moss",
+        "content_revision": "273fd4097cbc33c1c049c39bb1fb60cef2663e2b",
+        "integration_revision": "18a0a069b808c295287675afc6346f411be971a5",
+        "family": "zone_id",
+        "family_major": 1,
+        "boundary": "embedded nexusd --cluster-init argument",
+        "role": "launch_argument_producer",
+        "support_state": "integrated_tested_exact_candidate"
+      }
+    ],
+    "families": {
+      "zone_id": {
+        "support_state": "integrated_tested_exact_candidate",
+        "runtime_modes": [
+          "embedded"
+        ],
+        "excluded_runtime_modes": [
+          "external"
+        ]
+      },
+      "resource_ref": {
+        "support_state": "deferred_no_current_production_provider_or_consumer",
+        "actual_consumers": [],
+        "actual_producers": []
+      },
+      "zone_path": {
+        "support_state": "deferred_owner_dependency_only_for_resource_ref",
+        "actual_consumers": [],
+        "actual_producers": []
+      }
+    },
+    "candidate_package_metadata": "immutable_staged_unfrozen_empty",
+    "publication_scope": "package_external_activation_support"
+  },
+  "lifecycle_constraints": {
+    "adr_maturity": "proposed",
+    "candidate_package_baseline": "unfrozen_staged_metadata_unchanged",
+    "included_scope_admission": "verified_package_external",
+    "artifact_publication": "candidate_unpublished",
+    "deployment_evidence": "not_deployed",
+    "resource_ref_support": "deferred",
+    "zone_path_runtime_support": "deferred",
+    "external_mode": "excluded",
+    "assembly_entry": "pending_live_evidence",
+    "g3": "pending_mixed_version_and_rollback"
+  },
+  "verification_toolchain": [
+    {
+      "path": "tools/contracts/activation-0.2.1.mjs",
+      "sha256": "17778b6796f135de80ace0becb99e6e30d4fac947805a736b96f3f4f2ae933ab"
+    }
+  ]
+}
