@@ -1,34 +1,49 @@
 {
-  "compatibility_version": 1,
+  "baseline": {
+    "path": "compatibility/baselines/0.2.0-package.json",
+    "runtime_contract": "byte_identical",
+    "sha256": "9ec2cffbcb19f3e728a6691176ed739bab6de52a56b60abe4217420d2ce0c17c",
+    "source_revision": "5a2a53130e37d1c63993ebf8ba1253b15eb9eebf"
+  },
+  "compatibility_version": 2,
   "families": {
     "resource_ref": {
+      "adoption_claim": "none",
       "backward_compatibility_claim": false,
       "owner_revision": "5139e2019d7f46d4dde3f73ee6cd21bb094a7dc1",
       "provenance_revision": "759842551697efa2579a92f24b16f8ae43829e7b",
-      "semantic_uncertainty": "manual_review",
-      "state": "initial_baseline"
+      "runtime_bytes": "byte_identical_to_0.2.0",
+      "semantic_uncertainty": "unchanged_manual_review",
+      "state": "byte_identical_behavior"
     },
     "zone_id": {
       "current_owner_revision": "24f6730ec90fab8a035b2f5400ed313bda343fbe",
       "evidence": [
-        "legacy generated vectors",
+        "immutable 0.2.0 package baseline",
         "12 exact owner vectors"
       ],
       "lexical_rule_data_equal": true,
-      "owner_spec_digest_changed": true,
-      "previous_owner_revision": "21789169d207abeef727768ce94d7a2484361a4b",
-      "previous_sudostack_revision": "fe27da807594da85f8bc26c5b5394c516f21c80e",
-      "repository_revision_skew": true,
+      "owner_spec_digest_changed": false,
+      "previous_owner_revision": "24f6730ec90fab8a035b2f5400ed313bda343fbe",
+      "repository_revision_skew": false,
+      "runtime_bytes": "byte_identical_to_0.2.0",
       "state": "compatible_behavior"
     }
   },
   "package": {
-    "candidate": "0.2.0",
-    "previous": "0.1.0"
+    "candidate": "0.2.1",
+    "previous": "0.2.0",
+    "semver_change": "patch"
   },
   "support_matrix": {
     "actual_consumers": [],
     "actual_producers": [],
-    "note": "Consumer support remains empty until a production-boundary Work Item passes default CI."
+    "note": "The 0.2.1 candidate remains unfrozen until Moss exact-pins content commit C and later package-external activation A verifies C and M.",
+    "prior_evidence": {
+      "classification": "historical_only_not_candidate_support",
+      "operation_path": "manifests/operations/consumer-support.json",
+      "package_version": "0.2.0"
+    },
+    "state": "pending_moss_repin"
   }
 }

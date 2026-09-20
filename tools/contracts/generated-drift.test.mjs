@@ -29,6 +29,28 @@ test('offline gates catch contradictory provenance and generated hand edits', ()
     })
     assert.equal(clean.status, 0, clean.stderr)
 
+    const candidatePath = join(temporary, 'manifests/releases/0.2.1-candidate.gen.json')
+    const originalCandidate = readFileSync(candidatePath, 'utf8')
+    const candidateMutations = [
+      (value) => { value.sudostack.assembly_source_lock.sha256 = '0'.repeat(64) },
+      (value) => { value.owners.nexus.schema_sha256 = '0'.repeat(64) },
+      (value) => { value.generated_artifacts.pop() },
+      (value) => { value.internal_generation_artifacts.pop() },
+      (value) => { value.choreography.activation_A.binds = [] },
+    ]
+    for (const mutate of candidateMutations) {
+      const changed = JSON.parse(originalCandidate)
+      mutate(changed)
+      writeFileSync(candidatePath, `${JSON.stringify(changed, null, 2)}\n`)
+      const result = spawnSync(process.execPath, ['tools/contracts/verify-candidate.mjs'], {
+        cwd: temporary,
+        encoding: 'utf8',
+        env: generatorEnv,
+      })
+      assert.notEqual(result.status, 0, 'manifest verifier accepted incomplete or forged metadata')
+    }
+    writeFileSync(candidatePath, originalCandidate)
+
     const baselinePath = join(temporary, 'compatibility/baselines/0.1.0.json')
     const originalBaseline = readFileSync(baselinePath, 'utf8')
     const symbolicBaseline = JSON.parse(originalBaseline)

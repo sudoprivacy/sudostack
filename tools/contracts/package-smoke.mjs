@@ -1,56 +1,42 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import {
+  CANDIDATE_PATH,
+  HISTORICAL_CANDIDATE_PATH,
+  expectedCurrentPackedPaths,
+  sha256,
+  verifyCandidateContent,
+} from './content-candidate.mjs'
+import { verifyHistoricalPackage } from './history-0.2.0.mjs'
 import { requireSupportedNode } from './node-version.mjs'
+import { runNpm } from './npm-runner.mjs'
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const PACKAGE = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8'))
 requireSupportedNode(process.versions.node, PACKAGE.engines.node)
-const NPM_CLI = process.env.npm_execpath
-if (!NPM_CLI) throw new Error('package smoke must run through npm so npm_execpath is available')
-const runNpm = (args, options = {}) =>
-  execFileSync(process.execPath, [NPM_CLI, ...args], {
-    cwd: options.cwd ?? REPO,
-    encoding: 'utf8',
-    maxBuffer: 8 * 1024 * 1024,
-    env: { ...process.env, npm_config_audit: 'false', npm_config_fund: 'false' },
-  })
+const runPackageNpm = (args, options = {}) => runNpm(args, { cwd: options.cwd ?? REPO })
 
-const dryRun = JSON.parse(runNpm(['pack', '--dry-run', '--json', '--ignore-scripts']))[0]
+const { baseline } = verifyCandidateContent({ repository: REPO })
+const historicalPackage = verifyHistoricalPackage({ repository: REPO, baseline })
+const dryRun = JSON.parse(runPackageNpm(['pack', '--dry-run', '--json', '--ignore-scripts']))[0]
 const packedPaths = new Set(dryRun.files.map((entry) => entry.path))
-const fixtureIndex = JSON.parse(
-  readFileSync(join(REPO, 'contracts/common/v1/resource-ref/fixture-index.gen.json'), 'utf8'),
-)
-const candidatePath = `manifests/releases/${PACKAGE.version}-candidate.gen.json`
-const candidate = JSON.parse(readFileSync(join(REPO, candidatePath), 'utf8'))
-const expected = new Set([
+const expected = expectedCurrentPackedPaths(baseline)
+assert.deepEqual([...packedPaths].sort(), [...expected].sort(), '0.2.1 packed path delta is not exact')
+
+const candidate = JSON.parse(readFileSync(join(REPO, CANDIDATE_PATH), 'utf8'))
+const packageMetadataPaths = new Set([
   'package.json',
   'README.md',
-  'contracts/zone-id/zone-id.gen.js',
-  'contracts/zone-id/zone-id.gen.d.ts',
-  'contracts/zone-id/schema.gen.json',
-  'contracts/zone-id/vectors.source.gen.json',
-  'contracts/zone-path/schema.gen.json',
-  'contracts/zone-path/meta-schema.gen.json',
-  'contracts/zone-path/cases.source.gen.json',
-  'contracts/common/v1/resource-ref/resource-ref.gen.js',
-  'contracts/common/v1/resource-ref/resource-ref.gen.d.ts',
-  'contracts/common/v1/resource-ref/schema.gen.json',
-  'contracts/common/v1/resource-ref/owner-manifest.source.gen.json',
-  'contracts/common/v1/resource-ref/fixture-index.gen.json',
-  'compatibility/current.gen.json',
-  'manifests/source-closure.gen.json',
-  candidatePath,
-  ...fixtureIndex.resource_ref.cases.map((fixture) => fixture.distributed_path),
+  HISTORICAL_CANDIDATE_PATH,
+  CANDIDATE_PATH,
 ])
-for (const path of expected) assert.ok(packedPaths.has(path), `package is missing ${path}`)
-for (const path of packedPaths) assert.ok(expected.has(path), `package contains unexpected ${path}`)
-const packageMetadataPaths = new Set(['package.json', 'README.md', candidatePath])
 const packedDistributionPaths = [...packedPaths]
   .filter((path) => !packageMetadataPaths.has(path))
   .sort()
@@ -62,6 +48,21 @@ for (const artifact of candidate.internal_generation_artifacts) {
   assert.equal(packedPaths.has(artifact.path), false, `package contains internal ${artifact.path}`)
 }
 
+const allowedChanged = new Set(baseline.successor_policy.changed_packed_paths)
+const changed = []
+for (const entry of baseline.packed_files) {
+  const currentDigest = sha256(readFileSync(join(REPO, entry.path)))
+  if (currentDigest === entry.sha256) continue
+  changed.push(entry.path)
+  assert.ok(allowedChanged.has(entry.path), `unexpected packed byte delta: ${entry.path}`)
+}
+assert.deepEqual(changed.sort(), [...allowedChanged].sort(), 'expected packed metadata deltas are missing')
+assert.deepEqual(
+  baseline.successor_policy.added_packed_paths,
+  [CANDIDATE_PATH],
+  'the staged candidate must be the only added packed path',
+)
+
 const forbidden = [
   /^tools\//,
   /(?:^|\/)sources\.lock\.json$/,
@@ -71,6 +72,8 @@ const forbidden = [
   /\.test\.mjs$/,
   /resource-ref\.gen\.ts$/,
   /zone-id\.gen\.ts$/,
+  /^compatibility\/baselines\//,
+  /^manifests\/candidates\//,
 ]
 for (const path of packedPaths) {
   assert.equal(forbidden.some((pattern) => pattern.test(path)), false, path)
@@ -78,22 +81,39 @@ for (const path of packedPaths) {
 
 const temporary = mkdtempSync(join(tmpdir(), 'sudo-contracts-smoke-'))
 process.on('exit', () => rmSync(temporary, { recursive: true, force: true }))
-const packResult = JSON.parse(
-  runNpm(['pack', '--json', '--ignore-scripts', '--pack-destination', temporary]),
-)[0]
-assert.deepEqual(new Set(packResult.files.map((entry) => entry.path)), packedPaths)
-const tarball = join(temporary, basename(packResult.filename))
+const packDestinations = [join(temporary, 'pack-a'), join(temporary, 'pack-b')]
+for (const destination of packDestinations) mkdirSync(destination)
+const packResults = packDestinations.map((destination) =>
+  JSON.parse(runPackageNpm(['pack', '--json', '--ignore-scripts', '--pack-destination', destination]))[0],
+)
+for (const result of packResults) {
+  assert.deepEqual(new Set(result.files.map((entry) => entry.path)), packedPaths)
+}
+const tarballs = packResults.map((result, index) =>
+  readFileSync(join(packDestinations[index], basename(result.filename))),
+)
+assert.equal(sha256(tarballs[0]), sha256(tarballs[1]), 'repeated npm pack output is not deterministic')
+assert.equal(
+  createHash('sha1').update(tarballs[0]).digest('hex'),
+  packResults[0].shasum,
+  'npm-reported SHA-1 differs from packed bytes',
+)
+
+const installDirectory = join(temporary, 'install-current')
+mkdirSync(installDirectory)
+const tarball = join(packDestinations[0], basename(packResults[0].filename))
 writeFileSync(
-  join(temporary, 'package.json'),
+  join(installDirectory, 'package.json'),
   `${JSON.stringify({ private: true, type: 'module', dependencies: { '@sudo/contracts': `file:${tarball}` } }, null, 2)}\n`,
 )
-runNpm(['install', '--ignore-scripts'], { cwd: temporary })
+runPackageNpm(['install', '--ignore-scripts'], { cwd: installDirectory })
 const installedPackage = JSON.parse(
-  readFileSync(join(temporary, 'node_modules', '@sudo', 'contracts', 'package.json'), 'utf8'),
+  readFileSync(join(installDirectory, 'node_modules', '@sudo', 'contracts', 'package.json'), 'utf8'),
 )
+assert.equal(installedPackage.version, PACKAGE.version)
 assert.equal(installedPackage.engines.node, PACKAGE.engines.node)
 writeFileSync(
-  join(temporary, 'smoke.ts'),
+  join(installDirectory, 'smoke.ts'),
   `import { validateZoneId, ZONE_ID_MAX_LEN, ZONE_ID_NO_LEADING } from '@sudo/contracts/zone-id'\n` +
     `import { isResourceRef, RESOURCE_REF_API_VERSION, RESOURCE_REF_KIND, type ResourceRef } from '@sudo/contracts/common/v1/resource-ref'\n` +
     `const max: 63 = ZONE_ID_MAX_LEN\n` +
@@ -109,7 +129,7 @@ execFileSync(
   [
     join(REPO, 'node_modules', 'typescript', 'bin', 'tsc'),
     '--noEmit', '--module', 'esnext', '--moduleResolution', 'bundler', '--target', 'es2022', 'smoke.ts'],
-  { cwd: temporary, stdio: 'pipe' },
+  { cwd: installDirectory, stdio: 'pipe' },
 )
 const smoke = `
 import assert from 'node:assert/strict'
@@ -133,7 +153,7 @@ assert.deepEqual(JSON.parse(serializeResourceRef(parsed)), JSON.parse(source))
 console.log('installed package imports and validates')
 `
 const output = execFileSync(process.execPath, ['--input-type=module', '--eval', smoke], {
-  cwd: temporary,
+  cwd: installDirectory,
   encoding: 'utf8',
 })
 const requireSmoke = `
@@ -145,9 +165,12 @@ assert.equal(isResourceRef({ api_version: 'common.sudo.dev/v1', kind: 'ResourceR
 console.log('CommonJS require resolves')
 `
 const requireOutput = execFileSync(process.execPath, ['--input-type=commonjs', '--eval', requireSmoke], {
-  cwd: temporary,
+  cwd: installDirectory,
   encoding: 'utf8',
 })
 process.stdout.write(
-  `package smoke verified: ${packedPaths.size} files, ${packResult.size} bytes; ${output.trim()}; ${requireOutput}`,
+  `package smoke verified: historical ${historicalPackage.fileCount} files/${historicalPackage.size} bytes/${historicalPackage.sha256}; ` +
+    `candidate ${packedPaths.size} files/${packResults[0].size} bytes/${sha256(tarballs[0])}; ` +
+    `exact deltas changed=${changed.join(',')} added=${CANDIDATE_PATH}; deterministic pack; ` +
+    `${output.trim()}; ${requireOutput}`,
 )
