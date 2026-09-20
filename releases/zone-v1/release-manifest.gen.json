@@ -150,7 +150,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "174b9a4d3e0525113eddd7ba53f8da65766b56df8f1aab4c5a63df46eca919bb"
+      "sha256": "f794af92f7d04dbb9ec49910498da78c1b7dc6641bcadad02b3459eadbbcb7d6"
     }
   ],
   "provenance_regenerate": "node --use-env-proxy contracts/generate.mjs"

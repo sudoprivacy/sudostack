@@ -52,8 +52,9 @@ jobs:
       - name: Release bundle is reproducible
         run: |
           node contracts/zone-v1/release.mjs
-          git diff --exit-code -- releases/zone-v1
           npm run sbom
+          git diff --exit-code -- releases/zone-v1
+          npm run verify:offline
 
   rust-conformance:
     runs-on: ubuntu-latest
@@ -71,6 +72,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: nexi-lab/nexus-vfs
+          path: .contract-repos/nexus-vfs
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -86,4 +91,6 @@ jobs:
       # Sibling repos resolve through SUDOSTACK_REPOS_ROOT; without it the
       # cross-repo targets count as unverifiable, which --strict rejects.
       - name: Every normative clause answers for itself
-        run: node docs/adr/enforced-by.mjs
+        env:
+          SUDOSTACK_REPOS_ROOT: ${{ github.workspace }}/.contract-repos
+        run: node docs/adr/enforced-by.mjs --strict

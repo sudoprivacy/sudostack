@@ -21,7 +21,8 @@
     "test": "node --experimental-strip-types --test contracts/zone-id/conformance.test.mjs contracts/zone-v1/conformance/conformance.test.mjs compatibility/check-compatibility.test.mjs",
     "compatibility": "node compatibility/check-compatibility.mjs",
     "release": "node contracts/zone-v1/release.mjs",
-    "sbom": "npx @cyclonedx/cyclonedx-npm --output-file releases/zone-v1/sbom.cdx.gen.json --flatten-components",
+    "verify:offline": "node contracts/zone-v1/verify-offline-bundle.mjs",
+    "sbom": "npx @cyclonedx/cyclonedx-npm --output-file releases/zone-v1/sbom.cdx.gen.json --flatten-components --output-reproducible --validate",
     "adr:enforced-by": "node docs/adr/enforced-by.mjs",
     "adr:enforced-by:test": "node --test docs/adr/enforced-by.test.mjs"
   },
