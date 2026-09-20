@@ -68,48 +68,84 @@
     "prepared_on": "2026-09-18",
     "inventory_base": {
       "repository": "sudoprivacy/sudostack",
-      "revision": "44b4e9de087e0b4908ab8f1af407737b435b4104",
+      "revision": "1c26d4c3044efe4fcd0d88ed61201c3e1d828fc1",
       "evidence_status": "Confirmed-Code",
       "evidence_refs": [
-        "https://github.com/sudoprivacy/sudostack/commit/44b4e9de087e0b4908ab8f1af407737b435b4104"
+        "https://github.com/sudoprivacy/sudostack/commit/1c26d4c3044efe4fcd0d88ed61201c3e1d828fc1"
       ]
     },
     "adr_maturity": {
       "value": "Proposed",
       "evidence_status": "Confirmed-Code",
       "evidence_refs": [
-        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/docs/adr/ADR-005-product-contract-versioning.md#L3-L7"
+        "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/docs/adr/ADR-005-product-contract-versioning.md#L3-L7"
       ]
     },
     "candidate_release_manifest": {
       "identity": {
-        "uri": "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/manifests/releases/0.2.0-candidate.gen.json",
-        "repository_revision": "aec52e9dc5438946dd83d5c56c07149a4800120a",
+        "uri": "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/manifests/releases/0.2.0-candidate.gen.json",
+        "repository_revision": "b966826edada1c2c1086ab6ee46cec9f85a398b5",
         "evidence_status": "Confirmed-Code",
         "evidence_refs": [
+          "https://github.com/sudoprivacy/sudostack/commit/b966826edada1c2c1086ab6ee46cec9f85a398b5",
           "https://github.com/sudoprivacy/sudostack/pull/18"
         ]
       },
       "observed_manifest_digest": {
         "algorithm": "sha256",
-        "value": null,
-        "evidence_status": "Unknown",
-        "evidence_refs": []
+        "value": "2a13fdaf59d26bc4af7db4a2f58f6956555b1d61b1da81bd03b4b879fb1c548c",
+        "evidence_status": "Confirmed-Code",
+        "evidence_refs": [
+          "#/source_cut/artifact_stability"
+        ]
       }
+    },
+    "f1_revision_chain": {
+      "candidate_content_revision": "30da0ddd953268ff8a9a0f0980276300ab153003",
+      "activation_revision": "60bd8dda6fb2d348ec8571b9b1a4eaa535e36dc5",
+      "source_availability_revision": "aec52e9dc5438946dd83d5c56c07149a4800120a",
+      "current_docs_corrected_head": "b966826edada1c2c1086ab6ee46cec9f85a398b5",
+      "evidence_status": "Confirmed-Code",
+      "evidence_refs": [
+        "https://github.com/sudoprivacy/sudostack/commit/b966826edada1c2c1086ab6ee46cec9f85a398b5",
+        "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/manifests/releases/0.2.0-candidate.gen.json"
+      ]
+    },
+    "artifact_stability": {
+      "compared_from_revision": "aec52e9dc5438946dd83d5c56c07149a4800120a",
+      "compared_to_revision": "b966826edada1c2c1086ab6ee46cec9f85a398b5",
+      "changed_paths": [
+        "contracts/common/v1/resource-ref/README.md",
+        "docs/adr/ADR-005-product-contract-versioning.md"
+      ],
+      "unchanged_sha256": {
+        "package.json": "8e719f716b2f9b961c656a543af329709ff6b5a6b663e12fd3002bacf26fad6d",
+        "package-lock.json": "d4ea67ef19cf877ef30a1ac7cef5fa5ee90adeb3d0b6405eb34f34ebed057738",
+        "contracts/sources.lock.json": "454a36c2ca65785b62e31c5d2cdb6c280499ae6e4a820fc11f35df7b4cd593e6",
+        "compatibility/current.gen.json": "ca9dd590d9e0983eda99ba223a13dd1ab4b704fcb72b3d72dc389823d5361d15",
+        "manifests/releases/0.2.0-candidate.gen.json": "2a13fdaf59d26bc4af7db4a2f58f6956555b1d61b1da81bd03b4b879fb1c548c",
+        "manifests/source-closure.gen.json": "10613674eea0884607c7ce1b05bff3cd8e0139119a420cde04dc9c85e81a67ea",
+        "manifests/operations/source-availability.json": "9f5d028f396c5cb4eff4efb28cd1ca392c6fa9bf1ca7252bc9a17c324171dbe1",
+        "manifests/activations/0.2.0-candidate.json": "272d25c84be134e7ce5fe25d1eed3374ff2dfa40d36e63bedf9926d02c1ae7e7"
+      },
+      "evidence_status": "Confirmed-Code",
+      "evidence_refs": [
+        "https://github.com/sudoprivacy/sudostack/compare/aec52e9dc5438946dd83d5c56c07149a4800120a...b966826edada1c2c1086ab6ee46cec9f85a398b5"
+      ]
     },
     "declared_contract_baseline": {
       "value": "draft-frozen",
       "evidence_status": "Conflicting",
       "evidence_refs": [
-        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/docs/adr/ADR-005-product-contract-versioning.md#L162-L178",
-        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/manifests/releases/0.2.0-candidate.gen.json#L218-L223"
+        "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/docs/adr/ADR-005-product-contract-versioning.md#L162-L178",
+        "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/manifests/releases/0.2.0-candidate.gen.json#L218-L223"
       ]
     },
     "declared_artifact_publication": {
       "value": "candidate_unpublished",
       "evidence_status": "Confirmed-Code",
       "evidence_refs": [
-        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/manifests/releases/0.2.0-candidate.gen.json#L218-L223"
+        "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/manifests/releases/0.2.0-candidate.gen.json#L218-L223"
       ]
     },
     "manifest_declared_deployment_state": {
@@ -117,7 +153,7 @@
       "meaning": "This is a source-manifest declaration, not an observation that no out-of-band deployment exists.",
       "evidence_status": "Confirmed-Code",
       "evidence_refs": [
-        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/manifests/releases/0.2.0-candidate.gen.json#L218-L223"
+        "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/manifests/releases/0.2.0-candidate.gen.json#L218-L223"
       ]
     }
   },
@@ -144,7 +180,7 @@
         "state": "deferred_no_current_production_provider_or_consumer",
         "evidence_status": "Confirmed-Code",
         "evidence_refs": [
-          "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/contracts/common/v1/resource-ref/owner-manifest.source.gen.json#L36-L66"
+          "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/contracts/common/v1/resource-ref/owner-manifest.source.gen.json#L36-L66"
         ]
       },
       {
@@ -152,7 +188,7 @@
         "state": "owner_source_dependency_only_for_deferred_resource_ref",
         "evidence_status": "Confirmed-Code",
         "evidence_refs": [
-          "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/contracts/common/v1/resource-ref/owner-manifest.source.gen.json#L814-L830"
+          "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/contracts/common/v1/resource-ref/owner-manifest.source.gen.json#L814-L830"
         ]
       }
     ],
@@ -163,45 +199,30 @@
       "sudowork-server"
     ]
   },
-  "known_conflicts": [
+  "resolved_conflict_history": [
     {
       "id": "C-01",
-      "summary": "ADR-005 implementation summary says the release manifest/full closure is absent while the same candidate revision contains generated release and closure manifests.",
-      "assembly_blocking": true,
-      "allowed_resolution_outcomes": [
-        "resolved",
-        "authorized_stale_document_disposition"
-      ],
-      "resolution": {
-        "outcome": null,
-        "authority_ref": null,
-        "decision_ref": null
-      },
-      "evidence_status": "Conflicting",
+      "previous_state": "ADR-005 implementation snapshot said release/source-closure evidence was absent although generated manifests existed.",
+      "resolution": "ADR-005 now enumerates the exact closure, candidate, activation, availability, package and gate evidence while preserving Proposed, candidate_unpublished, not_deployed and empty actual support.",
+      "resolved_at_revision": "b966826edada1c2c1086ab6ee46cec9f85a398b5",
+      "evidence_status": "Confirmed-Code",
       "evidence_refs": [
-        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/docs/adr/ADR-005-product-contract-versioning.md#L223-L225",
-        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/manifests/releases/0.2.0-candidate.gen.json"
+        "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/docs/adr/ADR-005-product-contract-versioning.md#L223-L227"
       ]
     },
     {
       "id": "C-02",
-      "summary": "The ResourceRef README says remote owner-source availability is blocked while generated operational metadata says available.",
-      "assembly_blocking": true,
-      "allowed_resolution_outcomes": [
-        "resolved",
-        "authorized_stale_document_disposition"
-      ],
-      "resolution": {
-        "outcome": null,
-        "authority_ref": null,
-        "decision_ref": null
-      },
-      "evidence_status": "Conflicting",
+      "previous_state": "The ResourceRef README said remote owner-source verification was blocked after the source-availability operation recorded available.",
+      "resolution": "The README now records exact remote availability and separates it from registry release, adoption and deployment.",
+      "resolved_at_revision": "b966826edada1c2c1086ab6ee46cec9f85a398b5",
+      "evidence_status": "Confirmed-Code",
       "evidence_refs": [
-        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/contracts/common/v1/resource-ref/README.md#L22-L30",
-        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/manifests/operations/source-availability.json#L6-L35"
+        "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/contracts/common/v1/resource-ref/README.md#L34-L42",
+        "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/manifests/operations/source-availability.json#L6-L35"
       ]
-    },
+    }
+  ],
+  "known_conflicts": [
     {
       "id": "C-03",
       "summary": "The candidate declares draft-frozen with empty actual producer/consumer arrays while ADR005-FREEZE-01 requires a real consumer.",
@@ -216,8 +237,8 @@
       },
       "evidence_status": "Conflicting",
       "evidence_refs": [
-        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/docs/adr/ADR-005-product-contract-versioning.md#L162-L178",
-        "https://github.com/sudoprivacy/sudostack/blob/aec52e9dc5438946dd83d5c56c07149a4800120a/manifests/releases/0.2.0-candidate.gen.json#L275-L287"
+        "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/docs/adr/ADR-005-product-contract-versioning.md#L162-L178",
+        "https://github.com/sudoprivacy/sudostack/blob/b966826edada1c2c1086ab6ee46cec9f85a398b5/manifests/releases/0.2.0-candidate.gen.json#L275-L287"
       ]
     },
     {
@@ -264,7 +285,7 @@
           "Edge",
           "Local"
         ],
-        "architecture_model_ref": "https://github.com/sudoprivacy/sudostack/blob/44b4e9de087e0b4908ab8f1af407737b435b4104/README.md#L137-L223",
+        "architecture_model_ref": "https://github.com/sudoprivacy/sudostack/blob/1c26d4c3044efe4fcd0d88ed61201c3e1d828fc1/README.md#L137-L223",
         "applicability": "unknown",
         "allowed_applicability_values": [
           "applicable",
