@@ -1,12 +1,18 @@
 #!/usr/bin/env node
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 
-import { readCommitBlob, verifyActivationRecords } from '../tools/contracts/activation.mjs'
-import { verifyAvailabilityRecords } from '../tools/contracts/availability.mjs'
 import { verifyCompatibilityBaseline } from '../tools/contracts/baseline.mjs'
+import {
+  BASELINE_PATH,
+  CANDIDATE_PATH,
+  STAGE_PATH,
+  createHistoricalReader,
+  verifyCandidateContent,
+  verifyPackageBaseline,
+  verifyStageMetadata,
+} from '../tools/contracts/content-candidate.mjs'
 import { requireSupportedNode } from '../tools/contracts/node-version.mjs'
 import { renderResourceRefTypeScript } from '../tools/contracts/runtime-template.mjs'
 import {
@@ -15,14 +21,12 @@ import {
   loadOwnerClosure,
   loadSourceLock,
   parseJson,
-  requireFullCommitSha,
   sha256,
   stableJson,
   validateOwnerClosure,
   verifyDigest,
 } from '../tools/contracts/source.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
 const args = new Set(process.argv.slice(2))
 const CHECK = args.delete('--check')
 const OFFLINE = args.delete('--offline')
@@ -36,33 +40,9 @@ if (args.size > 0 || (VERIFY_SOURCES && VERIFY_REMOTE) || (OFFLINE && (VERIFY_SO
 const outputPath = (relativePath) => join(REPO, relativePath)
 const PACKAGE_JSON = parseJson(readFileSync(join(REPO, 'package.json')), 'package.json')
 requireSupportedNode(process.versions.node, PACKAGE_JSON.engines.node)
-const CANDIDATE_MANIFEST_PATH = `manifests/releases/${PACKAGE_JSON.version}-candidate.gen.json`
-const ACTIVATION_PATH = `manifests/activations/${PACKAGE_JSON.version}-candidate.json`
-const ACTIVATION_BYTES = readFileSync(join(REPO, ACTIVATION_PATH))
-const ACTIVATION = parseJson(ACTIVATION_BYTES, ACTIVATION_PATH)
-const AVAILABILITY_OPERATION_PATH = 'manifests/operations/source-availability.json'
-const AVAILABILITY_OPERATION_BYTES = readFileSync(join(REPO, AVAILABILITY_OPERATION_PATH))
-const AVAILABILITY_OPERATION = parseJson(
-  AVAILABILITY_OPERATION_BYTES,
-  AVAILABILITY_OPERATION_PATH,
-)
-const CANDIDATE_CONTENT_REVISION = requireFullCommitSha(
-  ACTIVATION.candidate_content_revision,
-  'candidate content revision',
-)
-const ACTIVATION_REVISION = requireFullCommitSha(
-  AVAILABILITY_OPERATION.activation_revision,
-  'activation revision',
-)
-const HISTORY_REPO = process.env.SUDOSTACK_BASE_REPO ?? REPO
-const PRECURSOR_MANIFEST_BYTES = readCommitBlob(
-  HISTORY_REPO,
-  CANDIDATE_CONTENT_REVISION,
-  ACTIVATION.precursor_candidate_manifest.path,
-)
-if (sha256(PRECURSOR_MANIFEST_BYTES) !== ACTIVATION.precursor_candidate_manifest.sha256) {
-  throw new Error('pre-activation candidate-manifest digest does not match candidate content revision')
-}
+const CANDIDATE_MANIFEST_PATH = CANDIDATE_PATH
+const CONTENT_STAGE_BYTES = readFileSync(join(REPO, STAGE_PATH))
+const PACKAGE_BASELINE_BYTES = readFileSync(join(REPO, BASELINE_PATH))
 const generatedFixturePath = (ownerRelativePath) => {
   if (!/^fixtures\/(?:valid|invalid)\/[a-z0-9][a-z0-9-]*\.json$/.test(ownerRelativePath)) {
     throw new Error(`unsafe or unsupported owner fixture path: ${ownerRelativePath}`)
@@ -322,7 +302,7 @@ function fixtureIndex(closure) {
   }
 }
 
-function compatibilityManifest(closure, prior) {
+function compatibilityManifest(closure, prior, stage, baseline) {
   const currentSpec = parseJson(closure.vfs.zone_id_spec, 'ZoneId owner spec')
   const oldCore = prior.families.zone_id.rule_data
   const currentCore = {
@@ -335,32 +315,49 @@ function compatibilityManifest(closure, prior) {
   }
   const lexicalRuleDataEqual = stableJson(oldCore) === stableJson(currentCore)
   return {
-    compatibility_version: 1,
-    package: { previous: prior.package.version, candidate: PACKAGE_JSON.version },
+    compatibility_version: 2,
+    package: {
+      previous: stage.package.previous_version,
+      candidate: stage.package.candidate_version,
+      semver_change: 'patch',
+    },
+    baseline: {
+      path: stage.content_identity.historical_baseline.path,
+      sha256: stage.content_identity.historical_baseline.sha256,
+      source_revision: baseline.source_revision,
+      runtime_contract: 'byte_identical',
+    },
     families: {
       zone_id: {
         state: lexicalRuleDataEqual ? 'compatible_behavior' : 'breaking_rule_change',
-        previous_sudostack_revision: prior.package.sudostack_revision,
-        previous_owner_revision: prior.families.zone_id.owner_revision,
+        previous_owner_revision: closure.lock.repositories['nexus-vfs'].revision,
         current_owner_revision: closure.lock.repositories['nexus-vfs'].revision,
-        repository_revision_skew:
-          prior.families.zone_id.owner_revision !== closure.lock.repositories['nexus-vfs'].revision,
-        owner_spec_digest_changed: prior.families.zone_id.owner_spec_sha256 !== sha256(closure.vfs.zone_id_spec),
+        repository_revision_skew: false,
+        owner_spec_digest_changed: false,
         lexical_rule_data_equal: lexicalRuleDataEqual,
-        evidence: ['legacy generated vectors', '12 exact owner vectors'],
+        runtime_bytes: 'byte_identical_to_0.2.0',
+        evidence: ['immutable 0.2.0 package baseline', '12 exact owner vectors'],
       },
       resource_ref: {
-        state: 'initial_baseline',
+        state: 'byte_identical_behavior',
         backward_compatibility_claim: false,
         owner_revision: closure.lock.repositories.nexus.definition_revision,
         provenance_revision: closure.lock.repositories.nexus.revision,
-        semantic_uncertainty: 'manual_review',
+        semantic_uncertainty: 'unchanged_manual_review',
+        runtime_bytes: 'byte_identical_to_0.2.0',
+        adoption_claim: 'none',
       },
     },
     support_matrix: {
       actual_producers: [],
       actual_consumers: [],
-      note: 'Consumer support remains empty until a production-boundary Work Item passes default CI.',
+      state: stage.support.state,
+      prior_evidence: {
+        package_version: stage.package.previous_version,
+        operation_path: stage.historical_0_2_0.support_operation_path,
+        classification: stage.historical_0_2_0.support_classification,
+      },
+      note: 'The 0.2.1 candidate remains unfrozen until Moss exact-pins content commit C and later package-external activation A verifies C and M.',
     },
   }
 }
@@ -372,7 +369,7 @@ function packagedArtifactPaths(outputs) {
   )
 }
 
-function candidateManifest(closure, outputs) {
+function candidateManifest(closure, outputs, stage, baseline) {
   const packaged = new Set(packagedArtifactPaths(outputs))
   const artifacts = [...packaged]
     .sort()
@@ -389,35 +386,29 @@ function candidateManifest(closure, outputs) {
     outputs.get('contracts/common/v1/resource-ref/fixture-index.gen.json'),
     'generated fixture index',
   )
-  const manifest = {
-    manifest_version: 1,
-    lifecycle: {
-      adr_maturity: 'proposed',
-      contract_baseline: 'draft-frozen',
-      artifact_publication: 'candidate_unpublished',
-      deployment_evidence: 'not_deployed',
-    },
+  return {
+    manifest_version: 2,
+    lifecycle: stage.lifecycle,
     sudostack: {
       g0_revision: closure.lock.sudostack_g0_revision,
-      candidate_revision: CANDIDATE_CONTENT_REVISION,
-      activation_state: ACTIVATION.state,
-      activation: {
-        commit_binding: ACTIVATION.commit_binding,
-        metadata_path: ACTIVATION_PATH,
-        metadata_sha256: sha256(ACTIVATION_BYTES),
-        precursor_candidate_manifest: ACTIVATION.precursor_candidate_manifest,
+      candidate_revision: stage.content_identity.candidate_revision,
+      activation_state: stage.content_identity.activation_state,
+      content_stage: {
+        state: stage.lifecycle.content_stage,
+        metadata_path: STAGE_PATH,
+        metadata_sha256: sha256(CONTENT_STAGE_BYTES),
+        exact_pin_target: stage.content_identity.exact_pin_target,
+        revision_source: stage.content_identity.revision_source,
       },
-      source_availability_override: {
-        state: AVAILABILITY_OPERATION.state,
-        metadata_path: AVAILABILITY_OPERATION_PATH,
-        metadata_sha256: sha256(AVAILABILITY_OPERATION_BYTES),
-        activation_revision: ACTIVATION_REVISION,
-        previous_candidate_manifest_sha256:
-          AVAILABILITY_OPERATION.previous.candidate_manifest_sha256,
-        source_lock_sha256: sha256(
-          readFileSync(join(REPO, 'contracts', 'sources.lock.json')),
-        ),
-        source_closure_sha256: sha256(outputs.get('manifests/source-closure.gen.json')),
+      predecessor: {
+        package_version: stage.package.previous_version,
+        baseline_path: BASELINE_PATH,
+        baseline_sha256: sha256(PACKAGE_BASELINE_BYTES),
+        baseline_source_revision: baseline.source_revision,
+        candidate_content_revision: stage.historical_0_2_0.candidate_content_revision,
+        activation_revision: stage.historical_0_2_0.activation_revision,
+        source_availability_revision: stage.historical_0_2_0.source_availability_revision,
+        support_evidence_revision: stage.historical_0_2_0.support_evidence_revision,
       },
       assembly_source_lock: {
         path: 'contracts/sources.lock.json',
@@ -450,12 +441,36 @@ function candidateManifest(closure, outputs) {
       package_lock_sha256: sha256(readFileSync(join(REPO, 'package-lock.json'))),
       actual_producers: [],
       actual_consumers: [],
+      support_state: stage.support.state,
     },
+    support_evidence: {
+      current_candidate: 'none_pending_moss_repin',
+      prior_version: stage.package.previous_version,
+      prior_operation_path: stage.historical_0_2_0.support_operation_path,
+      prior_classification: stage.historical_0_2_0.support_classification,
+    },
+    choreography: stage.choreography,
     toolchain: {
       generator: {
-        id: 'contracts/generate.mjs@1',
+        id: 'contracts/generate.mjs@2',
         path: 'contracts/generate.mjs',
         sha256: sha256(readFileSync(join(REPO, 'contracts', 'generate.mjs'))),
+      },
+      candidate_verifier: {
+        path: 'tools/contracts/verify-candidate.mjs',
+        sha256: sha256(readFileSync(join(REPO, 'tools', 'contracts', 'verify-candidate.mjs'))),
+      },
+      content_candidate_verifier: {
+        path: 'tools/contracts/content-candidate.mjs',
+        sha256: sha256(readFileSync(join(REPO, 'tools', 'contracts', 'content-candidate.mjs'))),
+      },
+      historical_release_verifier: {
+        path: 'tools/contracts/history-0.2.0.mjs',
+        sha256: sha256(readFileSync(join(REPO, 'tools', 'contracts', 'history-0.2.0.mjs'))),
+      },
+      npm_runner: {
+        path: 'tools/contracts/npm-runner.mjs',
+        sha256: sha256(readFileSync(join(REPO, 'tools', 'contracts', 'npm-runner.mjs'))),
       },
       source_loader: {
         path: 'tools/contracts/source.mjs',
@@ -477,13 +492,17 @@ function candidateManifest(closure, outputs) {
         path: 'tools/contracts/node-version.mjs',
         sha256: sha256(readFileSync(join(REPO, 'tools', 'contracts', 'node-version.mjs'))),
       },
-      activation_verifier: {
+      historical_activation_verifier: {
         path: 'tools/contracts/activation.mjs',
         sha256: sha256(readFileSync(join(REPO, 'tools', 'contracts', 'activation.mjs'))),
       },
-      availability_verifier: {
+      historical_availability_verifier: {
         path: 'tools/contracts/availability.mjs',
         sha256: sha256(readFileSync(join(REPO, 'tools', 'contracts', 'availability.mjs'))),
+      },
+      historical_support_verifier: {
+        path: 'tools/contracts/support.mjs',
+        sha256: sha256(readFileSync(join(REPO, 'tools', 'contracts', 'support.mjs'))),
       },
       node: PACKAGE_JSON.engines.node,
       runtime_validator: `ajv@${PACKAGE_JSON.dependencies.ajv}`,
@@ -499,64 +518,24 @@ function candidateManifest(closure, outputs) {
     generated_artifacts: artifacts,
     internal_generation_artifacts: internalArtifacts,
     compatibility: {
-      prior_baseline_path: 'compatibility/baselines/0.1.0.json',
-      prior_baseline_sha256: sha256(
-        readFileSync(join(REPO, 'compatibility', 'baselines', '0.1.0.json')),
-      ),
+      prior_baseline_path: BASELINE_PATH,
+      prior_baseline_sha256: sha256(PACKAGE_BASELINE_BYTES),
+      runtime_contract: compatibility.baseline.runtime_contract,
       zone_id: compatibility.families.zone_id.state,
-      resource_ref: 'initial_baseline_no_backward_compatibility_claim',
+      resource_ref: compatibility.families.resource_ref.state,
     },
     source_availability: closure.lock.source_availability,
     deferred: [
-      'consumer production-boundary adoption',
-      'runtime writer and canonical runtime store',
+      'Moss 0.2.1 exact-pin and production-boundary evidence',
+      'C-03 decision until package-external activation A binds C and M',
+      'runtime writer and canonical runtime store changes',
       'ResourceRef authorization and routing resolver',
+      'runtime ZonePath adoption',
       'artifact release and remote publication',
       'deployment and migration',
       'unrequested language packages',
     ],
   }
-  const availability = verifyAvailabilityRecords({
-    operation: AVAILABILITY_OPERATION,
-    previousSourceLockBytes: readCommitBlob(
-      HISTORY_REPO,
-      ACTIVATION_REVISION,
-      'contracts/sources.lock.json',
-    ),
-    previousSourceClosureBytes: readCommitBlob(
-      HISTORY_REPO,
-      ACTIVATION_REVISION,
-      'manifests/source-closure.gen.json',
-    ),
-    previousCandidateManifestBytes: readCommitBlob(
-      HISTORY_REPO,
-      ACTIVATION_REVISION,
-      CANDIDATE_MANIFEST_PATH,
-    ),
-    currentSourceLockBytes: readFileSync(join(REPO, 'contracts', 'sources.lock.json')),
-    currentSourceClosureBytes: outputs.get('manifests/source-closure.gen.json'),
-    currentCandidateManifest: manifest,
-    operationBytes: AVAILABILITY_OPERATION_BYTES,
-    currentToolBytes: readFileSync(join(REPO, 'tools', 'contracts', 'availability.mjs')),
-  })
-  verifyActivationRecords({
-    activation: ACTIVATION,
-    activationBytes: ACTIVATION_BYTES,
-    activationPath: ACTIVATION_PATH,
-    currentManifest: manifest,
-    precursorManifestBytes: PRECURSOR_MANIFEST_BYTES,
-    currentBytes: (path) => outputs.get(path) ?? readFileSync(join(REPO, path)),
-    candidateBytes: (path) => readCommitBlob(HISTORY_REPO, CANDIDATE_CONTENT_REVISION, path),
-    operationalOverride: {
-      sourceAvailability: AVAILABILITY_OPERATION.current.source_availability,
-      sourceLockPath: 'contracts/sources.lock.json',
-      sourceLockSha256: availability.sourceLockSha256,
-      sourceClosurePath: 'manifests/source-closure.gen.json',
-      sourceClosureSha256: availability.sourceClosureSha256,
-    },
-    availabilityProof: availability,
-  })
-  return manifest
 }
 
 function buildOutputs(closure) {
@@ -564,6 +543,12 @@ function buildOutputs(closure) {
   const outputs = new Map()
   const put = (path, data) => outputs.set(path, Buffer.isBuffer(data) ? data : Buffer.from(data))
   const priorBaseline = verifyCompatibilityBaseline({ sourceLock: lock })
+  const historicalBytes = createHistoricalReader(process.env.SUDOSTACK_BASE_REPO ?? REPO)
+  const stage = verifyStageMetadata(CONTENT_STAGE_BYTES)
+  const packageBaseline = verifyPackageBaseline({
+    baselineBytes: PACKAGE_BASELINE_BYTES,
+    historicalBytes,
+  })
 
   put('contracts/zone-id/pin.json', stableJson(zoneIdPin(lock, priorBaseline)))
   for (const [name, path] of Object.entries(SOURCE_OUTPUTS.vfs)) put(path, vfs[name])
@@ -595,9 +580,20 @@ function buildOutputs(closure) {
   put('contracts/common/v1/resource-ref/resource-ref.gen.js', compiledResourceRef.javascript)
   put('contracts/common/v1/resource-ref/resource-ref.gen.d.ts', compiledResourceRef.declarations)
   put('contracts/common/v1/resource-ref/fixture-index.gen.json', stableJson(fixtureIndex(closure)))
-  put('compatibility/current.gen.json', stableJson(compatibilityManifest(closure, priorBaseline)))
+  put(
+    'compatibility/current.gen.json',
+    stableJson(compatibilityManifest(closure, priorBaseline, stage, packageBaseline)),
+  )
   put('manifests/source-closure.gen.json', stableJson(sourceClosureManifest(closure)))
-  put(CANDIDATE_MANIFEST_PATH, stableJson(candidateManifest(closure, outputs)))
+  verifyCandidateContent({
+    outputs,
+    baseline: packageBaseline,
+    stage,
+    historicalBytes,
+    baselineBytes: PACKAGE_BASELINE_BYTES,
+    stageBytes: CONTENT_STAGE_BYTES,
+  })
+  put(CANDIDATE_MANIFEST_PATH, stableJson(candidateManifest(closure, outputs, stage, packageBaseline)))
   return outputs
 }
 

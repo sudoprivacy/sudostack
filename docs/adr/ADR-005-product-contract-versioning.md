@@ -222,9 +222,11 @@ B1 的最小闭包是：
 
 ### 10.1 当前局部事实
 
-当前 `sudostack` 已形成可复现的 F1 局部实现证据：Nexus 与 nexus-vfs 的 exact-pinned owner closure 已闭合，并可通过本地 checkout、物化的 offline bundle 和已发布的远端 revisions 验证；generated candidate/source-closure manifests、activation metadata 与 source-availability operation 记录候选内容、激活关系和 availability-only override；Moss PR 276 又由独立、versioned consumer-support operation 验证 exact `@sudo/contracts@0.2.0` pin、真实 `NexusManager.start()` embedded boundary 与默认 CI 结果。该 operation 位于 package 外，且 verifier 明确要求 activation-era candidate、compatibility 与全部 package-included bytes 保持不变。默认 gates 提供 conformance、compatibility mutation、manifest/digest、support mutation 以及 clean pack/install/import evidence。
+当前 `sudostack` 同时保留两层可复现的 F1 局部实现证据。历史 `@sudo/contracts@0.2.0` 链中，Nexus 与 nexus-vfs 的 exact-pinned owner closure 已闭合，并可通过本地 checkout、物化的 offline bundle 和已发布的远端 revisions 验证；generated candidate/source-closure manifests、activation metadata 与 source-availability operation 记录候选内容、激活关系和 availability-only override；Moss PR 276 又由独立、versioned consumer-support operation 验证 exact `0.2.0` pin、真实 `NexusManager.start()` embedded boundary 与默认 CI 结果。该历史 operation 位于 package 外，且 verifier 在不可变 `5a2a53130e37d1c63993ebf8ba1253b15eb9eebf` checkout 中重放，要求 `0.2.0` candidate、compatibility、activation、availability、support 与全部 package bytes 保持不变。
 
-这些证据证明 owner → exact closure → derive → candidate activation/availability → package verification 链路，并独立证明 Moss `ZoneId` embedded-boundary integration。Moss 在该边界是 installed validator/argv consumer 与 embedded launch producer；operator config 是 authoritative input writer，Nexus persisted topology 是 canonical runtime store，external mode、`ResourceRef` 与 runtime `ZonePath` adoption 均不在该证据范围内。activation-era candidate/package 的 actual producers/consumers 仍为空，因此 standalone operation 不冒充 package 内 support update，也不单独关闭该 metadata gap。治理、发布与部署状态不变：本 ADR 仍为 `Proposed`，所有规范性条款仍标记为 `enforced_by: none`，artifact 仍为 `candidate_unpublished`，deployment evidence 仍为 `not_deployed`；这些局部证据不构成 ADR `Accepted`、registry release 或 deployment 完成。
+新的 `@sudo/contracts@0.2.1` 仅处于 content stage：其运行时 Contract、Schema、fixture、validator 和 owner-source bytes 与不可变 `0.2.0` 基线相同，变化只限 package/lock version、compatibility/provenance staging metadata 和新增 candidate manifest。该 candidate 的 `candidate_revision` 为 `null`、activation 为 pending、package actual producers/consumers 为空，并明确将既有 Moss 证据分类为 `historical_only_not_candidate_support`。因此它仍为 `unfrozen`、`candidate_unpublished`、`not_deployed`，不声称 Moss 已消费 `0.2.1`，也不关闭 C-03。详细状态、不可变基线与 downstream 输入见 [`contracts-0.2.1-content-stage.md`](../design/contracts-0.2.1-content-stage.md)。
+
+后续按 C → M → A 单向推进：C 是不记录自身 SHA 的可安装内容提交；M 是 exact-pin C 并在真实 embedded boundary/default CI 采集证据的 Moss evaluation commit；A 是只引用已存在 C+M 的 package-external activation/support record。A 不修改 C 的 package bytes，也不要求 Moss repin A，只有 A 可决定 C-03。M 的 unfrozen evaluation pin 只用于取得冻结所需 evidence，不是 support-matrix admission、release 或 deployment；`ResourceRef`、runtime `ZonePath`、external mode、治理、发布与部署状态均不因此改变。本 ADR 仍为 `Proposed`，所有规范性条款仍标记为 `enforced_by: none`。
 
 ## 11. Legacy、迁移与 rollback
 
@@ -249,9 +251,11 @@ owner semantic/security review
 → immutable owner revision
 → sudostack pin/reference-closure verification
 → derived artifacts + compatibility + install smoke
-→ draft-frozen baseline
+→ unfrozen content-stage candidate C（不记录自身 SHA）
+→ consumer evaluation exact-pin C + production boundary tests at M
+→ package-external activation/support A binds C + M
+→ draft-frozen baseline / supported-matrix admission（仅在证据满足后）
 → candidate/release artifact（如获授权）
-→ consumer exact-pin PR + production boundary tests
 → mixed-version assembly / B0 rollback
 → deployment（如获授权）
 → legacy cleanup（另行授权）
@@ -315,7 +319,7 @@ owner semantic/security review
 
 ### 15.2 后续 F1 / consumer / demo
 
-- F1 必须满足第 7 节完整 draft-frozen baseline 后才能供 consumer pin；`[enforced_by: none]`
+- F1 在 supported/adoption pin 与 support-matrix admission 前必须满足第 7 节完整 draft-frozen baseline；为取得真实 consumer evidence，可先以明确标记的 `unfrozen` evaluation pin 固定 content commit C，但该 pin 不得宣称 adoption、support、release 或 deployment，且必须由后续 package-external activation A 绑定 C 与 consumer commit M 后才可决定冻结与支持状态。`[enforced_by: none]`
 - consumer 必须满足第 10 节 production boundary/default CI 条件后才能写入 supported matrix；`[enforced_by: none]`
 - customer-demo MVP 必须完成 exact assembly、mixed-version smoke、existing-data restart 与 B0 rollback rehearsal；`[enforced_by: none]`
 - 通过某个子集时只能声明该子集和对应状态，不能宣称 ADR-005、全 Contract 平台或所有环境已完成。`[enforced_by: none]`

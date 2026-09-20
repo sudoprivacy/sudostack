@@ -24,13 +24,11 @@ jobs:
         run: npm test
       - name: Generated TypeScript declarations and sources type-check
         run: npm run typecheck
-      - name: Candidate manifest digests and lifecycle are truthful
+      - name: Staged candidate manifest, immutable baseline, and historical chain are truthful
         run: npm run manifest:check
-      - name: Post-activation consumer support is exact and bounded
-        run: node tools/contracts/support.mjs
-      - name: Candidate content revision matches immutable parent bytes
-        run: node tools/contracts/activation.mjs
-      - name: Packed artifact installs and imports from a clean directory
+      - name: Historical 0.2.0 generation, tests, typecheck, activation, support, and package remain reproducible
+        run: node tools/contracts/history-0.2.0.mjs --full
+      - name: Packed artifacts are deterministic, exact-delta, installable, and importable
         run: npm run package:smoke
 
   owner-source-availability:
@@ -45,15 +43,14 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
 
-      # This job intentionally fails while the exact owner commits are local-only.
-      # Change the source lock to remote=available only after those same commits are
-      # published; the verifier will then fetch and hash every immutable owner blob.
+      # Owner-source verification checks the exact published owner revisions. Historical
+      # Moss support verification runs from the immutable 0.2.0 evidence checkout.
       - name: Exact owner revisions are remotely available
         run: npm run source:verify-remote
-      - name: Exact Moss consumer revision, boundary, and checks are remotely verified
+      - name: Exact historical Moss consumer revision, boundary, and checks are remotely verified
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node tools/contracts/support.mjs --remote
+        run: node tools/contracts/history-0.2.0.mjs --remote
 
   every-clause-names-what-enforces-it:
     runs-on: ubuntu-latest
@@ -62,8 +59,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22.21.0'
+      - name: Check out exact nexus-vfs enforcement targets
+        uses: actions/checkout@v4
+        with:
+          repository: nexi-lab/nexus-vfs
+          ref: 24f6730ec90fab8a035b2f5400ed313bda343fbe
+          path: .enforcement/nexus-vfs
+          persist-credentials: false
 
       - name: The enforcement checker catches what it claims to
         run: node --test docs/adr/enforced-by.test.mjs
-      - name: Every normative clause answers for itself
-        run: node docs/adr/enforced-by.mjs
+      - name: Every normative clause answers for itself without baseline regressions
+        env:
+          SUDOSTACK_REPOS_ROOT: ${{ github.workspace }}/.enforcement
+        run: node docs/adr/enforced-by.mjs --strict

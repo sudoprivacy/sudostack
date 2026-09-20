@@ -1,0 +1,68 @@
+{
+  "candidate_stage_version": 1,
+  "package": {
+    "name": "@sudo/contracts",
+    "previous_version": "0.2.0",
+    "candidate_version": "0.2.1",
+    "semver_reason": "Patch metadata stage with byte-identical runtime contracts, schemas, fixtures, validators, and owner sources."
+  },
+  "lifecycle": {
+    "content_stage": "staged",
+    "adr_maturity": "proposed",
+    "contract_baseline": "unfrozen",
+    "artifact_publication": "candidate_unpublished",
+    "deployment_evidence": "not_deployed"
+  },
+  "content_identity": {
+    "candidate_revision": null,
+    "activation_state": "pending_future_commit",
+    "exact_pin_target": "content_commit_C",
+    "revision_source": "containing_commit",
+    "historical_baseline": {
+      "path": "compatibility/baselines/0.2.0-package.json",
+      "sha256": "9ec2cffbcb19f3e728a6691176ed739bab6de52a56b60abe4217420d2ce0c17c",
+      "source_revision": "5a2a53130e37d1c63993ebf8ba1253b15eb9eebf"
+    }
+  },
+  "historical_0_2_0": {
+    "candidate_content_revision": "30da0ddd953268ff8a9a0f0980276300ab153003",
+    "activation_revision": "60bd8dda6fb2d348ec8571b9b1a4eaa535e36dc5",
+    "source_availability_revision": "aec52e9dc5438946dd83d5c56c07149a4800120a",
+    "support_evidence_revision": "5a2a53130e37d1c63993ebf8ba1253b15eb9eebf",
+    "support_operation_path": "manifests/operations/consumer-support.json",
+    "support_classification": "historical_only_not_candidate_support"
+  },
+  "support": {
+    "state": "pending_moss_repin",
+    "actual_producers": [],
+    "actual_consumers": [],
+    "resource_ref": "deferred",
+    "zone_path_runtime": "deferred"
+  },
+  "choreography": {
+    "sequence": [
+      "content_C",
+      "moss_repin_M",
+      "activation_A"
+    ],
+    "content_C": {
+      "produces": "installable_immutable_0.2.1_candidate",
+      "records_own_revision": false
+    },
+    "moss_repin_M": {
+      "pins": "content_commit_C",
+      "dependency_spec_format": "github:sudoprivacy/sudostack#{C}",
+      "required_evidence": "installed_package_identity_and_default_ci_at_the_real_embedded_boundary"
+    },
+    "activation_A": {
+      "binds": [
+        "content_commit_C",
+        "moss_integration_M"
+      ],
+      "evidence_scope": "package_external",
+      "mutates_candidate_package_bytes": false,
+      "consumer_repin_required": false,
+      "c03_decision": "pending"
+    }
+  }
+}

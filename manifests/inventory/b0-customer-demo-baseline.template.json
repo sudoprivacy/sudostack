@@ -14,7 +14,7 @@
   ],
   "completion_rules": {
     "manual_gate": true,
-    "manual_gate_reason": "No repository CI job currently validates completed inventory records.",
+    "manual_gate_reason": "Repository CI verifies this source-only template's invariants but does not validate completed live records or grant assembly/G3 approval.",
     "record_state_values": [
       "template",
       "complete"
@@ -62,7 +62,7 @@
       "rollback_to_b0"
     ],
     "single_component_transition_rule": "Create one row for every applicable component changed by the candidate; unsupported combinations remain explicit rows.",
-    "candidate_contract_authority": "The exact release/source-closure manifests referenced under source_cut remain authoritative for package-embedded support metadata. The standalone consumer-support operation proves integration evidence but does not rewrite the activated 0.2.0 package or close C-03."
+    "candidate_contract_authority": "Historical 0.2.0 release and support records remain immutable. The staged 0.2.1 content candidate remains unfrozen with empty support until Moss exact-pins C at M and package-external activation A binds C+M; only A may decide C-03 without rewriting C."
   },
   "source_cut": {
     "prepared_on": "2026-09-20",
@@ -99,6 +99,28 @@
           "#/source_cut/consumer_support_operation"
         ]
       }
+    },
+    "staged_candidate": {
+      "package_name": "@sudo/contracts",
+      "package_version": "0.2.1",
+      "content_revision": null,
+      "exact_pin_target": "content_commit_C",
+      "release_manifest_path": "../releases/0.2.1-candidate.gen.json",
+      "release_manifest_sha256": "956a19cbc6b42ebc3c4e1c9ebe93e0842e1c295d1f6465e0d42d532d45785a9b",
+      "content_stage_path": "../candidates/0.2.1-content.json",
+      "immutable_baseline_path": "../../compatibility/baselines/0.2.0-package.json",
+      "immutable_baseline_sha256": "9ec2cffbcb19f3e728a6691176ed739bab6de52a56b60abe4217420d2ce0c17c",
+      "contract_baseline": "unfrozen",
+      "support_state": "pending_moss_repin",
+      "actual_consumers": [],
+      "actual_producers": [],
+      "next_gate": "Moss exact-pins C at M; package-external activation A then binds C+M and decides C-03 without changing C package bytes.",
+      "evidence_status": "Confirmed-Code",
+      "evidence_refs": [
+        "../releases/0.2.1-candidate.gen.json",
+        "../candidates/0.2.1-content.json",
+        "../../docs/design/contracts-0.2.1-content-stage.md"
+      ]
     },
     "f1_revision_chain": {
       "candidate_content_revision": "30da0ddd953268ff8a9a0f0980276300ab153003",
@@ -145,11 +167,20 @@
     },
     "declared_contract_baseline": {
       "value": "draft-frozen",
+      "scope": "historical_0.2.0_manifest",
       "evidence_status": "Conflicting",
       "evidence_refs": [
         "../../docs/adr/ADR-005-product-contract-versioning.md#7-draft-frozen-baseline",
         "../releases/0.2.0-candidate.gen.json",
         "#/source_cut/consumer_support_operation"
+      ]
+    },
+    "staged_candidate_contract_baseline": {
+      "value": "unfrozen",
+      "scope": "0.2.1_content_stage",
+      "evidence_status": "Confirmed-Code",
+      "evidence_refs": [
+        "#/source_cut/staged_candidate"
       ]
     },
     "declared_artifact_publication": {
@@ -266,10 +297,10 @@
   "known_conflicts": [
     {
       "id": "C-03",
-      "summary": "Standalone evidence proves the Moss ZoneId production boundary, but the immutable activated @sudo/contracts@0.2.0 package and candidate manifest still embed empty producer/consumer arrays.",
+      "summary": "Historical evidence proves the Moss ZoneId production boundary for 0.2.0, but staged 0.2.1 is unfrozen with empty support arrays and no candidate-specific Moss pin or activation evidence.",
       "assembly_blocking": true,
       "allowed_resolution_outcomes": [
-        "resolved_by_new_candidate_and_consumer_repin"
+        "resolved_by_package_external_activation_A_binding_content_C_and_moss_M"
       ],
       "resolution": {
         "outcome": null,
@@ -279,7 +310,8 @@
       "evidence_status": "Conflicting",
       "evidence_refs": [
         "../releases/0.2.0-candidate.gen.json",
-        "#/source_cut/consumer_support_operation"
+        "#/source_cut/consumer_support_operation",
+        "#/source_cut/staged_candidate"
       ]
     }
   ],
@@ -455,7 +487,7 @@
   },
   "candidate_assembly": {
     "assembly_id": null,
-    "release_manifest_ref": "#/source_cut/candidate_release_manifest",
+    "release_manifest_ref": "#/source_cut/staged_candidate",
     "source_readiness": {
       "dependency_order_ref": null,
       "merged_to_declared_bases": null,
