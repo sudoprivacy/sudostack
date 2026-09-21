@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-09-21",
+  "work_item": "SW-20260915-002 P0 (G4 evidence, C7 item: pin matrix)",
+  "pins": {
+    "nexus_workspace_nexus_vfs_revs": [
+      "763f8c0fef392da8c1151fc3f17b3a6f3f707dbd"
+    ],
+    "sudostack_zone_v1_pin_nexus_vfs": "763f8c0fef392da8c1151fc3f17b3a6f3f707dbd",
+    "nexus_vfs_local_HEAD": "763f8c0fef392da8c1151fc3f17b3a6f3f707dbd",
+    "moss_sudo_contracts_pin": "f0c586477694f054c8a31fe682e7481593c16948",
+    "sudostack_local_HEAD": "f0c586477694f054c8a31fe682e7481593c16948",
+    "nexus_local_HEAD": "d3d7e0e9b50d175f6a5d377968bece310c2c9521",
+    "moss_local_HEAD": "469d8e738f428665057ee38f7a0ffbef4982ac0d",
+    "cohost_sudocode_tools_rev": "59df7a9d5147a829a7fc0724d5625a8dab80160f",
+    "cohost_sudocode_kernel_vfs_rev": "b878b015bf2b4663063425af19902b18c09890b9"
+  },
+  "checks": {
+    "nexus_workspace_vfs_rev_single": true,
+    "nexus_ws_vfs_equals_sudostack_pin": true,
+    "nexus_ws_vfs_equals_vfs_HEAD": true,
+    "moss_contracts_pin_equals_sudostack_HEAD": true,
+    "cohost_pins_aligned": false
+  },
+  "cohost_status": {
+    "attempt": "cargo build -p nexusd --features full,cohost-sudocode",
+    "result": "FAILED E0277: SudoCodeSpawnAdapter: SpawnTask<Kernel> unsatisfied — the cohost sudocode-tools rev (59df7a9d) carries nexus-vfs b878b015 while the nexus workspace pins 763f8c0f; the two Kernel types diverge exactly as the Cargo.toml comment predicts",
+    "root_cause": "no sudocode commit anywhere carries vfs 763f8c0f yet (sudocode main @40630e3 still pins b878b015)",
+    "remediation": "step-08 (P1a) three-part bump: sudocode vfs->763f8c0f + push, nexus sudocode-tools rev bump in the same change, rebuild to green; owned by step-08 per plan R6.5"
+  }
+}
