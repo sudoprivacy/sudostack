@@ -22,6 +22,8 @@ jobs:
         run: npm run generate:check-offline
       - name: Runtime, owner-fixture, source-lock, and compatibility tests
         run: npm test
+      - name: B0 source template remains structurally valid and unapproved
+        run: node tools/contracts/b0-preflight.mjs --template
       - name: Generated TypeScript declarations and sources type-check
         run: npm run typecheck
       - name: Staged candidate manifest, immutable baseline, and historical chain are truthful

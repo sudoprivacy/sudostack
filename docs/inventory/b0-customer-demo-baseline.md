@@ -6,6 +6,38 @@ This document defines the evidence record that must exist before `SUDOSTACK-ASSE
 
 The companion machine-readable template is [`manifests/inventory/b0-customer-demo-baseline.template.json`](../../manifests/inventory/b0-customer-demo-baseline.template.json). This document owns the human-readable collection and rehearsal procedure; the JSON stores per-environment evidence and points back to these stable IDs instead of copying Contract definitions. Copy it to an access-controlled evidence location for each environment; do not commit customer values or secret-bearing evidence to this repository.
 
+## Offline structural preflight
+
+The read-only preflight validates the checked-in seed without requiring live evidence:
+
+```text
+node tools/contracts/b0-preflight.mjs --template
+```
+
+Validate a purported completed v1 record kept outside Git with:
+
+```text
+node tools/contracts/b0-preflight.mjs --record /access-controlled/path/b0-record.json
+```
+
+A successful result means only that the JSON is structurally coherent under this specification. The tool does not authenticate observations, fetch or open `evidence_refs`, execute `command_or_request`, grant assembly/G3 approval, or modify its input. Its output therefore always reports `observations_authenticated=false` and `approval_granted=false`; status totals are **claimed** counts from fields named `evidence_status`, not verified deployment totals. Diagnostics contain only stable error codes and schema paths, never submitted values, dynamic IDs, commands, evidence references, customer identifiers, or parse excerpts.
+
+The checked-in template remains intentionally Unknown/pending. `--template` requires that exact seed. `--record` requires `record_state: complete`, while preserving the template's authoritative status vocabularies, required component/input/check mappings, source cut, Contract scope, conflict history, and completion rules; a submitted record cannot weaken those declarations.
+
+For complete records, the preflight uses these v1 structural conventions for the arrays that are empty in the seed:
+
+- each component collection uses its existing `{ applicability, items, evidence_status, evidence_refs }` envelope; an applicable collection has at least one item, while `not_applicable` has no items and requires claimed deployment evidence;
+- artifact items record `id`, `kind`, `version`, SHA-256 `digest`, immutable `source_revision`, `evidence_status`, and `evidence_refs`;
+- runtime items record `id`, `runtime`, `version`, `artifact_ref`, status, and refs; configuration items record `config_ref` plus a redacted-manifest SHA-256; schema items record name/version/SHA-256; persistence items record engine/version/migration identity/restore ref; Zone items record a non-sensitive ID and purpose;
+- `baseline.additional_components[]` uses the same component and collection envelopes as the seven required components, plus a unique `component_id`; infrastructure without a repository must state `repository_not_applicable_reason`, leave `repository_revision.value` null, and use `sha256:<artifact digest>` as its assignment revision when no immutable source revision exists;
+- candidate assignments record each applicable component's exact baseline and candidate revision/digest plus whether it changed; `changed: true` requires an actual revision or digest delta, while unchanged assignments must be identical; matrix assignments select `b0` or `candidate` and repeat that exact identity;
+- `single_component_transition_rows` is a unique list of transition `row_id` values present in `rows`, with exactly one candidate-selected changed component per transition; all-B0 and rollback rows select every applicable component's B0 identity, while all-candidate selects every changed component's candidate identity;
+- timestamps are RFC 3339 UTC and inherit only from their containing baseline/component/candidate/check/matrix/rollback observation; start must not follow finish;
+- internal `#/…` references must resolve, required wildcards must expand, and evidence-reference chains must terminate outside the record rather than only cite each other; external references are treated as opaque strings and are never opened;
+- signoff decisions are `pending`, `approved`, or `rejected`. Pending carries no approver/time/criteria claims. A supplied approval must be coherent with the recorded results, but successful preflight never creates or authenticates that approval.
+
+A structurally valid failed or blocked rehearsal remains representable. `unsupported` matrix rows use explicit `fail`/`blocked` results and `excluded` rows use `blocked`; neither counts as successful compatibility. A passing row is not proof that its observation text is true. Complete live fields require claimed `Confirmed-Deployment`, an observation timestamp at the field's defined scope, and at least one opaque external evidence location or internal reference chain that terminates at another `Confirmed-Deployment` field with such a location. HTTPS and provider-specific URIs are treated as opaque references, not fetched or authenticated. Repository-relative paths, `file:`, `data:`, Git and SSH URLs are source/inline references and cannot by themselves fill live fields. No URI scheme proves that an observation is genuine.
+
 ## Current state and hard boundaries
 
 Source cut: 2026-09-20. Historical `0.2.0` support remains anchored to SudoStack baseline `93e72878fc7b246d7f7f2418ff19ac41a02b5a66` and [`consumer-support.json`](../../manifests/operations/consumer-support.json). The immutable `0.2.1` package is content C `273fd4097cbc33c1c049c39bb1fb60cef2663e2b`; Moss evaluation M `e9660ed1483cf01f96fe06c45ba7e070e0223ec3` merged as `18a0a069b808c295287675afc6346f411be971a5`; package-external [`0.2.1-activation-support.json`](../../manifests/operations/0.2.1-activation-support.json) binds those exact revisions without changing C's package bytes.

@@ -253,6 +253,35 @@
       "claim": "B0 seed keeps 13 Unknown live inputs, zero deployment and pending rollback/assembly gates."
     },
     {
+      "id": "b0-preflight",
+      "type": "code",
+      "path": "tools/contracts/b0-preflight.mjs",
+      "contains": [
+        "export function validateB0Record",
+        "observations_authenticated: false",
+        "approval_granted: false"
+      ],
+      "claim": "Read-only preflight validates template and completed-record structure without authenticating observations or granting approval."
+    },
+    {
+      "id": "b0-preflight-tests",
+      "type": "mutation",
+      "path": "tools/contracts/b0-preflight.test.mjs",
+      "test_name": "required identities, policy and status contradictions fail closed",
+      "claim": "Synthetic tests reject required-field, status, applicability, identity, matrix, rollback, signoff and reference contradictions."
+    },
+    {
+      "id": "b0-preflight-workflow",
+      "type": "workflow",
+      "path": ".github/workflows/contracts.yml",
+      "job": "candidate-offline-gates",
+      "contains": [
+        "npm test",
+        "node tools/contracts/b0-preflight.mjs --template"
+      ],
+      "claim": "Default offline CI runs B0 preflight tests and validates the unchanged source template."
+    },
+    {
       "id": "node-floor",
       "type": "test",
       "path": "tools/contracts/node-version.test.mjs",
@@ -340,18 +369,6 @@
   "offline_next": [
     {
       "priority": 1,
-      "id": "ADR005-OFFLINE-B0-PREFLIGHT",
-      "title": "Validate completed B0 record structure",
-      "scope": "Add an additive preflight for status vocabulary, applicability, immutable references, required smoke/matrix/rollback rows and contradictions. It must report structural readiness only, never live deployment or approval.",
-      "clause_keys": [
-        "ADR005-B0-01",
-        "ADR005-B0-03",
-        "ADR005-MIGRATE-02",
-        "ADR005-MIGRATE-05"
-      ]
-    },
-    {
-      "priority": 2,
       "id": "ADR005-OFFLINE-SUCCESSOR-ADMISSION",
       "title": "Build conservative successor compatibility admission",
       "scope": "Add package-external successor tooling that connects immutable predecessor/candidate identity, structural mutations, uncertainty and directional semantic review without modifying frozen C.",
@@ -364,7 +381,7 @@
       ]
     },
     {
-      "priority": 3,
+      "priority": 2,
       "id": "ADR005-OFFLINE-SUPPORT-EXPORT-AUDIT",
       "title": "Audit exports against real support evidence",
       "scope": "Report exported artifacts, fixture preparation, admitted boundaries and explicit deferrals; surface the ResourceRef preparation/export mismatch without granting support or rewriting C.",
@@ -375,7 +392,7 @@
       ]
     },
     {
-      "priority": 4,
+      "priority": 3,
       "id": "ADR005-OFFLINE-NETWORK-DENIED-SMOKE",
       "title": "Prove provisioned offline package consumption",
       "scope": "With an explicitly provisioned immutable dependency cache, install exact C under denied network access and run the existing import/runtime smoke without creating a registry or deployment claim.",
@@ -1034,17 +1051,19 @@
       "section": "6. First MVP：只覆盖真实边界 / 6.1 B0 客户演示保底基线",
       "source_fingerprint": "3beb17fa462861ef1b638e4cae4bab9e743eac186f42a1aadc22e1aac74068b1",
       "enforcement_tag": "none",
-      "evidence_classification": "Unknown",
-      "coverage": "none",
-      "implemented_scope": "A source-only B0 template and collection procedure exist; no selected environment inventory is complete.",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Read-only preflight validates the canonical template and completed-record structure, including required components, live fields, immutable identities and safe evidence references; it does not authenticate observations.",
       "evidence_ids": [
         "b0-template",
         "b0-spec",
-        "b0-tests"
+        "b0-tests",
+        "b0-preflight",
+        "b0-preflight-tests",
+        "b0-preflight-workflow"
       ],
-      "remaining_work": "Implement structural completed-record preflight, then collect authorized live environment evidence.",
+      "remaining_work": "Collect authorized live environment evidence for every applicable field and keep manual assembly approval separate.",
       "dependency_classes": [
-        "offline",
         "live-environment"
       ]
     },
@@ -1072,17 +1091,18 @@
       "section": "6. First MVP：只覆盖真实边界 / 6.1 B0 客户演示保底基线",
       "source_fingerprint": "a1f43b935f48ca1c2512aae6560f31a5f2ef82fedaf75fd0c6238d4afe8b197a",
       "enforcement_tag": "none",
-      "evidence_classification": "Unknown",
-      "coverage": "none",
-      "implemented_scope": "The template requires explicit mixed-version and rollback evidence; no selected legacy/demo profile has run.",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Preflight requires explicit changed-component transitions, all-B0/all-candidate/rollback identities, results, negative-side-effect observations and rollback structure; no profile has been exercised.",
       "evidence_ids": [
         "b0-template",
         "b0-spec",
-        "b0-tests"
+        "b0-tests",
+        "b0-preflight",
+        "b0-preflight-tests"
       ],
-      "remaining_work": "Validate completed-record shape offline and execute profile-specific mixed-version/rollback rehearsal live.",
+      "remaining_work": "Execute profile-specific mixed-version and exact rollback rehearsal with authenticated live evidence.",
       "dependency_classes": [
-        "offline",
         "live-environment"
       ]
     },
@@ -2001,17 +2021,18 @@
       "section": "11. Legacy、迁移与 rollback",
       "source_fingerprint": "930bfd0202eeb17635ef446ef9acba58b978453c4cf78c0a700681648edad2ab",
       "enforcement_tag": "none",
-      "evidence_classification": "Unknown",
-      "coverage": "none",
-      "implemented_scope": "Migration and rollback requirements are documented in B0 procedures; no live migration, stable release window, traffic proof or rollback rehearsal exists.",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Preflight validates that a complete record names exact B0/candidate assignments, required smoke rows, every changed-component transition, dependency order, rollback steps and separate authorization references.",
       "evidence_ids": [
         "b0-template",
         "b0-spec",
-        "b0-tests"
+        "b0-preflight",
+        "b0-preflight-tests",
+        "b0-preflight-workflow"
       ],
-      "remaining_work": "Add completed-record preflight offline, then obtain owner decisions, authorization and live rehearsal evidence.",
+      "remaining_work": "Define any product-specific migration sequence and execute the authorized transition, mixed-version observations and rollback in a selected environment.",
       "dependency_classes": [
-        "offline",
         "product-security-decision",
         "live-environment"
       ]
@@ -2061,17 +2082,18 @@
       "section": "11. Legacy、迁移与 rollback",
       "source_fingerprint": "a280a33c942ed6df8e7ed9b342ee0c5c447c1529b1350936149ec9e6211b9f84",
       "enforcement_tag": "none",
-      "evidence_classification": "Unknown",
-      "coverage": "none",
-      "implemented_scope": "Migration and rollback requirements are documented in B0 procedures; no live migration, stable release window, traffic proof or rollback rehearsal exists.",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Preflight requires exact baseline/candidate revisions and artifact digests, a complete rollback dependency order, restore references, timing objective, four rollback steps and post-restore smoke references.",
       "evidence_ids": [
         "b0-template",
         "b0-spec",
-        "b0-tests"
+        "b0-preflight",
+        "b0-preflight-tests",
+        "b0-preflight-workflow"
       ],
-      "remaining_work": "Add completed-record preflight offline, then obtain owner decisions, authorization and live rehearsal evidence.",
+      "remaining_work": "Resolve real B0 rollback assets and execute an authorized restore within the recorded recovery objective.",
       "dependency_classes": [
-        "offline",
         "product-security-decision",
         "live-environment"
       ]
