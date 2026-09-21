@@ -357,6 +357,37 @@
       "claim": "Current compatibility bridge is byte-identical and does not claim broad support."
     },
     {
+      "id": "export-support-accounting",
+      "type": "code",
+      "path": "tools/contracts/export-support-audit.mjs",
+      "contains": [
+        "export function analyzeExportSupport",
+        "export function auditExportSupport",
+        "dist04_satisfied: false",
+        "sourceMode: 'offline'"
+      ],
+      "claim": "Read-only accounting enumerates immutable C exports and preparation, binds A's exact stored support record through the public offline verifier, and retains the ResourceRef conflict without consumer or hosted evidence promotion."
+    },
+    {
+      "id": "export-support-tests",
+      "type": "mutation",
+      "path": "tools/contracts/export-support-audit.test.mjs",
+      "test_name": "broader support, forged proof flags and conflict suppression cannot elevate accounting",
+      "claim": "Accounting tests reject malformed inventories and support overclaims, preserve the ResourceRef gap, and prove the actual CLI remains offline and unapproved."
+    },
+    {
+      "id": "export-support-workflow",
+      "type": "workflow",
+      "path": ".github/workflows/contracts.yml",
+      "job": "candidate-offline-gates",
+      "contains": [
+        "npm test",
+        "Export and support accounting retains the known ResourceRef gap without admission",
+        "node tools/contracts/export-support-audit.mjs"
+      ],
+      "claim": "Default offline CI checks accounting validity with the known gap retained, not satisfaction of all export consumer gates."
+    },
+    {
       "id": "nexus-vfs-owner",
       "type": "immutable-commit",
       "repository": "nexi-lab/nexus-vfs",
@@ -420,17 +451,6 @@
     },
     {
       "priority": 2,
-      "id": "ADR005-OFFLINE-SUPPORT-EXPORT-AUDIT",
-      "title": "Audit exports against real support evidence",
-      "scope": "Report exported artifacts, fixture preparation, admitted boundaries and explicit deferrals; surface the ResourceRef preparation/export mismatch without granting support or rewriting C.",
-      "clause_keys": [
-        "ADR005-LAYOUT-01",
-        "ADR005-MVP-03",
-        "ADR005-DIST-04"
-      ]
-    },
-    {
-      "priority": 3,
       "id": "ADR005-OFFLINE-NETWORK-DENIED-SMOKE",
       "title": "Prove provisioned offline package consumption",
       "scope": "With an explicitly provisioned immutable dependency cache, install exact C under denied network access and run the existing import/runtime smoke without creating a registry or deployment claim.",
@@ -726,14 +746,17 @@
       "enforcement_tag": "none",
       "evidence_classification": "Confirmed-Code",
       "coverage": "partial",
-      "implemented_scope": "Actual owner paths, generated projections and provenance are recorded for the current closure.",
+      "implemented_scope": "Current owner paths and projections have provenance; package-external accounting enumerates every C export/condition and distinguishes shipped dependencies and preparation from recorded support.",
       "evidence_ids": [
         "source-lock",
         "generator",
         "generated-drift",
-        "source-closure"
+        "source-closure",
+        "export-support-accounting",
+        "export-support-tests",
+        "export-support-workflow"
       ],
-      "remaining_work": "Add admission accounting for future layouts and reject prepared-but-unsupported exports.",
+      "remaining_work": "Future layout/admission policies and real consumers remain required; accounting does not reject or rewrite frozen prepared-but-unsupported exports.",
       "dependency_classes": [
         "offline",
         "missing-real-consumer"
@@ -1309,14 +1332,17 @@
       "enforcement_tag": "none",
       "evidence_classification": "Confirmed-Code",
       "coverage": "partial",
-      "implemented_scope": "Current manifests, A evidence and B0 view explicitly keep deferred families/languages/test-only preparation out of support.",
+      "implemented_scope": "Current records and the read-only export audit distinguish owner/fixture/import preparation, planned roles and exact stored Moss/ZoneId support; offline accounting never promotes these to newly verified consumer evidence.",
       "evidence_ids": [
         "owner-manifest",
         "activation-verifier",
         "activation-mutations",
-        "b0-tests"
+        "b0-tests",
+        "export-support-accounting",
+        "export-support-tests",
+        "export-support-workflow"
       ],
-      "remaining_work": "Preserve deferral until owner decisions and real consumers exist; add automated support/export accounting.",
+      "remaining_work": "Preserve deferral until owner decisions and real consumers exist; extend accounting only for separately reviewed future artifacts and boundaries.",
       "dependency_classes": [
         "offline",
         "product-security-decision",
@@ -1879,14 +1905,17 @@
       "enforcement_tag": "none",
       "evidence_classification": "Conflicting",
       "coverage": "partial",
-      "implemented_scope": "ZoneId has an admitted installed consumer, but ResourceRef is exported only as conformance/distribution preparation with empty production roles.",
+      "implemented_scope": "The immutable A record supports only Moss/ZoneId embedded scope. Automated export accounting preserves the ResourceRef export-with-empty-production-roles conflict and always reports dist04_satisfied=false; offline execution does not freshly verify consumer or hosted evidence.",
       "evidence_ids": [
         "package-metadata",
         "owner-manifest",
         "activation-a",
-        "moss-consumer"
+        "moss-consumer",
+        "export-support-accounting",
+        "export-support-tests",
+        "export-support-workflow"
       ],
-      "remaining_work": "Resolve successor export/admission policy without rewriting frozen C or inventing a consumer.",
+      "remaining_work": "Resolve successor export/admission policy without rewriting frozen C or inventing a consumer; valid accounting does not satisfy DIST04.",
       "dependency_classes": [
         "offline",
         "product-security-decision",
