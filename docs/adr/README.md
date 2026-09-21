@@ -110,6 +110,10 @@ address 静默变成可远程访问"）已经是这个思路的雏形，这里�
 | [ADR-005](./ADR-005-product-contract-versioning.md) | E0-04 | 跨仓产品契约的版本、分发与兼容规则 | Proposed |
 | [ADR-006](./ADR-006-transcript-and-ui-overlay.md) | Epic 6 语义前置 | Canonical Transcript、UI Overlay 与 Conversation 重建 | Proposed |
 
+ADR-005 的 executable requirement accounting 使用一份 canonical ledger：
+[`ADR-005-coverage.json`](./ADR-005-coverage.json)。供人阅读的
+[`ADR-005-implementation-status.md`](./ADR-005-implementation-status.md) 由 checker 确定性生成；它记录 bounded evidence、缺口与依赖，但不改变 ADR 的 `Proposed` 状态或任何 `enforced_by: none` 标签。
+
 ## 编号说明
 
 `E0-01` 至 `E0-04` 是第一层开发任务编号，不等于全局 ADR 编号。

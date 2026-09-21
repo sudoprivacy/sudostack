@@ -62,6 +62,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22.21.0'
@@ -75,6 +77,10 @@ jobs:
 
       - name: The enforcement checker catches what it claims to
         run: node --test docs/adr/enforced-by.test.mjs
+      - name: ADR-005 coverage checker catches omissions and overclaims
+        run: node --test docs/adr/adr005-coverage.test.mjs
+      - name: ADR-005 clause ledger and generated view match the current source
+        run: node docs/adr/adr005-coverage.mjs --check
       - name: Every normative clause answers for itself without baseline regressions
         env:
           SUDOSTACK_REPOS_ROOT: ${{ github.workspace }}/.enforcement

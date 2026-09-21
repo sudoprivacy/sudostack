@@ -9,10 +9,12 @@
  *
  * Run: node --test docs/adr/enforced-by.test.mjs
  */
+import { spawnSync } from 'node:child_process'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { fileURLToPath } from 'node:url'
 
-import { blocks, checkText, resolveTarget } from './enforced-by.mjs'
+import { blocks, checkText, classifyBlock, isAdrSourceFile, resolveTarget } from './enforced-by.mjs'
 
 const kinds = (text) => checkText(text, 'FIXTURE.md').findings.map((f) => f.kind)
 const counts = (text) => checkText(text, 'FIXTURE.md').counts
@@ -105,4 +107,59 @@ test('two bullets are two clauses and each owes an answer', () => {
   const text = ['- 第一条必须成立。`[enforced_by: none]`', '- 第二条必须成立。'].join('\n')
   assert.deepEqual(kinds(text), ['untagged'])
   assert.equal(blocks(text).length, 2)
+})
+
+test('block classification preserves keyword, voluntary-tag, and exemption semantics', () => {
+  assert.deepEqual(classifyBlock('- A consumer MUST reject unknown major.`[enforced_by: none]`'), {
+    normative: true,
+    tags: ['none'],
+    included: true,
+    exempt: false,
+  })
+  assert.deepEqual(classifyBlock('- 长度 3–63。`[enforced_by: none]`'), {
+    normative: false,
+    tags: ['none'],
+    included: true,
+    exempt: false,
+  })
+  assert.deepEqual(classifyBlock('解释中出现必须，但不是规则。`[not-normative]`'), {
+    normative: true,
+    tags: [],
+    included: true,
+    exempt: true,
+  })
+  assert.deepEqual(classifyBlock('A producer MAY emit a value.'), {
+    normative: false,
+    tags: [],
+    included: false,
+    exempt: false,
+  })
+})
+
+test('classification returns a fresh tag list on repeated calls', () => {
+  const text = '- x 必须 y。`[enforced_by: none]`'
+  const first = classifyBlock(text)
+  first.tags.push('forged')
+  assert.deepEqual(classifyBlock(text).tags, ['none'])
+})
+
+test('ADR walker excludes generated implementation views', () => {
+  assert.equal(isAdrSourceFile('ADR-005-product-contract-versioning.md'), true)
+  assert.equal(isAdrSourceFile('ADR-005-implementation-status.md'), false)
+  assert.equal(isAdrSourceFile('README.md'), false)
+})
+
+test('JSON CLI report keeps the existing ADR source set and count shape', () => {
+  const checker = fileURLToPath(new URL('./enforced-by.mjs', import.meta.url))
+  const result = spawnSync(process.execPath, [checker, '--json'], { encoding: 'utf8' })
+  assert.equal(result.status, 0, result.stderr)
+  const report = JSON.parse(result.stdout).report
+  assert.equal(Object.hasOwn(report, 'ADR-005-implementation-status.md'), false)
+  assert.deepEqual(report['ADR-005-product-contract-versioning.md'], {
+    verified: 0,
+    none: 102,
+    unverifiable: 0,
+    notNormative: 0,
+    untagged: 0,
+  })
 })

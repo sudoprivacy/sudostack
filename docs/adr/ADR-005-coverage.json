@@ -1,0 +1,2429 @@
+{
+  "ledger_version": 1,
+  "source": {
+    "path": "docs/adr/ADR-005-product-contract-versioning.md",
+    "status": "Proposed",
+    "parser": "docs/adr/enforced-by.mjs#blocks+classifyBlock"
+  },
+  "policy": "accounting_only_no_enforcement_promotion",
+  "ci": {
+    "workflow_path": ".github/workflows/contracts.yml",
+    "job": "every-clause-names-what-enforces-it",
+    "fetch_depth": 0,
+    "test_command": "node --test docs/adr/adr005-coverage.test.mjs",
+    "check_command": "node docs/adr/adr005-coverage.mjs --check"
+  },
+  "evidence_catalog": [
+    {
+      "id": "adr-source",
+      "type": "document",
+      "path": "docs/adr/ADR-005-product-contract-versioning.md",
+      "claim": "Canonical current ADR-005 normative wording and Proposed status."
+    },
+    {
+      "id": "adr-parser",
+      "type": "code",
+      "path": "docs/adr/enforced-by.mjs",
+      "contains": [
+        "export function blocks",
+        "export function classifyBlock"
+      ],
+      "claim": "Shared parser and classification floor enumerate normative/tagged blocks."
+    },
+    {
+      "id": "adr-parser-tests",
+      "type": "test",
+      "path": "docs/adr/enforced-by.test.mjs",
+      "test_name": "block classification preserves keyword, voluntary-tag, and exemption semantics",
+      "claim": "Parser classification behavior has focused regression coverage."
+    },
+    {
+      "id": "coverage-checker",
+      "type": "code",
+      "path": "docs/adr/adr005-coverage.mjs",
+      "contains": [
+        "export function collectAdr005Clauses",
+        "export function checkCoverage"
+      ],
+      "claim": "Coverage checker accounts for every parser-selected ADR-005 block without changing enforcement tags."
+    },
+    {
+      "id": "coverage-mutations",
+      "type": "mutation",
+      "path": "docs/adr/adr005-coverage.test.mjs",
+      "test_name": "coverage checker rejects missing, duplicate, stale, invalid, broken, mutable, and overclaim rows",
+      "claim": "Negative tests exercise omission, staleness, references, statuses, mutability and overclaim failures."
+    },
+    {
+      "id": "coverage-workflow",
+      "type": "workflow",
+      "path": ".github/workflows/contracts.yml",
+      "job": "every-clause-names-what-enforces-it",
+      "contains": [
+        "fetch-depth: 0",
+        "node --test docs/adr/adr005-coverage.test.mjs",
+        "node docs/adr/adr005-coverage.mjs --check"
+      ],
+      "claim": "Default contracts workflow runs coverage self-tests and deterministic ledger/view validation."
+    },
+    {
+      "id": "source-lock",
+      "type": "code",
+      "path": "contracts/sources.lock.json",
+      "contains": [
+        "\"definition_revision\"",
+        "\"nexus-vfs\""
+      ],
+      "claim": "Current owner closure records exact repositories, revisions, paths and digests."
+    },
+    {
+      "id": "source-loader",
+      "type": "code",
+      "path": "tools/contracts/source.mjs",
+      "contains": [
+        "export function readLocalGitBlob",
+        "export function validateOwnerClosure"
+      ],
+      "claim": "Source loader verifies repository identity, full revisions, bytes and transitive closure."
+    },
+    {
+      "id": "source-mutations",
+      "type": "mutation",
+      "path": "tools/contracts/source.test.mjs",
+      "test_name": "source digest verification catches a one-byte mutation",
+      "claim": "Source provenance fails on byte mutation."
+    },
+    {
+      "id": "generator",
+      "type": "code",
+      "path": "contracts/generate.mjs",
+      "contains": [
+        "function buildOutputs",
+        "verifyCandidateContent"
+      ],
+      "claim": "Generator derives current artifacts from exact owner closure and staged inputs."
+    },
+    {
+      "id": "generated-drift",
+      "type": "mutation",
+      "path": "tools/contracts/generated-drift.test.mjs",
+      "test_name": "offline gates catch contradictory provenance and generated hand edits",
+      "claim": "Offline generation fails on contradictory locks and generated drift."
+    },
+    {
+      "id": "contracts-workflow",
+      "type": "workflow",
+      "path": ".github/workflows/contracts.yml",
+      "contains": [
+        "npm run generate:check-offline",
+        "npm test",
+        "npm run typecheck",
+        "npm run package:smoke"
+      ],
+      "claim": "Default CI runs offline generation, tests, typecheck and package smoke."
+    },
+    {
+      "id": "zoneid-conformance",
+      "type": "test",
+      "path": "contracts/zone-id/conformance.test.mjs",
+      "test_name": "the generated validator agrees with every vector",
+      "claim": "Generated ZoneId validator executes owner vectors."
+    },
+    {
+      "id": "resource-conformance",
+      "type": "test",
+      "path": "contracts/common/v1/resource-ref/conformance.test.mjs",
+      "test_name": "all 25 Nexus fixtures match owner schema and adapter expectations",
+      "claim": "ResourceRef fixture/schema/adapter conformance is executable preparation, not production adoption."
+    },
+    {
+      "id": "runtime-template",
+      "type": "code",
+      "path": "tools/contracts/runtime-template.mjs",
+      "contains": [
+        "export function renderResourceRefTypeScript"
+      ],
+      "claim": "Generated ResourceRef parser/serializer derives constants and schema policy."
+    },
+    {
+      "id": "compatibility-checker",
+      "type": "code",
+      "path": "tools/contracts/compatibility.mjs",
+      "contains": [
+        "export function compareSchemas"
+      ],
+      "claim": "Structural compatibility comparator exists but is not a universal semantic admission gate."
+    },
+    {
+      "id": "compatibility-mutations",
+      "type": "mutation",
+      "path": "tools/contracts/compatibility.test.mjs",
+      "test_name": "schema deletion is breaking",
+      "claim": "Compatibility tests reject representative structural breaking changes."
+    },
+    {
+      "id": "content-verifier",
+      "type": "code",
+      "path": "tools/contracts/content-candidate.mjs",
+      "contains": [
+        "export function verifyCandidateContent"
+      ],
+      "claim": "Content verifier preserves historical and runtime/package bytes across the staged patch."
+    },
+    {
+      "id": "content-mutations",
+      "type": "mutation",
+      "path": "tools/contracts/content-candidate.test.mjs",
+      "test_name": "runtime, schema, fixture, source, provenance, and historical record mutations fail closed",
+      "claim": "Content-stage mutations fail across runtime, schema, source and provenance."
+    },
+    {
+      "id": "candidate-verifier",
+      "type": "code",
+      "path": "tools/contracts/verify-candidate.mjs",
+      "contains": [
+        "staged candidate verified"
+      ],
+      "claim": "Candidate verifier binds complete generated inventories, provenance and lifecycle."
+    },
+    {
+      "id": "package-metadata",
+      "type": "code",
+      "path": "package.json",
+      "contains": [
+        "\"private\": true",
+        "\"./zone-id\"",
+        "\"./common/v1/resource-ref\""
+      ],
+      "claim": "Private TypeScript package exposes current prepared subpaths."
+    },
+    {
+      "id": "package-smoke",
+      "type": "code",
+      "path": "tools/contracts/package-smoke.mjs",
+      "contains": [
+        "repeated npm pack output is not deterministic",
+        "runPackageNpm(['install'"
+      ],
+      "claim": "Package smoke proves deterministic pack, bounded contents, clean install and imports."
+    },
+    {
+      "id": "history-verifier",
+      "type": "code",
+      "path": "tools/contracts/history-0.2.0.mjs",
+      "contains": [
+        "export function verifyHistoricalRelease"
+      ],
+      "claim": "Historical 0.2.0 generation, tests and package remain replayable."
+    },
+    {
+      "id": "activation-verifier",
+      "type": "code",
+      "path": "tools/contracts/activation-0.2.1.mjs",
+      "contains": [
+        "export function verifyActivationSupport",
+        "included_scope_admission_verified"
+      ],
+      "claim": "Package-external A verifies exact C and Moss ZoneId embedded evidence with mode-separated proof."
+    },
+    {
+      "id": "activation-mutations",
+      "type": "mutation",
+      "path": "tools/contracts/activation-0.2.1.test.mjs",
+      "test_name": "operation revision, pin, digest, scope, lifecycle, CI, and decision mutations fail closed",
+      "claim": "Activation evidence fails on identity, pin, lifecycle, scope and CI mutations."
+    },
+    {
+      "id": "b0-template",
+      "type": "document",
+      "path": "manifests/inventory/b0-customer-demo-baseline.template.json",
+      "claim": "Source-only B0 template preserves live evidence fields, mixed-version matrix and rollback requirements."
+    },
+    {
+      "id": "b0-spec",
+      "type": "document",
+      "path": "docs/inventory/b0-customer-demo-baseline.md",
+      "claim": "B0 procedure distinguishes code facts from live deployment, assembly and rollback evidence."
+    },
+    {
+      "id": "b0-tests",
+      "type": "test",
+      "path": "tools/contracts/content-candidate.test.mjs",
+      "test_name": "B0 records scoped C-03 resolution while preserving live and rollback blockers",
+      "claim": "B0 seed keeps 13 Unknown live inputs, zero deployment and pending rollback/assembly gates."
+    },
+    {
+      "id": "node-floor",
+      "type": "test",
+      "path": "tools/contracts/node-version.test.mjs",
+      "test_name": "Node engine floor matches proxy and CommonJS requirements",
+      "claim": "Node runtime floor is explicitly tested."
+    },
+    {
+      "id": "owner-manifest",
+      "type": "code",
+      "path": "contracts/common/v1/resource-ref/owner-manifest.source.gen.json",
+      "contains": [
+        "\"actual_producers\": []",
+        "\"actual_consumers\": []"
+      ],
+      "claim": "Owner manifest records current empty ResourceRef production roles and deferred routing."
+    },
+    {
+      "id": "source-closure",
+      "type": "code",
+      "path": "manifests/source-closure.gen.json",
+      "contains": [
+        "\"repositories\"",
+        "\"owner_manifest\""
+      ],
+      "claim": "Generated closure records exact current owner repositories and source availability."
+    },
+    {
+      "id": "current-compatibility",
+      "type": "code",
+      "path": "compatibility/current.gen.json",
+      "contains": [
+        "\"runtime_contract\": \"byte_identical\"",
+        "\"pending_moss_repin\""
+      ],
+      "claim": "Current compatibility bridge is byte-identical and does not claim broad support."
+    },
+    {
+      "id": "nexus-vfs-owner",
+      "type": "immutable-commit",
+      "repository": "nexi-lab/nexus-vfs",
+      "revision": "24f6730ec90fab8a035b2f5400ed313bda343fbe",
+      "path": "contracts/zone-id/spec.json",
+      "attestation_path": "contracts/sources.lock.json",
+      "attestation_kind": "owner-source-lock",
+      "claim": "Immutable ZoneId semantic-owner source used by the current closure."
+    },
+    {
+      "id": "nexus-owner",
+      "type": "immutable-commit",
+      "repository": "nexi-lab/nexus",
+      "revision": "759842551697efa2579a92f24b16f8ae43829e7b",
+      "path": "src/nexus/contracts/schemas/common/v1/resource-ref.schema.json",
+      "attestation_path": "contracts/sources.lock.json",
+      "attestation_kind": "owner-source-lock",
+      "claim": "Immutable ResourceRef owner/provenance source used for conformance preparation."
+    },
+    {
+      "id": "content-c",
+      "type": "immutable-commit",
+      "repository": "sudoprivacy/sudostack",
+      "revision": "273fd4097cbc33c1c049c39bb1fb60cef2663e2b",
+      "path": "manifests/releases/0.2.1-candidate.gen.json",
+      "claim": "Immutable 0.2.1 content candidate C."
+    },
+    {
+      "id": "activation-a",
+      "type": "immutable-commit",
+      "repository": "sudoprivacy/sudostack",
+      "revision": "665f0c6b83bc3c80b4cb697dc86ac1b6aa92bf4d",
+      "path": "manifests/operations/0.2.1-activation-support.json",
+      "claim": "Immutable package-external A evidence admitted only the Moss/ZoneId embedded scope."
+    },
+    {
+      "id": "moss-consumer",
+      "type": "hosted-evidence",
+      "repository": "sudoprivacy/moss",
+      "revision": "e9660ed1483cf01f96fe06c45ba7e070e0223ec3",
+      "path": "src/server/__tests__/contractsActivation.test.ts",
+      "attestation_path": "manifests/operations/0.2.1-activation-support.json",
+      "attestation_kind": "consumer-activation",
+      "url": "https://github.com/sudoprivacy/moss/pull/278",
+      "claim": "Exact Moss evaluation pin M and hosted evidence for the installed ZoneId boundary."
+    }
+  ],
+  "offline_next": [
+    {
+      "priority": 1,
+      "id": "ADR005-OFFLINE-B0-PREFLIGHT",
+      "title": "Validate completed B0 record structure",
+      "scope": "Add an additive preflight for status vocabulary, applicability, immutable references, required smoke/matrix/rollback rows and contradictions. It must report structural readiness only, never live deployment or approval.",
+      "clause_keys": [
+        "ADR005-B0-01",
+        "ADR005-B0-03",
+        "ADR005-MIGRATE-02",
+        "ADR005-MIGRATE-05"
+      ]
+    },
+    {
+      "priority": 2,
+      "id": "ADR005-OFFLINE-SUCCESSOR-ADMISSION",
+      "title": "Build conservative successor compatibility admission",
+      "scope": "Add package-external successor tooling that connects immutable predecessor/candidate identity, structural mutations, uncertainty and directional semantic review without modifying frozen C.",
+      "clause_keys": [
+        "ADR005-COMPAT-01",
+        "ADR005-COMPAT-04",
+        "ADR005-COMPAT-05",
+        "ADR005-COMPAT-06",
+        "ADR005-FREEZE-01"
+      ]
+    },
+    {
+      "priority": 3,
+      "id": "ADR005-OFFLINE-SUPPORT-EXPORT-AUDIT",
+      "title": "Audit exports against real support evidence",
+      "scope": "Report exported artifacts, fixture preparation, admitted boundaries and explicit deferrals; surface the ResourceRef preparation/export mismatch without granting support or rewriting C.",
+      "clause_keys": [
+        "ADR005-LAYOUT-01",
+        "ADR005-MVP-03",
+        "ADR005-DIST-04"
+      ]
+    },
+    {
+      "priority": 4,
+      "id": "ADR005-OFFLINE-NETWORK-DENIED-SMOKE",
+      "title": "Prove provisioned offline package consumption",
+      "scope": "With an explicitly provisioned immutable dependency cache, install exact C under denied network access and run the existing import/runtime smoke without creating a registry or deployment claim.",
+      "clause_keys": [
+        "ADR005-DIST-03",
+        "ADR005-DIST-06",
+        "ADR005-CI-02"
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "key": "ADR005-UNNAMED-02148de28a6b01b7df965cf4a1ea67d87d8811c3c60175bb2d724037a1a25709",
+      "section": "2. 四种独立状态",
+      "source_fingerprint": "94db6d2a7e95df73e9a84dbdb85f94165393f2701020c08275229a5c2a9a9573",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current manifests, A evidence and B0 records separate maturity, baseline, publication and deployment for the implemented scope.",
+      "evidence_ids": [
+        "content-verifier",
+        "activation-verifier",
+        "content-mutations",
+        "b0-tests"
+      ],
+      "remaining_work": "Generalize state accounting to every future report and obtain live deployment evidence separately.",
+      "dependency_classes": [
+        "offline",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-601e62b6367de72b8911ce4bb5803da78f08d2c2bff37a3101e4a945cdade56f",
+      "section": "2. 四种独立状态",
+      "source_fingerprint": "4f8e37b16e9968b62509ff82f90fb5e303090c36136f7ec45ea13c6af95d23f8",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current manifests, A evidence and B0 records separate maturity, baseline, publication and deployment for the implemented scope.",
+      "evidence_ids": [
+        "content-verifier",
+        "activation-verifier",
+        "content-mutations",
+        "b0-tests"
+      ],
+      "remaining_work": "Generalize state accounting to every future report and obtain live deployment evidence separately.",
+      "dependency_classes": [
+        "offline",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-8578931660a96218ebfc30cfb3362faaf9d55af00b62929feff7b5ad8dcdb6c5",
+      "section": "2. 四种独立状态",
+      "source_fingerprint": "f0755377a52da76b7c0f4d87de539c9f69ffc67ee577620632730847e72832d3",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current manifests, A evidence and B0 records separate maturity, baseline, publication and deployment for the implemented scope.",
+      "evidence_ids": [
+        "content-verifier",
+        "activation-verifier",
+        "content-mutations",
+        "b0-tests"
+      ],
+      "remaining_work": "Generalize state accounting to every future report and obtain live deployment evidence separately.",
+      "dependency_classes": [
+        "offline",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-ed5c641a667459ee39cb811ea25ae63c6c1aa3e6ad0c820a4b4f7b09f0c2536a",
+      "section": "2. 四种独立状态",
+      "source_fingerprint": "e375ce3ff6d3321805e3dc1e0349e83dd68deea8dd99b55174944a65ec8e8769",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current manifests, A evidence and B0 records separate maturity, baseline, publication and deployment for the implemented scope.",
+      "evidence_ids": [
+        "content-verifier",
+        "activation-verifier",
+        "content-mutations",
+        "b0-tests"
+      ],
+      "remaining_work": "Generalize state accounting to every future report and obtain live deployment evidence separately.",
+      "dependency_classes": [
+        "offline",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-1c638867ff964f6fdf80ec6bbfb232fde6afd9645dd2d4cb46099a50de97a4eb",
+      "section": "2. 四种独立状态",
+      "source_fingerprint": "c65de3f0971a33dac0cf710b33ce30350259ec6ce33f623b651c0d79efd811fa",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current manifests, A evidence and B0 records separate maturity, baseline, publication and deployment for the implemented scope.",
+      "evidence_ids": [
+        "content-verifier",
+        "activation-verifier",
+        "content-mutations",
+        "b0-tests"
+      ],
+      "remaining_work": "Generalize state accounting to every future report and obtain live deployment evidence separately.",
+      "dependency_classes": [
+        "offline",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-1264ac8d9c6aa180e7e2a4867a2d62f7b7d0d24e1e2d3a5e4ebfd132d2b55667",
+      "section": "2. 四种独立状态",
+      "source_fingerprint": "97566b0b42d3f0b00df439fa4a5252ba6592ed9bf6099dec77d2bbca2fff73cd",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current manifests, A evidence and B0 records separate maturity, baseline, publication and deployment for the implemented scope.",
+      "evidence_ids": [
+        "content-verifier",
+        "activation-verifier",
+        "content-mutations",
+        "b0-tests"
+      ],
+      "remaining_work": "Generalize state accounting to every future report and obtain live deployment evidence separately.",
+      "dependency_classes": [
+        "offline",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-SOURCE-01",
+      "section": "3. 定义来源与装配边界 / 3.1 核心决策",
+      "source_fingerprint": "3588dcb70d38b90d903a10ac783d4dceb4581ca3424c69814219a39a24a0490e",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "ZoneId and ResourceRef owner sources are exact-pinned; this does not prove ownership for every deferred family.",
+      "evidence_ids": [
+        "source-lock",
+        "source-loader",
+        "nexus-vfs-owner",
+        "nexus-owner"
+      ],
+      "remaining_work": "Complete owner/security decisions and immutable source records for deferred families.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-SOURCE-02",
+      "section": "3. 定义来源与装配边界 / 3.1 核心决策",
+      "source_fingerprint": "596d3e71e005fa15a99dc1486f023e7e537469ab097a0f114a30f400ee4e2a34",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current Nexus/nexus-vfs inputs use full commits, paths and digests with mutation coverage.",
+      "evidence_ids": [
+        "source-lock",
+        "source-loader",
+        "source-mutations",
+        "contracts-workflow"
+      ],
+      "remaining_work": "Generalize the same gate for each newly admitted owner source.",
+      "dependency_classes": [
+        "offline",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-SOURCE-03",
+      "section": "3. 定义来源与装配边界 / 3.1 核心决策",
+      "source_fingerprint": "fc33898d351694f1cf3181e2afc4d4a11d3ee2baa7eef4147a12d7610107a71e",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current derived bundle, fixtures, compatibility and release metadata are reproducible from the recorded closure.",
+      "evidence_ids": [
+        "generator",
+        "generated-drift",
+        "candidate-verifier",
+        "contracts-workflow"
+      ],
+      "remaining_work": "Apply equivalent provenance/admission checks to future families and artifacts.",
+      "dependency_classes": [
+        "offline",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-SOURCE-04",
+      "section": "3. 定义来源与装配边界 / 3.1 核心决策",
+      "source_fingerprint": "6e0bee246e1baf34a5a75f9e72530c7e1b8ab4aaa2fb7d2f2d6ac9f39d5c351d",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "The private package aggregates owner-derived projections while owner identities remain explicit.",
+      "evidence_ids": [
+        "package-metadata",
+        "source-closure",
+        "owner-manifest"
+      ],
+      "remaining_work": "Review aggregation boundaries for each future family and real consumer.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-SOURCE-05",
+      "section": "3. 定义来源与装配边界 / 3.1 核心决策",
+      "source_fingerprint": "c3138d0a0b875b095f5ba02cb020e7f53899d24fde0aa6e2480ee9eb699f0cd6",
+      "enforcement_tag": "none",
+      "evidence_classification": "Expected",
+      "coverage": "none",
+      "implemented_scope": "ADR text and repository layout retain the no-independent-contract-repository decision.",
+      "evidence_ids": [
+        "adr-source"
+      ],
+      "remaining_work": "Add a bounded repository-topology assertion only if this architectural prohibition needs executable prevention.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision"
+      ]
+    },
+    {
+      "key": "ADR005-SOURCE-06",
+      "section": "3. 定义来源与装配边界 / 3.1 核心决策",
+      "source_fingerprint": "def6a8de2cacbb0a80909d781291c182abe28bd948c3966ee0dc52e2af3cf879",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "The current Nexus ResourceRef closure exact-pins nexus-vfs primitives without an owner dependency on the SudoStack package.",
+      "evidence_ids": [
+        "source-lock",
+        "source-loader",
+        "source-closure",
+        "nexus-vfs-owner",
+        "nexus-owner"
+      ],
+      "remaining_work": "Audit dependency direction for each future owner integration.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-293f667f693e3f68c6e4d7fd8ba2296abf77df0500cfc4b07e53b9b027b56e0e",
+      "section": "3. 定义来源与装配边界 / 3.2 Ownership-aware 物理布局",
+      "source_fingerprint": "cf1fcfd673c1d0a9a0f9e8f525e40ad9782e470e387ce184eea51469fdf9e93b",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Actual owner paths, generated projections and provenance are recorded for the current closure.",
+      "evidence_ids": [
+        "source-lock",
+        "generator",
+        "generated-drift",
+        "source-closure"
+      ],
+      "remaining_work": "Add admission accounting for future layouts and reject prepared-but-unsupported exports.",
+      "dependency_classes": [
+        "offline",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-240f34ffd570705f856b3e7f06de769d6a245c269edb323850caa145d7da58cd",
+      "section": "3. 定义来源与装配边界 / 3.2 Ownership-aware 物理布局",
+      "source_fingerprint": "6f891f6feb4846bcf68f155bfb3c1334a3eb394537f53658c79d360c816960aa",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Actual owner paths, generated projections and provenance are recorded for the current closure.",
+      "evidence_ids": [
+        "source-lock",
+        "generator",
+        "generated-drift",
+        "source-closure"
+      ],
+      "remaining_work": "Add admission accounting for future layouts and reject prepared-but-unsupported exports.",
+      "dependency_classes": [
+        "offline",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-LAYOUT-01",
+      "section": "3. 定义来源与装配边界 / 3.2 Ownership-aware 物理布局",
+      "source_fingerprint": "9f2f98ae39407945e0b6d9931b8bc4f6842ce4838369d407494f50b887a917c3",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Actual owner paths, generated projections and provenance are recorded for the current closure.",
+      "evidence_ids": [
+        "source-lock",
+        "generator",
+        "generated-drift",
+        "source-closure"
+      ],
+      "remaining_work": "Add admission accounting for future layouts and reject prepared-but-unsupported exports.",
+      "dependency_classes": [
+        "offline",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-LAYOUT-02",
+      "section": "3. 定义来源与装配边界 / 3.2 Ownership-aware 物理布局",
+      "source_fingerprint": "d6f65ebe2aaee53c50ee1ea307e9e12e1470a41bc3bfd8c821225676623fdd6f",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Actual owner paths, generated projections and provenance are recorded for the current closure.",
+      "evidence_ids": [
+        "source-lock",
+        "generator",
+        "generated-drift",
+        "source-closure"
+      ],
+      "remaining_work": "Add admission accounting for future layouts and reject prepared-but-unsupported exports.",
+      "dependency_classes": [
+        "offline",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-LAYOUT-03",
+      "section": "3. 定义来源与装配边界 / 3.2 Ownership-aware 物理布局",
+      "source_fingerprint": "4675b1f33eb5b80b0f9d55de55fd1dedcce8cec7f82a33b12965f20c06ac1f7b",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Actual owner paths, generated projections and provenance are recorded for the current closure.",
+      "evidence_ids": [
+        "source-lock",
+        "generator",
+        "generated-drift",
+        "source-closure"
+      ],
+      "remaining_work": "Add admission accounting for future layouts and reject prepared-but-unsupported exports.",
+      "dependency_classes": [
+        "offline",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-ROLE-01",
+      "section": "3. 定义来源与装配边界 / 3.3 角色定义",
+      "source_fingerprint": "73813a48d0a0a80d4c4e55455bf2f36e5f0c21cdd12fcddb9fa1bacb0c3bf64e",
+      "enforcement_tag": "none",
+      "evidence_classification": "Expected",
+      "coverage": "none",
+      "implemented_scope": "Current records distinguish definition ownership from runtime roles for the bounded ZoneId/ResourceRef evidence.",
+      "evidence_ids": [
+        "owner-manifest",
+        "activation-a",
+        "b0-spec"
+      ],
+      "remaining_work": "Assign and review all applicable producer, consumer, transport, security and rollback roles before broader admission.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-ROLE-02",
+      "section": "3. 定义来源与装配边界 / 3.3 角色定义",
+      "source_fingerprint": "32536f73e2a9fb470471ee768e82ee45ea2e8ab8d7b7f9e32da5537b539eca29",
+      "enforcement_tag": "none",
+      "evidence_classification": "Expected",
+      "coverage": "none",
+      "implemented_scope": "Current records distinguish definition ownership from runtime roles for the bounded ZoneId/ResourceRef evidence.",
+      "evidence_ids": [
+        "owner-manifest",
+        "activation-a",
+        "b0-spec"
+      ],
+      "remaining_work": "Assign and review all applicable producer, consumer, transport, security and rollback roles before broader admission.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-OWN-01",
+      "section": "4. G0 ownership baseline",
+      "source_fingerprint": "9607ef5a4fb7a36dfbe2c7590af617336e41dfd1e58da6c13cb77b5c8ab380fd",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "ZoneId rules derive from immutable nexus-vfs owner bytes and execute owner vectors.",
+      "evidence_ids": [
+        "nexus-vfs-owner",
+        "source-lock",
+        "generator",
+        "zoneid-conformance"
+      ],
+      "remaining_work": "Apply anti-copy and owner-projection checks to every future consumer/language boundary.",
+      "dependency_classes": [
+        "offline",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-OWN-02",
+      "section": "4. G0 ownership baseline",
+      "source_fingerprint": "62a0db4233f21a647568531e9963d614cad711b3c8fb602b3065d3741e8423cd",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current status/B0 evidence preserves Proposed and deferred ownership instead of claiming acceptance.",
+      "evidence_ids": [
+        "activation-verifier",
+        "activation-mutations",
+        "b0-tests"
+      ],
+      "remaining_work": "Complete owner/security review for proposed ResourceRef, ZonePath, IAM and ErrorInfo ownership.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-OWN-03",
+      "section": "4. G0 ownership baseline",
+      "source_fingerprint": "410542e4960e1f6eb96c42c2149e003d09fa8f4208722211a5fccded51ab084b",
+      "enforcement_tag": "none",
+      "evidence_classification": "Expected",
+      "coverage": "none",
+      "implemented_scope": "ADR records producer-owned domain error semantics; no ErrorInfo production boundary is admitted.",
+      "evidence_ids": [
+        "adr-source"
+      ],
+      "remaining_work": "Select a real ErrorInfo boundary and complete producer/security ownership review.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-WIRE-01",
+      "section": "5. Wire schema、引用与安全边界 / 5.1 Canonical representation",
+      "source_fingerprint": "160906d49ac7ce5bba0a2790bce021f964fc3d2c25b7da9a7326ad8a6318c87a",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "ResourceRef and Zone primitives provide current JSON Schema/projection/discriminator/reference behavior.",
+      "evidence_ids": [
+        "nexus-vfs-owner",
+        "nexus-owner",
+        "runtime-template",
+        "resource-conformance",
+        "source-closure"
+      ],
+      "remaining_work": "Generalize canonical wire rules to each admitted object and language without treating preparation as adoption.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-WIRE-02",
+      "section": "5. Wire schema、引用与安全边界 / 5.1 Canonical representation",
+      "source_fingerprint": "73f0765976cc61857e794564e34437d020296465bd95c3ef06e6a1046de8d8d6",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "ResourceRef and Zone primitives provide current JSON Schema/projection/discriminator/reference behavior.",
+      "evidence_ids": [
+        "nexus-vfs-owner",
+        "nexus-owner",
+        "runtime-template",
+        "resource-conformance",
+        "source-closure"
+      ],
+      "remaining_work": "Generalize canonical wire rules to each admitted object and language without treating preparation as adoption.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-202c779858ad29d7729dc8ac4e0db69d2b39dfdef4604804177f19f567501830",
+      "section": "5. Wire schema、引用与安全边界 / 5.1 Canonical representation",
+      "source_fingerprint": "b4d5b12bb54b82b39e9559ce0af238ae5db6b5c64a4b3b635a0d7c1daa3bb344",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "ResourceRef and Zone primitives provide current JSON Schema/projection/discriminator/reference behavior.",
+      "evidence_ids": [
+        "nexus-vfs-owner",
+        "nexus-owner",
+        "runtime-template",
+        "resource-conformance",
+        "source-closure"
+      ],
+      "remaining_work": "Generalize canonical wire rules to each admitted object and language without treating preparation as adoption.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-WIRE-03",
+      "section": "5. Wire schema、引用与安全边界 / 5.1 Canonical representation",
+      "source_fingerprint": "67decbf93d37fbcc16fb62e63465ac45b91ebabc3308098722e6a8e502fd0836",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "ResourceRef and Zone primitives provide current JSON Schema/projection/discriminator/reference behavior.",
+      "evidence_ids": [
+        "nexus-vfs-owner",
+        "nexus-owner",
+        "runtime-template",
+        "resource-conformance",
+        "source-closure"
+      ],
+      "remaining_work": "Generalize canonical wire rules to each admitted object and language without treating preparation as adoption.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-WIRE-04",
+      "section": "5. Wire schema、引用与安全边界 / 5.1 Canonical representation",
+      "source_fingerprint": "b0a3b097d2d0e7e33162560ea7170b554d522d24a0a5e20cca665bc37887c5a0",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "ResourceRef and Zone primitives provide current JSON Schema/projection/discriminator/reference behavior.",
+      "evidence_ids": [
+        "nexus-vfs-owner",
+        "nexus-owner",
+        "runtime-template",
+        "resource-conformance",
+        "source-closure"
+      ],
+      "remaining_work": "Generalize canonical wire rules to each admitted object and language without treating preparation as adoption.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-WIRE-05",
+      "section": "5. Wire schema、引用与安全边界 / 5.1 Canonical representation",
+      "source_fingerprint": "5da8f8fed1768c779e15dba0feac993eace9b0bbece1c824ce9dd7863288ab5c",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "ResourceRef and Zone primitives provide current JSON Schema/projection/discriminator/reference behavior.",
+      "evidence_ids": [
+        "nexus-vfs-owner",
+        "nexus-owner",
+        "runtime-template",
+        "resource-conformance",
+        "source-closure"
+      ],
+      "remaining_work": "Generalize canonical wire rules to each admitted object and language without treating preparation as adoption.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-SEC-01",
+      "section": "5. Wire schema、引用与安全边界 / 5.2 Validation 不等于 authorization",
+      "source_fingerprint": "c3fae63d187a5be8da4dc7db9a2c7518156a3cedc5e64a3e4043a513ac3b332e",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current validators distinguish invalid values and A binds ZoneId rejection before spawn for one real boundary.",
+      "evidence_ids": [
+        "resource-conformance",
+        "activation-verifier",
+        "activation-mutations"
+      ],
+      "remaining_work": "Extend fail-closed validation/authorization separation to each admitted boundary.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-SEC-02",
+      "section": "5. Wire schema、引用与安全边界 / 5.2 Validation 不等于 authorization",
+      "source_fingerprint": "0bc9959b152105e41777facdc992aa8725caea50d97dae9d117ddcbe34e32f52",
+      "enforcement_tag": "none",
+      "evidence_classification": "Expected",
+      "coverage": "none",
+      "implemented_scope": "ResourceRef shape validation exists, but dereference authorization and routing are explicitly deferred.",
+      "evidence_ids": [
+        "owner-manifest",
+        "resource-conformance"
+      ],
+      "remaining_work": "Define and implement authenticated dereference policy at a real production boundary.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-SEC-03",
+      "section": "5. Wire schema、引用与安全边界 / 5.2 Validation 不等于 authorization",
+      "source_fingerprint": "8658d0b6a129987f62cdbf0495ec8da870e1085da298f4f067a664cf198694f4",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current ResourceRef parser/tests bound metadata and avoid reflecting rejected values; the clause spans many deferred families.",
+      "evidence_ids": [
+        "runtime-template",
+        "resource-conformance"
+      ],
+      "remaining_work": "Add owner/security-approved secret and redaction policy evidence for each real boundary.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-SEC-04",
+      "section": "5. Wire schema、引用与安全边界 / 5.2 Validation 不等于 authorization",
+      "source_fingerprint": "9a59503fe3978069eecf02897a2c54947964da667a21288d87a09322ecff4be3",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current validators distinguish invalid values and A binds ZoneId rejection before spawn for one real boundary.",
+      "evidence_ids": [
+        "resource-conformance",
+        "activation-verifier",
+        "activation-mutations"
+      ],
+      "remaining_work": "Extend fail-closed validation/authorization separation to each admitted boundary.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-B0-01",
+      "section": "6. First MVP：只覆盖真实边界 / 6.1 B0 客户演示保底基线",
+      "source_fingerprint": "3beb17fa462861ef1b638e4cae4bab9e743eac186f42a1aadc22e1aac74068b1",
+      "enforcement_tag": "none",
+      "evidence_classification": "Unknown",
+      "coverage": "none",
+      "implemented_scope": "A source-only B0 template and collection procedure exist; no selected environment inventory is complete.",
+      "evidence_ids": [
+        "b0-template",
+        "b0-spec",
+        "b0-tests"
+      ],
+      "remaining_work": "Implement structural completed-record preflight, then collect authorized live environment evidence.",
+      "dependency_classes": [
+        "offline",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-B0-02",
+      "section": "6. First MVP：只覆盖真实边界 / 6.1 B0 客户演示保底基线",
+      "source_fingerprint": "d92540991856524b3c98fac51a88ad7255aee47275cb1c8adadeac774257a3fb",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current work preserves databases, historical zones, routes and DTOs; no migration is authorized.",
+      "evidence_ids": [
+        "b0-spec",
+        "b0-tests",
+        "activation-a"
+      ],
+      "remaining_work": "Retain explicit product/change authorization for any future migration or removal.",
+      "dependency_classes": [
+        "product-security-decision",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-B0-03",
+      "section": "6. First MVP：只覆盖真实边界 / 6.1 B0 客户演示保底基线",
+      "source_fingerprint": "a1f43b935f48ca1c2512aae6560f31a5f2ef82fedaf75fd0c6238d4afe8b197a",
+      "enforcement_tag": "none",
+      "evidence_classification": "Unknown",
+      "coverage": "none",
+      "implemented_scope": "The template requires explicit mixed-version and rollback evidence; no selected legacy/demo profile has run.",
+      "evidence_ids": [
+        "b0-template",
+        "b0-spec",
+        "b0-tests"
+      ],
+      "remaining_work": "Validate completed-record shape offline and execute profile-specific mixed-version/rollback rehearsal live.",
+      "dependency_classes": [
+        "offline",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-10ed0bd7e4fa049795d6a58289204e825f6f451bb4de62158072adb2ff76598a",
+      "section": "6. First MVP：只覆盖真实边界 / 6.2 B1 Contract MVP included scope",
+      "source_fingerprint": "a648a44749c8d8c23eeaa1fcca5c070d51d1f972960b8e2867085054e7acd3d9",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "ZoneId is admitted only at the exact Moss embedded boundary; ZonePath runtime use remains deferred.",
+      "evidence_ids": [
+        "content-c",
+        "activation-a",
+        "activation-verifier",
+        "activation-mutations",
+        "moss-consumer"
+      ],
+      "remaining_work": "Keep scope bounded and require a separate real ResourceRef/ZonePath consumer before expansion.",
+      "dependency_classes": [
+        "missing-real-consumer",
+        "product-security-decision"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-73faf4dead8a42dd784c0373c3df93af0ee81c92232468775fdc179e65c7b049",
+      "section": "6. First MVP：只覆盖真实边界 / 6.2 B1 Contract MVP included scope",
+      "source_fingerprint": "e1d8cf5d71201e9bb40fbe754941bfff2eac28047bd2b483dbd395e02829ca94",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "ResourceRef owner schema, generated runtime and fixtures are conformance preparation with no production consumer.",
+      "evidence_ids": [
+        "nexus-owner",
+        "owner-manifest",
+        "resource-conformance",
+        "package-metadata"
+      ],
+      "remaining_work": "Complete Nexus ownership/security review and integrate a real producer/consumer boundary.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-21178c4b542cd34b8bebb35df3c2bc7d8333311c1b1592c91713bd383481a607",
+      "section": "6. First MVP：只覆盖真实边界 / 6.2 B1 Contract MVP included scope",
+      "source_fingerprint": "13cf4751e2de0c327d29b8ca2869d229925b5391af35e74eaab75cd557e582f2",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Generated ResourceRef types and validators enforce the current api_version/kind discriminators.",
+      "evidence_ids": [
+        "runtime-template",
+        "resource-conformance"
+      ],
+      "remaining_work": "Generalize discriminator admission to every real product object.",
+      "dependency_classes": [
+        "offline",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-cf606b43fdacf21112ad3ae9f2a2e69cf7f29560c4c0fd4e28b7df4c4b5b12a1",
+      "section": "6. First MVP：只覆盖真实边界 / 6.2 B1 Contract MVP included scope",
+      "source_fingerprint": "f3aa4f04cab45db63111da5dc418023ad2c8cbdd4ed26e932782d09301fa5b1b",
+      "enforcement_tag": "none",
+      "evidence_classification": "Expected",
+      "coverage": "none",
+      "implemented_scope": "No selected real ErrorInfo production boundary or accepted ownership exists.",
+      "evidence_ids": [
+        "adr-source"
+      ],
+      "remaining_work": "Complete ownership/security review and select a real producer/consumer boundary.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-437ed019d7e8097182cce1d9a9a0126defee52f9295e20b97b9a37a31eb6e6b0",
+      "section": "6. First MVP：只覆盖真实边界 / 6.2 B1 Contract MVP included scope",
+      "source_fingerprint": "7042b60e766c9d2b253b01c2d1feb4e44ec29dd005050041dd2f9a0c1e8300b7",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current meta-contract/package artifacts cover the bounded ZoneId and prepared ResourceRef closure only.",
+      "evidence_ids": [
+        "candidate-verifier",
+        "content-verifier",
+        "package-smoke"
+      ],
+      "remaining_work": "Define and admit only the metadata/artifacts required by future real boundaries.",
+      "dependency_classes": [
+        "offline",
+        "missing-real-consumer",
+        "product-security-decision"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-b1aa93f761c3e7b8e8cba078caf59504c640d1012b71d582f8294f90fb3ef0d8",
+      "section": "6. First MVP：只覆盖真实边界 / 6.2 B1 Contract MVP included scope",
+      "source_fingerprint": "287d77aa3c96439e0e03d421d81b1cb1c6dcbdcda09cea4a07b060eb54f44f05",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current meta-contract/package artifacts cover the bounded ZoneId and prepared ResourceRef closure only.",
+      "evidence_ids": [
+        "candidate-verifier",
+        "content-verifier",
+        "package-smoke"
+      ],
+      "remaining_work": "Define and admit only the metadata/artifacts required by future real boundaries.",
+      "dependency_classes": [
+        "offline",
+        "missing-real-consumer",
+        "product-security-decision"
+      ]
+    },
+    {
+      "key": "ADR005-MVP-01",
+      "section": "6. First MVP：只覆盖真实边界 / 6.3 Deferred scope",
+      "source_fingerprint": "5e6129db0d87b3b11e6bc455cdb64d0fdfd969bdb1523308c8c8d861ba7b1c3d",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current manifests, A evidence and B0 view explicitly keep deferred families/languages/test-only preparation out of support.",
+      "evidence_ids": [
+        "owner-manifest",
+        "activation-verifier",
+        "activation-mutations",
+        "b0-tests"
+      ],
+      "remaining_work": "Preserve deferral until owner decisions and real consumers exist; add automated support/export accounting.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-MVP-02",
+      "section": "6. First MVP：只覆盖真实边界 / 6.3 Deferred scope",
+      "source_fingerprint": "03c189289e108ac6ffe91a66bc0573ba0f94e181f3dac35c911e5027350e458e",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current manifests, A evidence and B0 view explicitly keep deferred families/languages/test-only preparation out of support.",
+      "evidence_ids": [
+        "owner-manifest",
+        "activation-verifier",
+        "activation-mutations",
+        "b0-tests"
+      ],
+      "remaining_work": "Preserve deferral until owner decisions and real consumers exist; add automated support/export accounting.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-MVP-03",
+      "section": "6. First MVP：只覆盖真实边界 / 6.3 Deferred scope",
+      "source_fingerprint": "2adb379ef33b3ab05b389faceacde43a767804528cf608c4ee69587b9861fce7",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current manifests, A evidence and B0 view explicitly keep deferred families/languages/test-only preparation out of support.",
+      "evidence_ids": [
+        "owner-manifest",
+        "activation-verifier",
+        "activation-mutations",
+        "b0-tests"
+      ],
+      "remaining_work": "Preserve deferral until owner decisions and real consumers exist; add automated support/export accounting.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-3c47ce10c00bdfd7d9ab723c33562f3a612951224279d365b1bb730edf99f305",
+      "section": "7. Draft-frozen baseline",
+      "source_fingerprint": "692228ca5bc0659f09ffc759a7955a36575c66d4d4ba599567e04569e83e8197",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current C provides a substantial but scope-bounded subset of the draft-freeze checklist.",
+      "evidence_ids": [
+        "source-lock",
+        "candidate-verifier",
+        "content-verifier",
+        "activation-a"
+      ],
+      "remaining_work": "Complete missing roles, security, compatibility, consumer and rollback evidence before broad freeze.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-f29a1b541d85e3d58932827b7aedc0b95a8ae8049fb47fc04e437902fa736281",
+      "section": "7. Draft-frozen baseline",
+      "source_fingerprint": "741feea7bf2a65e4f2ede88de980ad34bf458faed6232819a7b71becafb9d0d1",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current owner identities, commits, paths and digests are immutable and checked.",
+      "evidence_ids": [
+        "source-lock",
+        "source-loader",
+        "source-mutations",
+        "nexus-vfs-owner",
+        "nexus-owner"
+      ],
+      "remaining_work": "Repeat for each future admitted owner/family.",
+      "dependency_classes": [
+        "offline",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-7ca1770e477322f5d1def651ba442aa66ce75e665c21ab3dd1952f7f9b8580bf",
+      "section": "7. Draft-frozen baseline",
+      "source_fingerprint": "95c1a54d5efd6ffc73864641431aaed3f4ffe3a5a6667dd5440697ad0800388a",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current Nexus→nexus-vfs primitive closure is exact and mutation-tested.",
+      "evidence_ids": [
+        "source-closure",
+        "source-loader",
+        "generated-drift"
+      ],
+      "remaining_work": "Generalize reference-graph admission for future cross-owner refs.",
+      "dependency_classes": [
+        "offline",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-781874d10fed229b092d167c567244cc24f0e41d2aa1b98398cde54353b6eedf",
+      "section": "7. Draft-frozen baseline",
+      "source_fingerprint": "ff14ef739c38c4db0a3add08c32cadab05a4c3719acbcd62fad01131526395dc",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current ResourceRef/Zone projections record discriminators and examples for prepared scope.",
+      "evidence_ids": [
+        "runtime-template",
+        "resource-conformance",
+        "current-compatibility"
+      ],
+      "remaining_work": "Complete semantic field review for each admitted family.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-1a0f62637de88a02abb387b1199cdf5a8e99c2d1f488917a78a15c5e077a5ee3",
+      "section": "7. Draft-frozen baseline",
+      "source_fingerprint": "584c99bdbc865b139f29251caa8162a75bc2beba7fcd326874b4e88693854005",
+      "enforcement_tag": "none",
+      "evidence_classification": "Expected",
+      "coverage": "none",
+      "implemented_scope": "Some bounded roles are recorded, but full security/transport/migration ownership is not assigned.",
+      "evidence_ids": [
+        "owner-manifest",
+        "activation-a",
+        "b0-spec"
+      ],
+      "remaining_work": "Complete owner/security/consumer/rollback role decisions.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-2886c4f87f208f8a1395fbe27e7caabe0858bed9d75b9a381b43f9127ab27580",
+      "section": "7. Draft-frozen baseline",
+      "source_fingerprint": "21379e21d8abf7bae1f557013575bdbfc27d0b1ff4025f7c923cead003ce5e8b",
+      "enforcement_tag": "none",
+      "evidence_classification": "Expected",
+      "coverage": "none",
+      "implemented_scope": "Value-level policies exist, but general classification/authorization/retention/redaction evidence is incomplete.",
+      "evidence_ids": [
+        "owner-manifest",
+        "resource-conformance"
+      ],
+      "remaining_work": "Complete security policy and real-boundary review.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-1b21376e1e681e8bb340c311bab3c7b36a4e261a448744d5dc4dfb31d09216c0",
+      "section": "7. Draft-frozen baseline",
+      "source_fingerprint": "f60bb65d8c31064ee93d54984fd0cf42ecaff30dc6d8183df25e43e6c7bebbd8",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current ResourceRef/ZoneId/ZonePath fixture sets are non-empty and indexed.",
+      "evidence_ids": [
+        "resource-conformance",
+        "zoneid-conformance",
+        "candidate-verifier"
+      ],
+      "remaining_work": "Replace synthetic/preparation evidence with real predecessor/support evidence where required.",
+      "dependency_classes": [
+        "offline",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-9709087a7247c990d1309062e0bfa615e5338e0afa675e63bfe7f402571f391f",
+      "section": "7. Draft-frozen baseline",
+      "source_fingerprint": "901a9af73d666b0d2fcc909bde79d532f1c6a94d9aad1b3da63017ad9715b1da",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Owner commands/jobs are recorded and SudoStack conformance runs; owner-native results are not universally reverified here.",
+      "evidence_ids": [
+        "owner-manifest",
+        "contracts-workflow",
+        "resource-conformance",
+        "zoneid-conformance"
+      ],
+      "remaining_work": "Add immutable owner-default-CI evidence for each admitted family.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-800d253ea79f74924d476c4c4a2cd9392c4f1042e0aea38158e928d590b928f6",
+      "section": "7. Draft-frozen baseline",
+      "source_fingerprint": "21d268f1210ef024580316c32e8f04d2e92d4439c2db8edcad13b1cebb581664",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Generator/toolchain/package source/digests and reproducible commands are strongly verified for current C.",
+      "evidence_ids": [
+        "generator",
+        "candidate-verifier",
+        "content-verifier",
+        "package-smoke",
+        "contracts-workflow"
+      ],
+      "remaining_work": "Apply successor-version provenance gates without rewriting immutable C.",
+      "dependency_classes": [
+        "offline"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-6e1556ac3405c81e736c84c2157e54262f289931252a725af0ef49d1454414e7",
+      "section": "7. Draft-frozen baseline",
+      "source_fingerprint": "b79a3065ddd43856dcd5c549f00bf8f0459949fb6148ec29d72662d1e3a96712",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current transition is byte-identical with scoped consumer evidence; generic cutover/rollback admission is absent.",
+      "evidence_ids": [
+        "current-compatibility",
+        "compatibility-mutations",
+        "activation-a",
+        "b0-template"
+      ],
+      "remaining_work": "Build conservative successor admission and collect transition/rollback evidence.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-ad899eb3ac90943498b55fd8aa0f76ee6bbf5692331c6f10d89ac8c8065ba035",
+      "section": "7. Draft-frozen baseline",
+      "source_fingerprint": "04a03e00bb6be407e8923767dd164c78d469793708a41563822a03d831b26916",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current C provides a substantial but scope-bounded subset of the draft-freeze checklist.",
+      "evidence_ids": [
+        "source-lock",
+        "candidate-verifier",
+        "content-verifier",
+        "activation-a"
+      ],
+      "remaining_work": "Complete missing roles, security, compatibility, consumer and rollback evidence before broad freeze.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-FREEZE-01",
+      "section": "7. Draft-frozen baseline",
+      "source_fingerprint": "cf63f96e3447d4a0f4c765b49cd1e2bb115046c20ee18e36ede215c9dbd00667",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "C remains unfrozen and mutation gates reject missing/forged provenance or premature support.",
+      "evidence_ids": [
+        "content-verifier",
+        "content-mutations",
+        "activation-mutations"
+      ],
+      "remaining_work": "Generalize fail-closed admission across future families and unresolved semantic compatibility.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-FREEZE-02",
+      "section": "7. Draft-frozen baseline",
+      "source_fingerprint": "a9e90bc4cf27a1ac1b33af6203bd6f9d7eb9c2a5df74ae5bf57aac941f2ac65c",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current records/tests separate Proposed, unfrozen, unpublished and not-deployed states.",
+      "evidence_ids": [
+        "content-mutations",
+        "activation-mutations",
+        "b0-tests",
+        "history-verifier"
+      ],
+      "remaining_work": "Apply the same separation to every release/deployment report.",
+      "dependency_classes": [
+        "offline",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-2162b22192b39432f2e71a70d301cbf392ca75675319e8324dccd9cc708d2d1e",
+      "section": "8. 版本与兼容 / 8.1 四种版本",
+      "source_fingerprint": "4b85dfe99867e112ff87f19aaeab0e59a27ddaecd16e9fcfee4d29c5ca2cf49c",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Family, owner and package identities are separately recorded for current artifacts; live deployment identity is withheld.",
+      "evidence_ids": [
+        "source-lock",
+        "candidate-verifier",
+        "activation-a",
+        "b0-tests"
+      ],
+      "remaining_work": "Standardize four-axis reporting and obtain live deployment evidence.",
+      "dependency_classes": [
+        "offline",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-4de932be403f6e36226f200d05d11162d16a15e64c5acf579f292b8ba39127e4",
+      "section": "8. 版本与兼容 / 8.1 四种版本",
+      "source_fingerprint": "abeb6c05954111a43a9e6b978422c89bd09b628219cd3de74c8c6c272ddd508d",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Family, owner and package identities are separately recorded for current artifacts; live deployment identity is withheld.",
+      "evidence_ids": [
+        "source-lock",
+        "candidate-verifier",
+        "activation-a",
+        "b0-tests"
+      ],
+      "remaining_work": "Standardize four-axis reporting and obtain live deployment evidence.",
+      "dependency_classes": [
+        "offline",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-c9a078bfdab65e78acb2aa1a051ab30b9fd13dfab4de39016cfca8003a573bb6",
+      "section": "8. 版本与兼容 / 8.1 四种版本",
+      "source_fingerprint": "35d03ade08f6126d0a7679763519452d505507ddba3ac068db1653585a11826c",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Family, owner and package identities are separately recorded for current artifacts; live deployment identity is withheld.",
+      "evidence_ids": [
+        "source-lock",
+        "candidate-verifier",
+        "activation-a",
+        "b0-tests"
+      ],
+      "remaining_work": "Standardize four-axis reporting and obtain live deployment evidence.",
+      "dependency_classes": [
+        "offline",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-7730f1d805d2e9a12809e0fe5a6fa81dad6ea124cca4b7db9bc9274bb5d862a3",
+      "section": "8. 版本与兼容 / 8.1 四种版本",
+      "source_fingerprint": "c30dac5730c0be310b3311ac80e9a33c393c6d95c1793964cc23ba4b01e94790",
+      "enforcement_tag": "none",
+      "evidence_classification": "Unknown",
+      "coverage": "none",
+      "implemented_scope": "Source records deliberately do not infer a running deployment version.",
+      "evidence_ids": [
+        "b0-template",
+        "b0-tests"
+      ],
+      "remaining_work": "Collect exact running component/artifact/config/database identities from a selected environment.",
+      "dependency_classes": [
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-VERSION-01",
+      "section": "8. 版本与兼容 / 8.1 四种版本",
+      "source_fingerprint": "e18f9d95e51aaa106a90d295db9226c920c871e2ea85e9906dd64696ee67ff19",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Family, owner and package identities are separately recorded for current artifacts; live deployment identity is withheld.",
+      "evidence_ids": [
+        "source-lock",
+        "candidate-verifier",
+        "activation-a",
+        "b0-tests"
+      ],
+      "remaining_work": "Standardize four-axis reporting and obtain live deployment evidence.",
+      "dependency_classes": [
+        "offline",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-COMPAT-01",
+      "section": "8. 版本与兼容 / 8.2 Family major 规则",
+      "source_fingerprint": "da3ac89b51bb76b64dcc526db1b5432efb0ce47ac2d586355a3cdf9ba62af201",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current validators/comparator cover bounded discriminator, unknown-field and structural compatibility behavior.",
+      "evidence_ids": [
+        "resource-conformance",
+        "compatibility-checker",
+        "compatibility-mutations"
+      ],
+      "remaining_work": "Extend to real producer/consumer directional semantics and uncertainty review.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-COMPAT-02",
+      "section": "8. 版本与兼容 / 8.2 Family major 规则",
+      "source_fingerprint": "d4742edf5beafdb41fb75851ea95e183fa166bc7c9690284e01f7b4efe0efdeb",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current validators/comparator cover bounded discriminator, unknown-field and structural compatibility behavior.",
+      "evidence_ids": [
+        "resource-conformance",
+        "compatibility-checker",
+        "compatibility-mutations"
+      ],
+      "remaining_work": "Extend to real producer/consumer directional semantics and uncertainty review.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-COMPAT-03",
+      "section": "8. 版本与兼容 / 8.2 Family major 规则",
+      "source_fingerprint": "822a0b08b4cd9658682efe338e0f5eb102ebf0b26bbb47f855eb51f1410f7c67",
+      "enforcement_tag": "none",
+      "evidence_classification": "Expected",
+      "coverage": "none",
+      "implemented_scope": "No generic producer-version/event admission gate exists beyond the bounded Moss ZoneId argument producer.",
+      "evidence_ids": [
+        "activation-a"
+      ],
+      "remaining_work": "Implement at a real versioned product-object producer boundary.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-COMPAT-04",
+      "section": "8. 版本与兼容 / 8.2 Family major 规则",
+      "source_fingerprint": "54a3cb07a22fa6fbbdf406bec5ec9b9cb9e3f3237943a41a24cb1506ddf1e690",
+      "enforcement_tag": "none",
+      "evidence_classification": "Expected",
+      "coverage": "none",
+      "implemented_scope": "Open-code versus closed-enum semantics require product/domain decisions; current comparator is structural.",
+      "evidence_ids": [
+        "compatibility-checker",
+        "compatibility-mutations"
+      ],
+      "remaining_work": "Decide extension-point semantics and add conservative successor admission.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-COMPAT-05",
+      "section": "8. 版本与兼容 / 8.2 Family major 规则",
+      "source_fingerprint": "eeb7a1f2e076c4f54dd3e0919d1bd257587cf5a6abe24dd554b4decc4273420c",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Comparator mutation tests cover many breaking shapes, but current admission path is a byte-identical bridge and closed-enum growth needs review.",
+      "evidence_ids": [
+        "compatibility-checker",
+        "compatibility-mutations",
+        "current-compatibility"
+      ],
+      "remaining_work": "Connect conservative successor comparisons to an additive admission gate.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision"
+      ]
+    },
+    {
+      "key": "ADR005-COMPAT-06",
+      "section": "8. 版本与兼容 / 8.2 Family major 规则",
+      "source_fingerprint": "0a22f565712d58f5ea8e8afb859eb52d39ba92b785d5acfbff73f8a7ec06568d",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current validators/comparator cover bounded discriminator, unknown-field and structural compatibility behavior.",
+      "evidence_ids": [
+        "resource-conformance",
+        "compatibility-checker",
+        "compatibility-mutations"
+      ],
+      "remaining_work": "Extend to real producer/consumer directional semantics and uncertainty review.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-DIST-01",
+      "section": "9. v0 分发与未来发布 / 9.1 当前 v0.x 入口",
+      "source_fingerprint": "e754ba39ea79a90563cd447cb7f6dfb5624e75c5fb649cd90e4559d632ff4a8d",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Private exact-Git TypeScript package C is deterministically installable and bound to the Moss ZoneId consumer.",
+      "evidence_ids": [
+        "package-metadata",
+        "package-smoke",
+        "content-c",
+        "activation-a",
+        "moss-consumer"
+      ],
+      "remaining_work": "Audit future exports and consumers against the same exact-pin/support gates.",
+      "dependency_classes": [
+        "offline",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-DIST-02",
+      "section": "9. v0 分发与未来发布 / 9.1 当前 v0.x 入口",
+      "source_fingerprint": "a4c1b00c9406f615f8a21f758e51558bc8c5e924bfecad4f929e72bc73f3e796",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Private exact-Git TypeScript package C is deterministically installable and bound to the Moss ZoneId consumer.",
+      "evidence_ids": [
+        "package-metadata",
+        "package-smoke",
+        "content-c",
+        "activation-a",
+        "moss-consumer"
+      ],
+      "remaining_work": "Audit future exports and consumers against the same exact-pin/support gates.",
+      "dependency_classes": [
+        "offline",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-DIST-03",
+      "section": "9. v0 分发与未来发布 / 9.1 当前 v0.x 入口",
+      "source_fingerprint": "a475e19fcff5cc539850fa58a692fc5f3d24825cd586bd6bed7721230017b208",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Exact C is installable in a clean directory with deterministic package identity and an explicit Node runtime floor.",
+      "evidence_ids": [
+        "package-metadata",
+        "package-smoke",
+        "content-c",
+        "node-floor"
+      ],
+      "remaining_work": "Add a network-denied smoke using a provisioned immutable dependency cache.",
+      "dependency_classes": [
+        "offline"
+      ]
+    },
+    {
+      "key": "ADR005-DIST-04",
+      "section": "9. v0 分发与未来发布 / 9.1 当前 v0.x 入口",
+      "source_fingerprint": "acff8f1c3dd78e4dac83f44b6dd610dd5f6da95b64e2219b948972511d99e2ac",
+      "enforcement_tag": "none",
+      "evidence_classification": "Conflicting",
+      "coverage": "partial",
+      "implemented_scope": "ZoneId has an admitted installed consumer, but ResourceRef is exported only as conformance/distribution preparation with empty production roles.",
+      "evidence_ids": [
+        "package-metadata",
+        "owner-manifest",
+        "activation-a",
+        "moss-consumer"
+      ],
+      "remaining_work": "Resolve successor export/admission policy without rewriting frozen C or inventing a consumer.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-DIST-05",
+      "section": "9. v0 分发与未来发布 / 9.2 未来 artifact channel",
+      "source_fingerprint": "a0cad23e2e7778a31779e2eb83d0abc345a204c56d9338e3a3fa2dd13b49ce0c",
+      "enforcement_tag": "none",
+      "evidence_classification": "Expected",
+      "coverage": "none",
+      "implemented_scope": "Current private Git package is unpublished; no future registry/channel or deployment action is authorized.",
+      "evidence_ids": [
+        "package-smoke",
+        "activation-a"
+      ],
+      "remaining_work": "Select a real channel only when a consumer/deployment requires it, then prove immutable/offline distribution and independent release controls.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-DIST-06",
+      "section": "9. v0 分发与未来发布 / 9.2 未来 artifact channel",
+      "source_fingerprint": "84e158fcaf01829c7e58de494ee424c214bcebcfca022ab7e3ae98742b3da620",
+      "enforcement_tag": "none",
+      "evidence_classification": "Expected",
+      "coverage": "none",
+      "implemented_scope": "Current private Git package is unpublished; no future registry/channel or deployment action is authorized.",
+      "evidence_ids": [
+        "package-smoke",
+        "activation-a"
+      ],
+      "remaining_work": "Select a real channel only when a consumer/deployment requires it, then prove immutable/offline distribution and independent release controls.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-DIST-07",
+      "section": "9. v0 分发与未来发布 / 9.2 未来 artifact channel",
+      "source_fingerprint": "91e09a347cbda05e797c1bed99ec3d9f9bcba4828e14406c3b6740211f04d8ea",
+      "enforcement_tag": "none",
+      "evidence_classification": "Expected",
+      "coverage": "none",
+      "implemented_scope": "Current private Git package is unpublished; no future registry/channel or deployment action is authorized.",
+      "evidence_ids": [
+        "package-smoke",
+        "activation-a"
+      ],
+      "remaining_work": "Select a real channel only when a consumer/deployment requires it, then prove immutable/offline distribution and independent release controls.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-CI-01",
+      "section": "10. Fixtures、生成与 CI",
+      "source_fingerprint": "3131719b0f4c9cf550594dec13cc206e2226e13c4cd7915eecbb37e0fc381328",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current owner metadata and SudoStack conformance/default CI provide bounded fixture/generation evidence.",
+      "evidence_ids": [
+        "owner-manifest",
+        "resource-conformance",
+        "zoneid-conformance",
+        "contracts-workflow"
+      ],
+      "remaining_work": "Independently bind owner-native default CI and future owner behavior.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision"
+      ]
+    },
+    {
+      "key": "ADR005-CI-02",
+      "section": "10. Fixtures、生成与 CI",
+      "source_fingerprint": "7f4d9f22a2529841714f6915af0e081deef5861714bc14b25a4947a603082148",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Default SudoStack CI runs offline reconstruction, conformance, mutations, typecheck, manifest and package install smoke.",
+      "evidence_ids": [
+        "contracts-workflow",
+        "generator",
+        "generated-drift",
+        "package-smoke"
+      ],
+      "remaining_work": "Add equivalent gates for each future language/family and a network-denied provisioned-cache smoke.",
+      "dependency_classes": [
+        "offline",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-CI-03",
+      "section": "10. Fixtures、生成与 CI",
+      "source_fingerprint": "455d6d0897a251393640d0a2bccea0f383ef831d5a27480e2e44142c15f749ae",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current owner revisions and remote consumer evidence are explicit; required local owner checks use configured roots rather than accidental siblings.",
+      "evidence_ids": [
+        "source-lock",
+        "source-loader",
+        "contracts-workflow",
+        "activation-verifier"
+      ],
+      "remaining_work": "Generalize exact checkout orchestration for future cross-repo integrations.",
+      "dependency_classes": [
+        "offline",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-CI-04",
+      "section": "10. Fixtures、生成与 CI",
+      "source_fingerprint": "c77c415468479b694ef068c6a68795789a19038f0bf6e0164af02eff990e5271",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Moss/ZoneId uses the installed artifact at the real startup boundary with default CI and failing mutations.",
+      "evidence_ids": [
+        "activation-a",
+        "activation-verifier",
+        "activation-mutations",
+        "moss-consumer"
+      ],
+      "remaining_work": "Implement equivalent real-boundary coverage for each new consumer and unsupported-major policy.",
+      "dependency_classes": [
+        "missing-real-consumer",
+        "product-security-decision"
+      ]
+    },
+    {
+      "key": "ADR005-CI-05",
+      "section": "10. Fixtures、生成与 CI",
+      "source_fingerprint": "676a88d20bf109f32f0a7d1364879a554bd587570f525688854a84404b33565a",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "The parser and this ledger make tags/accounting executable, but no `none` tag is promoted and artifact existence is not treated as whole-clause proof.",
+      "evidence_ids": [
+        "adr-parser",
+        "adr-parser-tests",
+        "coverage-checker",
+        "coverage-mutations",
+        "coverage-workflow"
+      ],
+      "remaining_work": "Perform separate whole-clause reviews before any enforcement-tag promotion.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision"
+      ]
+    },
+    {
+      "key": "ADR005-MIGRATE-01",
+      "section": "11. Legacy、迁移与 rollback",
+      "source_fingerprint": "fdf66fc46f0decd1d687c6878702694e3dbc94d5f8d9c98ba301a5c5342ad0d1",
+      "enforcement_tag": "none",
+      "evidence_classification": "Unknown",
+      "coverage": "none",
+      "implemented_scope": "Migration and rollback requirements are documented in B0 procedures; no live migration, stable release window, traffic proof or rollback rehearsal exists.",
+      "evidence_ids": [
+        "b0-template",
+        "b0-spec",
+        "b0-tests"
+      ],
+      "remaining_work": "Add completed-record preflight offline, then obtain owner decisions, authorization and live rehearsal evidence.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-MIGRATE-02",
+      "section": "11. Legacy、迁移与 rollback",
+      "source_fingerprint": "930bfd0202eeb17635ef446ef9acba58b978453c4cf78c0a700681648edad2ab",
+      "enforcement_tag": "none",
+      "evidence_classification": "Unknown",
+      "coverage": "none",
+      "implemented_scope": "Migration and rollback requirements are documented in B0 procedures; no live migration, stable release window, traffic proof or rollback rehearsal exists.",
+      "evidence_ids": [
+        "b0-template",
+        "b0-spec",
+        "b0-tests"
+      ],
+      "remaining_work": "Add completed-record preflight offline, then obtain owner decisions, authorization and live rehearsal evidence.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-MIGRATE-03",
+      "section": "11. Legacy、迁移与 rollback",
+      "source_fingerprint": "75b25c0d453823714336e79d28637b725a3ee4c2bc156fad2a16970c89be32c8",
+      "enforcement_tag": "none",
+      "evidence_classification": "Unknown",
+      "coverage": "none",
+      "implemented_scope": "Migration and rollback requirements are documented in B0 procedures; no live migration, stable release window, traffic proof or rollback rehearsal exists.",
+      "evidence_ids": [
+        "b0-template",
+        "b0-spec",
+        "b0-tests"
+      ],
+      "remaining_work": "Add completed-record preflight offline, then obtain owner decisions, authorization and live rehearsal evidence.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-MIGRATE-04",
+      "section": "11. Legacy、迁移与 rollback",
+      "source_fingerprint": "f5b987cbf09281d53f7171ac3745d4a6a1a8a80bf7e3f3a2a2f896ae93fafef7",
+      "enforcement_tag": "none",
+      "evidence_classification": "Unknown",
+      "coverage": "none",
+      "implemented_scope": "Migration and rollback requirements are documented in B0 procedures; no live migration, stable release window, traffic proof or rollback rehearsal exists.",
+      "evidence_ids": [
+        "b0-template",
+        "b0-spec",
+        "b0-tests"
+      ],
+      "remaining_work": "Add completed-record preflight offline, then obtain owner decisions, authorization and live rehearsal evidence.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-MIGRATE-05",
+      "section": "11. Legacy、迁移与 rollback",
+      "source_fingerprint": "a280a33c942ed6df8e7ed9b342ee0c5c447c1529b1350936149ec9e6211b9f84",
+      "enforcement_tag": "none",
+      "evidence_classification": "Unknown",
+      "coverage": "none",
+      "implemented_scope": "Migration and rollback requirements are documented in B0 procedures; no live migration, stable release window, traffic proof or rollback rehearsal exists.",
+      "evidence_ids": [
+        "b0-template",
+        "b0-spec",
+        "b0-tests"
+      ],
+      "remaining_work": "Add completed-record preflight offline, then obtain owner decisions, authorization and live rehearsal evidence.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-GOV-01",
+      "section": "12. Governance 与发布顺序",
+      "source_fingerprint": "1c28dd812ab0434af6965d1a3f1a3fe7a941fe4998842798390e24547db02741",
+      "enforcement_tag": "none",
+      "evidence_classification": "Expected",
+      "coverage": "none",
+      "implemented_scope": "Governance roles and breaking-change approvals remain joint owner/security/release decisions.",
+      "evidence_ids": [
+        "adr-source",
+        "b0-spec"
+      ],
+      "remaining_work": "Assign accountable owners and approve change/migration/rollback policy for each admitted family.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-GOV-02",
+      "section": "12. Governance 与发布顺序",
+      "source_fingerprint": "a11e781bcdf8423ff30f28fe0656a9b85b96867d753125dc5859bdbeb1a8350f",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current ZoneId owner→C→M→A sequence uses immutable revisions and bounded admission.",
+      "evidence_ids": [
+        "nexus-vfs-owner",
+        "content-c",
+        "moss-consumer",
+        "activation-a"
+      ],
+      "remaining_work": "Apply governance sequencing to future semantic changes and consumers.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer"
+      ]
+    },
+    {
+      "key": "ADR005-GOV-03",
+      "section": "12. Governance 与发布顺序",
+      "source_fingerprint": "f6ef051f513d2315f1c0de8fc79ee77c646139c302282f8eb7d3aa0a19caa0fe",
+      "enforcement_tag": "none",
+      "evidence_classification": "Expected",
+      "coverage": "none",
+      "implemented_scope": "Governance roles and breaking-change approvals remain joint owner/security/release decisions.",
+      "evidence_ids": [
+        "adr-source",
+        "b0-spec"
+      ],
+      "remaining_work": "Assign accountable owners and approve change/migration/rollback policy for each admitted family.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-GOV-04",
+      "section": "12. Governance 与发布顺序",
+      "source_fingerprint": "6e47bca9697526535a5a2cbaa57ff018ba3f16e061f7f26a0205a9092893f718",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "B0 and activation records use the required evidence vocabulary and keep live Unknown separate.",
+      "evidence_ids": [
+        "b0-spec",
+        "b0-template",
+        "b0-tests",
+        "activation-a"
+      ],
+      "remaining_work": "Require consistent classification in future reports and complete decisions.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-fc18079ad2a406aaaf216b2de77e93ca1c50b05a5b92655ed70b482ca7e836be",
+      "section": "14. 后果 / 成本",
+      "source_fingerprint": "7cf70dda0bb83f9713ac56f1a66e525a886eaa864c15c19885b747c939da1d09",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Current owner commands and conformance artifacts are recorded; universal owner-local default gate execution is not established.",
+      "evidence_ids": [
+        "owner-manifest",
+        "resource-conformance",
+        "zoneid-conformance"
+      ],
+      "remaining_work": "Bind immutable owner-native default CI evidence for each family.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-baefcc9415bc0825c4fbb24019aa5d69dc74d0a76e010e43224eedb0312a9819",
+      "section": "15. G0 与后续验收 / 15.1 本次 G0 文档修订",
+      "source_fingerprint": "17abfee7503a3c39a88cc4c88b7b795722ddf4e91bb112e840c72868fee1e0b8",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "ADR remains Proposed, no independent Contract repository exists in current scope, roles/scope are separated, and parser-backed accounting covers every current clause.",
+      "evidence_ids": [
+        "adr-parser",
+        "adr-parser-tests",
+        "coverage-checker",
+        "coverage-mutations",
+        "coverage-workflow"
+      ],
+      "remaining_work": "Keep the ledger current and complete joint review before any Accepted/completion claim.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-6cb722d8c527366a59ab2f1d1a10371889445f4cb8a52abe2f0e461f93bd8e7d",
+      "section": "15. G0 与后续验收 / 15.1 本次 G0 文档修订",
+      "source_fingerprint": "39bb76c00fdc7381ccafd4e080d81dbaaa2ee773df8e01b70eb144363d41b293",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "ADR remains Proposed, no independent Contract repository exists in current scope, roles/scope are separated, and parser-backed accounting covers every current clause.",
+      "evidence_ids": [
+        "adr-parser",
+        "adr-parser-tests",
+        "coverage-checker",
+        "coverage-mutations",
+        "coverage-workflow"
+      ],
+      "remaining_work": "Keep the ledger current and complete joint review before any Accepted/completion claim.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-e9911477f4b7bce056d393b16e2363ceb9e2a471d831ae77687773c7066b4135",
+      "section": "15. G0 与后续验收 / 15.1 本次 G0 文档修订",
+      "source_fingerprint": "92fd90b6af92a55449ac743d31872e0dc958f04005f14ea105941b64136120a7",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "ADR remains Proposed, no independent Contract repository exists in current scope, roles/scope are separated, and parser-backed accounting covers every current clause.",
+      "evidence_ids": [
+        "adr-parser",
+        "adr-parser-tests",
+        "coverage-checker",
+        "coverage-mutations",
+        "coverage-workflow"
+      ],
+      "remaining_work": "Keep the ledger current and complete joint review before any Accepted/completion claim.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-2b546a0524cd6d28c1ab27821ff32a46ed4b24690b60ce520dc922b19d0d271e",
+      "section": "15. G0 与后续验收 / 15.1 本次 G0 文档修订",
+      "source_fingerprint": "8a51981ee3a31516461a669e2fe83b88c4711f4b7207f8e81499f56c98ed2c96",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "ADR remains Proposed, no independent Contract repository exists in current scope, roles/scope are separated, and parser-backed accounting covers every current clause.",
+      "evidence_ids": [
+        "adr-parser",
+        "adr-parser-tests",
+        "coverage-checker",
+        "coverage-mutations",
+        "coverage-workflow"
+      ],
+      "remaining_work": "Keep the ledger current and complete joint review before any Accepted/completion claim.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-d867793f2be78527f65938f3e58cc6ab82466d830175252ab46816e902d1fa98",
+      "section": "15. G0 与后续验收 / 15.1 本次 G0 文档修订",
+      "source_fingerprint": "e97dc801ebad367fde47a304522680ff0f0ccbd434a89833eb422409afe08f44",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "ADR remains Proposed, no independent Contract repository exists in current scope, roles/scope are separated, and parser-backed accounting covers every current clause.",
+      "evidence_ids": [
+        "adr-parser",
+        "adr-parser-tests",
+        "coverage-checker",
+        "coverage-mutations",
+        "coverage-workflow"
+      ],
+      "remaining_work": "Keep the ledger current and complete joint review before any Accepted/completion claim.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-9f70e9446c43ab9c986667d095650856798f059fbbf11851b71d637ed710e654",
+      "section": "15. G0 与后续验收 / 15.2 后续 F1 / consumer / demo",
+      "source_fingerprint": "1dd0b62ddd5947c89b753dadab4e66ae63616f0f17542b02039a7b2a2afaca19",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "C→M→A provides a bounded Moss/ZoneId evaluation/admission path while preserving state and scope limits.",
+      "evidence_ids": [
+        "content-c",
+        "activation-a",
+        "activation-verifier",
+        "activation-mutations",
+        "moss-consumer",
+        "b0-tests"
+      ],
+      "remaining_work": "Complete whole-family freeze/governance and require equivalent proof for future consumers.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-0fc2624040808b52a70d59f97927b827b8d86fa44b3afe49c8a15459bea9d5bd",
+      "section": "15. G0 与后续验收 / 15.2 后续 F1 / consumer / demo",
+      "source_fingerprint": "96333cf7408558698391ac0d632e6d33213e4d1b4aa9141da1f3e9c8520b6a45",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "C→M→A provides a bounded Moss/ZoneId evaluation/admission path while preserving state and scope limits.",
+      "evidence_ids": [
+        "content-c",
+        "activation-a",
+        "activation-verifier",
+        "activation-mutations",
+        "moss-consumer",
+        "b0-tests"
+      ],
+      "remaining_work": "Complete whole-family freeze/governance and require equivalent proof for future consumers.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-53f97ed39c41710ed7c93f1b5097ec686462f174a6ea5d07b58120b4dd552eca",
+      "section": "15. G0 与后续验收 / 15.2 后续 F1 / consumer / demo",
+      "source_fingerprint": "5908eef5359eddd0f46f8e19a3efa4afb80bba80a72edf0a39bf3e297063efab",
+      "enforcement_tag": "none",
+      "evidence_classification": "Unknown",
+      "coverage": "none",
+      "implemented_scope": "B0/G3 procedures exist but no selected environment, existing-data restart, mixed-version result or rollback rehearsal is recorded.",
+      "evidence_ids": [
+        "b0-template",
+        "b0-spec",
+        "b0-tests"
+      ],
+      "remaining_work": "Validate completed-record structure and execute authorized live demo/rollback evidence.",
+      "dependency_classes": [
+        "offline",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-748fc75050911b3c90aa830985148c3c15e52387f2407177564635fcf91bc631",
+      "section": "15. G0 与后续验收 / 15.2 后续 F1 / consumer / demo",
+      "source_fingerprint": "0b4342df3ccd8cd4fd6daf401f19ccc9a28d313688857dd1d6958d614bff4fee",
+      "enforcement_tag": "none",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "C→M→A provides a bounded Moss/ZoneId evaluation/admission path while preserving state and scope limits.",
+      "evidence_ids": [
+        "content-c",
+        "activation-a",
+        "activation-verifier",
+        "activation-mutations",
+        "moss-consumer",
+        "b0-tests"
+      ],
+      "remaining_work": "Complete whole-family freeze/governance and require equivalent proof for future consumers.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision",
+        "missing-real-consumer",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-28038d4dd32cfceb98fe608ec9ee5b75d51e69481d0d8bbe536e3c8b045c851b",
+      "section": "16. 开放实现选择",
+      "source_fingerprint": "5a0f7f06abf8465a8ad69005566fc18a0204ae34d02e717c63de44bf0c266dad",
+      "enforcement_tag": "none",
+      "evidence_classification": "Expected",
+      "coverage": "none",
+      "implemented_scope": "The no-independent-repository decision is present in current ADR text.",
+      "evidence_ids": [
+        "adr-source"
+      ],
+      "remaining_work": "Add only bounded accounting/topology checks; changes remain an architectural decision.",
+      "dependency_classes": [
+        "offline",
+        "product-security-decision"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-3a2df7d411890a588d64da7a3c31439d7bc5ca88f3feaaf83a3e5af92a520be6",
+      "section": "17. 生效与替代",
+      "source_fingerprint": "eb8ab0469cb7eff3a71091181c8e0d1183813a18daf41690acb1fe9c8687adf6",
+      "enforcement_tag": "none",
+      "evidence_classification": "Expected",
+      "coverage": "none",
+      "implemented_scope": "ADR remains Proposed and acceptance/amendment prerequisites are documented.",
+      "evidence_ids": [
+        "adr-source",
+        "coverage-checker"
+      ],
+      "remaining_work": "Complete joint owner/security/consumer review and explicit authorization before acceptance or amendment.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer",
+        "live-environment"
+      ]
+    },
+    {
+      "key": "ADR005-UNNAMED-a2cac9eb729cd0fc57d11c72b74d47d78f3f8286ec1502d9517c04877878f475",
+      "section": "17. 生效与替代",
+      "source_fingerprint": "ad941a6dff83013d0a7e03667d5cce0870780c223982d2e8fce7561189e816f5",
+      "enforcement_tag": "none",
+      "evidence_classification": "Expected",
+      "coverage": "none",
+      "implemented_scope": "ADR remains Proposed and acceptance/amendment prerequisites are documented.",
+      "evidence_ids": [
+        "adr-source",
+        "coverage-checker"
+      ],
+      "remaining_work": "Complete joint owner/security/consumer review and explicit authorization before acceptance or amendment.",
+      "dependency_classes": [
+        "product-security-decision",
+        "missing-real-consumer",
+        "live-environment"
+      ]
+    }
+  ]
+}
