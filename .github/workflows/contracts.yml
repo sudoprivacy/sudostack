@@ -32,6 +32,8 @@ jobs:
         run: npm run manifest:check
       - name: Package-external 0.2.1 activation record and C bytes are internally consistent
         run: node tools/contracts/activation-0.2.1.mjs
+      - name: Export and support accounting retains the known ResourceRef gap without admission
+        run: node tools/contracts/export-support-audit.mjs
       - name: Historical 0.2.0 generation, tests, typecheck, activation, support, and package remain reproducible
         run: node tools/contracts/history-0.2.0.mjs --full
       - name: Packed artifacts are deterministic, exact-delta, installable, and importable
