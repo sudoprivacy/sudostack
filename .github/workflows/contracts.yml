@@ -22,6 +22,8 @@ jobs:
         run: npm run generate:check-offline
       - name: Runtime, owner-fixture, source-lock, and compatibility tests
         run: npm test
+      - name: Immutable predecessor and content C pass only the bounded compatibility preflight
+        run: node tools/contracts/successor-compatibility.mjs --previous 5a2a53130e37d1c63993ebf8ba1253b15eb9eebf --candidate 273fd4097cbc33c1c049c39bb1fb60cef2663e2b
       - name: B0 source template remains structurally valid and unapproved
         run: node tools/contracts/b0-preflight.mjs --template
       - name: Generated TypeScript declarations and sources type-check

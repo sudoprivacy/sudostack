@@ -282,6 +282,44 @@
       "claim": "Default offline CI runs B0 preflight tests and validates the unchanged source template."
     },
     {
+      "id": "successor-preflight",
+      "type": "code",
+      "path": "tools/contracts/successor-compatibility.mjs",
+      "contains": [
+        "export function compareSuccessorSchemas",
+        "export function preflightSuccessor",
+        "release_admission: false",
+        "candidate_payloads_to_previous_validator"
+      ],
+      "claim": "Bounded package-external preflight compares both directions and verifies local Git bytes against the existing 0.2.0/0.2.1 anchors without semantic or release approval."
+    },
+    {
+      "id": "successor-enum-mutation",
+      "type": "mutation",
+      "path": "tools/contracts/successor-compatibility.test.mjs",
+      "test_name": "closed enum growth is breaking in the candidate-to-previous direction",
+      "claim": "Closed-enum growth is rejected as breaking risk despite acceptance in the forward direction."
+    },
+    {
+      "id": "successor-git-tests",
+      "type": "test",
+      "path": "tools/contracts/successor-compatibility.test.mjs",
+      "test_name": "immutable historical Git pair passes only the no-contract-byte-change preflight",
+      "claim": "Real local Git tests cover the anchored pair; synthetic mutations cover provenance, inventory, package identity and unverified inputs."
+    },
+    {
+      "id": "successor-preflight-workflow",
+      "type": "workflow",
+      "path": ".github/workflows/contracts.yml",
+      "job": "candidate-offline-gates",
+      "contains": [
+        "fetch-depth: 0",
+        "npm test",
+        "node tools/contracts/successor-compatibility.mjs --previous 5a2a53130e37d1c63993ebf8ba1253b15eb9eebf --candidate 273fd4097cbc33c1c049c39bb1fb60cef2663e2b"
+      ],
+      "claim": "Default offline CI runs the additive tests and bounded immutable-pair preflight; a local run is not hosted CI evidence."
+    },
+    {
       "id": "node-floor",
       "type": "test",
       "path": "tools/contracts/node-version.test.mjs",
@@ -371,7 +409,7 @@
       "priority": 1,
       "id": "ADR005-OFFLINE-SUCCESSOR-ADMISSION",
       "title": "Build conservative successor compatibility admission",
-      "scope": "Add package-external successor tooling that connects immutable predecessor/candidate identity, structural mutations, uncertainty and directional semantic review without modifying frozen C.",
+      "scope": "The bounded 0.2.0/0.2.1 Git-byte and bidirectional structural preflight exists. Remaining work is successor format admission, semantic/security review, real consumer support, release and rollback prerequisites without modifying frozen C.",
       "clause_keys": [
         "ADR005-COMPAT-01",
         "ADR005-COMPAT-04",
@@ -1512,11 +1550,14 @@
       "enforcement_tag": "none",
       "evidence_classification": "Confirmed-Code",
       "coverage": "partial",
-      "implemented_scope": "C remains unfrozen and mutation gates reject missing/forged provenance or premature support.",
+      "implemented_scope": "C remains unfrozen; the additive preflight rejects missing/forged local provenance and reports only anchored byte consistency, never freeze, consumer or release admission.",
       "evidence_ids": [
         "content-verifier",
         "content-mutations",
-        "activation-mutations"
+        "activation-mutations",
+        "successor-preflight",
+        "successor-git-tests",
+        "successor-preflight-workflow"
       ],
       "remaining_work": "Generalize fail-closed admission across future families and unresolved semantic compatibility.",
       "dependency_classes": [
@@ -1649,13 +1690,17 @@
       "enforcement_tag": "none",
       "evidence_classification": "Confirmed-Code",
       "coverage": "partial",
-      "implemented_scope": "Current validators/comparator cover bounded discriminator, unknown-field and structural compatibility behavior.",
+      "implemented_scope": "The additive preflight reuses the structural comparator in both directions and blocks changed defaults, annotations and runtime/owner/package identities for review.",
       "evidence_ids": [
         "resource-conformance",
         "compatibility-checker",
-        "compatibility-mutations"
+        "compatibility-mutations",
+        "successor-preflight",
+        "successor-enum-mutation",
+        "successor-git-tests",
+        "successor-preflight-workflow"
       ],
-      "remaining_work": "Extend to real producer/consumer directional semantics and uncertainty review.",
+      "remaining_work": "Real producer/consumer semantics, family-major decisions and reviewed successor admission remain separate gates.",
       "dependency_classes": [
         "offline",
         "product-security-decision",
@@ -1704,14 +1749,17 @@
       "section": "8. 版本与兼容 / 8.2 Family major 规则",
       "source_fingerprint": "54a3cb07a22fa6fbbdf406bec5ec9b9cb9e3f3237943a41a24cb1506ddf1e690",
       "enforcement_tag": "none",
-      "evidence_classification": "Expected",
-      "coverage": "none",
-      "implemented_scope": "Open-code versus closed-enum semantics require product/domain decisions; current comparator is structural.",
+      "evidence_classification": "Confirmed-Code",
+      "coverage": "partial",
+      "implemented_scope": "Bidirectional structural comparison treats closed-enum growth as breaking risk rather than inferring old-consumer support from forward acceptance.",
       "evidence_ids": [
         "compatibility-checker",
-        "compatibility-mutations"
+        "compatibility-mutations",
+        "successor-preflight",
+        "successor-enum-mutation",
+        "successor-preflight-workflow"
       ],
-      "remaining_work": "Decide extension-point semantics and add conservative successor admission.",
+      "remaining_work": "Product/domain owners must still decide open-code and unknown-fallback policies and verify real consumers before admission.",
       "dependency_classes": [
         "product-security-decision",
         "missing-real-consumer"
@@ -1724,13 +1772,17 @@
       "enforcement_tag": "none",
       "evidence_classification": "Confirmed-Code",
       "coverage": "partial",
-      "implemented_scope": "Comparator mutation tests cover many breaking shapes, but current admission path is a byte-identical bridge and closed-enum growth needs review.",
+      "implemented_scope": "The package-external preflight checks both structural directions and actual local Git inventories against the immutable 0.2.0/C pair; persistent tests cover structural, provenance and package-identity mutations.",
       "evidence_ids": [
         "compatibility-checker",
         "compatibility-mutations",
-        "current-compatibility"
+        "current-compatibility",
+        "successor-preflight",
+        "successor-enum-mutation",
+        "successor-git-tests",
+        "successor-preflight-workflow"
       ],
-      "remaining_work": "Connect conservative successor comparisons to an additive admission gate.",
+      "remaining_work": "Extend reviewed snapshot vocabulary and connect semantic/security, support and release prerequisites to successor admission.",
       "dependency_classes": [
         "offline",
         "product-security-decision"
@@ -1743,13 +1795,16 @@
       "enforcement_tag": "none",
       "evidence_classification": "Confirmed-Code",
       "coverage": "partial",
-      "implemented_scope": "Current validators/comparator cover bounded discriminator, unknown-field and structural compatibility behavior.",
+      "implemented_scope": "Unknown vocabulary, changed annotations/policy and unexplained artifact differences cannot pass the bounded Git preflight; in-memory results never claim verified provenance.",
       "evidence_ids": [
         "resource-conformance",
         "compatibility-checker",
-        "compatibility-mutations"
+        "compatibility-mutations",
+        "successor-preflight",
+        "successor-git-tests",
+        "successor-preflight-workflow"
       ],
-      "remaining_work": "Extend to real producer/consumer directional semantics and uncertainty review.",
+      "remaining_work": "Human semantic/security review and real producer/consumer compatibility remain required; the byte-identical bridge is not release admission.",
       "dependency_classes": [
         "offline",
         "product-security-decision",

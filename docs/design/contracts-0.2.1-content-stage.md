@@ -82,3 +82,17 @@ The content stage is checked by:
 - package-external A verification in offline, explicit local-repository, and GitHub remote modes, including exact C/M/merge/check-run attribution and no package delta.
 
 These checks establish reproducible code and package evidence only. They do not publish, release, deploy, migrate, approve assembly, or prove a live environment.
+
+## Package-external successor compatibility preflight
+
+The additive [`successor-compatibility.mjs`](../../tools/contracts/successor-compatibility.mjs) reads local immutable Git objects without checkout, fetch, source-script execution, or substitution of working-tree files. From a full-history SudoStack checkout with the existing locked dependencies installed:
+
+```sh
+node tools/contracts/successor-compatibility.mjs --previous 5a2a53130e37d1c63993ebf8ba1253b15eb9eebf --candidate 273fd4097cbc33c1c049c39bb1fb60cef2663e2b
+```
+
+The two directions are named `previous_payloads_to_candidate_validator` and `candidate_payloads_to_previous_validator`. Both reuse the protected structural comparator; closed-enum growth can be accepted in the first direction while presenting breaking risk in the second. Changed annotations/defaults/security policy and unsupported schema vocabulary require manual review, not assumed compatibility. Raw in-memory comparisons are always unverified and cannot grant Git provenance or semantic approval.
+
+Initial support is deliberately limited to the existing `0.2.0` and `0.2.1` snapshot formats, anchored to the two commits above. The tool independently accounts for packed paths, generated/internal inventories, owner/source closure, runtime and fixture bytes, toolchain hashes, exports, dependency/engine identities and npm inclusion controls. Missing/duplicate/unsafe inventories, digest inconsistencies, non-commit or mutable inputs, unrecognized versions/families and version reuse with different package content fail closed. Re-hashing changed bytes does not authorize them: unexplained differences from each version's immutable anchor still require review. This is not a general-purpose future release-admission platform.
+
+For the documented historical pair, exit `0` means only `no_contract_byte_change`: each snapshot matches its respective anchored package and reviewed metadata, and no new Contract-byte risk was found. Changes to this additive tool, CI or package-external documentation are not themselves package changes. Breaking risk, uncertainty, missing predecessor or invalid input yields nonzero. Every result retains `release_admission: false`, `consumer_adoption_verified: false`, `deployment_verified: false`, `semantic_compatibility_verified: false`, and ResourceRef's deferred manual semantic review. Local Git-byte verification is not hosted CI or support evidence; C → M → A facts above remain unchanged. Successor semantic/security review, real consumer support, release, migration and rollback prerequisites remain separate gates.
