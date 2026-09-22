@@ -27,7 +27,7 @@
     ]
   },
   "nexus": {
-    "rev": "c98baa34d10e496caa8b01498661f7c634372f60",
+    "rev": "b19a9868c91fba89121d8f12dad6f74cc80d7b13",
     "schemas": [
       "contracts/common/v1/principal-ref.schema.json",
       "contracts/common/v1/resource-ref.schema.json",

@@ -17,7 +17,7 @@
   },
   "pinned_owner_revisions": {
     "nexus-vfs": "763f8c0fef392da8c1151fc3f17b3a6f3f707dbd",
-    "nexus": "c98baa34d10e496caa8b01498661f7c634372f60",
+    "nexus": "b19a9868c91fba89121d8f12dad6f74cc80d7b13",
     "moss (metadata only)": "406427e280b55d04b5dbf097bd84da1194ace6e9"
   },
   "schemas": [
@@ -94,23 +94,23 @@
     },
     {
       "path": "contracts/zone-v1/auth/v1/index.gen.d.ts",
-      "sha256": "489ed44e79d701a31c706ea8e8f9c30cb1f93b49b676d35263472858ff9c8fb3"
+      "sha256": "e8e204a8ffc2becedd52ad027152ecf4ef1e8ee943a38d0d45abeecf659bb287"
     },
     {
       "path": "contracts/zone-v1/auth/v1/index.gen.js",
-      "sha256": "6a787ed875236d52eae4d341edf2325fadfdd10868c97932d270a5b95941d445"
+      "sha256": "fe7998c0ebd578692b18548723a080cffc80cf714503820138609d7b3c080e41"
     },
     {
       "path": "contracts/zone-v1/codes.gen.js",
-      "sha256": "4033ff4fbb441ff49a8498f1ec60c95f7d9bc382d1198867c7bd73b3d1abb80b"
+      "sha256": "620150853cfff87b9b88bdcb59211776fbd32010f8d77f84218052160a275252"
     },
     {
       "path": "contracts/zone-v1/common/v1/index.gen.d.ts",
-      "sha256": "8b1b6389624b1161439cfff723ec05085c8bc9bbeb09f2ca905462ba1c3a392e"
+      "sha256": "73bf54af9876bb97d31309c40168350990c24185ff4ce4e8b3b804a28da473f3"
     },
     {
       "path": "contracts/zone-v1/common/v1/index.gen.js",
-      "sha256": "7880e036d014ba9f265fad33073214aef24f68a3b86265d3f6531ab30f9f5d92"
+      "sha256": "513e45bd407432eb4b3819967fd3ae8088b37b3d3e4f96dfd558e53382370dfa"
     },
     {
       "path": "contracts/zone-v1/fixtures/compatibility.gen.json",
@@ -138,15 +138,15 @@
     },
     {
       "path": "contracts/zone-v1/provenance.gen.json",
-      "sha256": "c6ac0d02299b728a3cdae88f0e20e6d3746136e5948e9c8a707f995e420b889c"
+      "sha256": "1811c284ecc5fd437b07816e41bbdc3b9875f3a5451f4d4e6706c42ca4abfb96"
     },
     {
       "path": "contracts/zone-v1/schema-bundle.gen.json",
-      "sha256": "3bed994f8671c7166a5c1c9bf38e42c749fd29e424337a73822f5b7cdca4b940"
+      "sha256": "49f6395ef64e87534953094d06a6fc2fce8b84c98584e07629eec49475a3da6f"
     },
     {
       "path": "contracts/zone-v1/validators.gen.js",
-      "sha256": "0ec28d3365250f5eca1cc35087d9ca72dce43246f3842c70b3cb0f341fcb36ce"
+      "sha256": "630e92ac2d7ebe9b62bbae188c228d634e9aafaf969e2a7462efa3ae616bc852"
     },
     {
       "path": "package.json",

@@ -17,7 +17,7 @@
     },
     {
       "repo": "https://github.com/nexi-lab/nexus",
-      "rev": "c98baa34d10e496caa8b01498661f7c634372f60",
+      "rev": "b19a9868c91fba89121d8f12dad6f74cc80d7b13",
       "role": "product schemas + error codes + shared fixtures",
       "paths": [
         "contracts/common/v1/principal-ref.schema.json",
