@@ -249,18 +249,18 @@ Moss/Local resolver 至少按以下逻辑评估：
 10. deadline/budget/approval
 ```
 
-顺序可以优化，但输出必须记录参与决策的 policy version/snapshot。 `[enforced_by: none]`
+顺序可以优化，但输出必须记录参与决策的 policy version/snapshot。 `[enforced_by: test:nexus@tests/e2e/server/test_session_runtime_p1b_e2e.py#test_p1b_implicit_task_resolution_attempt_and_home_zone_io]`
 
 ### 2.7 accepted/rejected 原则
 
-Policy rejection 与 execution failure 必须分开： `[enforced_by: none]`
+Policy rejection 与 execution failure 必须分开： `[enforced_by: test:nexus@tests/e2e/server/test_session_runtime_p1b_e2e.py]`
 
 - 无权限、数据域不允许、需要审批、Agent version revoked、capability 不可用：rejected；
 - accepted 后网络失败、Pod 创建失败、模型失败、Tool 失败：Attempt failed；
 - Resolver 自身不可用或 policy 无法读取：fail-closed，返回明确 system decision error，不启动 PID；
 - rejected Task 仍可查询和审计；
 - interactive rejected Task 仍向 Canonical Transcript 追加用户原文和 rejection fact，保证 Conversation 可重建；
-- rejected Task 不创建 Attempt、PID 或 assistant execution output；TaskSpec/Resolution 必须持久化； `[enforced_by: none]`
+- rejected Task 不创建 Attempt、PID 或 assistant execution output；TaskSpec/Resolution 必须持久化； `[enforced_by: test:nexus@tests/e2e/server/test_session_runtime_p1b_e2e.py#test_p1b_rejections_revocation_and_authorization_order]`
 - non-interactive rejected Task 至少持久化 TaskSpec/Resolution，是否生成用户可见 Transcript record 由入口 profile 决定。
 
 ### 2.8 reason code
@@ -385,7 +385,7 @@ cancel task       当前及后续 Attempt，Task 进入 cancelled
 archive session   禁止新 Task，保留查询
 ```
 
-API 必须明确层级，不能继续用一个 `cancel` bool 混合。 `[enforced_by: none]`
+API 必须明确层级，不能继续用一个 `cancel` bool 混合。 `[enforced_by: test:nexus@tests/e2e/server/test_session_runtime_p1b_e2e.py#test_p1b_implicit_task_resolution_attempt_and_home_zone_io]`
 
 ### 2.13 Retry
 
@@ -447,7 +447,7 @@ Runtime start：
 
 Nexus 是持久存储/安全 SSOT，不代表 Nexus 决定业务 policy；Moss 是 Resolution writer，不代表 Moss 独占 Session/Task 数据副本。
 
-**P1b implicit-path amendment（SW-20260915-002）**：在尚未开放显式 Task ingress 的 P1b 阶段，Nexus Session Runtime Service 作为 Session Service 的一部分，是 implicit TaskSpec、TaskExecutionResolution 与 TaskAttempt 的授权 writer；显式 Task ingress 与 Moss Policy Resolver 的通用 writer 职责保留给后续 Task 产品化。 `[enforced_by: none]`
+**P1b implicit-path amendment（SW-20260915-002）**：在尚未开放显式 Task ingress 的 P1b 阶段，Nexus Session Runtime Service 作为 Session Service 的一部分，是 implicit TaskSpec、TaskExecutionResolution 与 TaskAttempt 的授权 writer；显式 Task ingress 与 Moss Policy Resolver 的通用 writer 职责保留给后续 Task 产品化。 `[enforced_by: test:nexus@tests/e2e/server/test_session_runtime_p1b_e2e.py#test_p1b_implicit_task_resolution_attempt_and_home_zone_io]`
 
 ---
 
@@ -521,7 +521,7 @@ POST /v2/runtime/start
 
 只有 Moss/Local orchestrator 等授权 writer 可创建对应 record。Nexus API 不重新执行 Moss business policy，但验证 schema、identity、Zone、writer authority 和引用一致性。
 
-**P1b implicit-path amendment（SW-20260915-002）**：Nexus Session Runtime Service 可以在已认证、已授权的 runtime start/resume 内部创建 implicit TaskSpec、TaskExecutionResolution 与 TaskAttempt；该授权不新增公开 Task 写入 API，也不把 Nexus 扩展为显式 Task 的业务 policy owner。 `[enforced_by: none]`
+**P1b implicit-path amendment（SW-20260915-002）**：Nexus Session Runtime Service 可以在已认证、已授权的 runtime start/resume 内部创建 implicit TaskSpec、TaskExecutionResolution 与 TaskAttempt；该授权不新增公开 Task 写入 API，也不把 Nexus 扩展为显式 Task 的业务 policy owner。 `[enforced_by: test:nexus@tests/e2e/server/test_session_runtime_p1b_e2e.py#test_p1b_implicit_task_resolution_attempt_and_home_zone_io]`
 
 ### 5.3 sudocode execution boundary
 
@@ -664,7 +664,7 @@ sudocode：
 
 ### 8.8 Attempt 等于每次 PID generation
 
-拒绝。基础设施恢复与业务 retry 必须可区分。 `[enforced_by: none]`
+拒绝。基础设施恢复与业务 retry 必须可区分。 `[enforced_by: test:nexus@tests/e2e/server/test_session_runtime_p1b_e2e.py#test_p1b_implicit_task_resolution_attempt_and_home_zone_io]`
 
 ### 8.9 Runtime 完成即 Task completed
 
@@ -734,7 +734,7 @@ sudocode：
 
 - 新 Agent 工作入口 MUST 产生 Product TaskSpec 或明确 legacy adapter； `[enforced_by: none]`
 - Nexus `TaskRecord` 与 sudocode `TaskPacket` 不得再被文档称为全局 Task Contract； `[enforced_by: none]`
-- rejected 请求必须持久化； `[enforced_by: none]`
+- rejected 请求必须持久化； `[enforced_by: test:nexus@tests/e2e/server/test_session_runtime_p1b_e2e.py#test_p1b_rejections_revocation_and_authorization_order]`
 - fallback 必须重新 policy evaluation； `[enforced_by: none]`
-- 业务 retry 与 PID restart 必须使用不同生命周期； `[enforced_by: none]`
+- 业务 retry 与 PID restart 必须使用不同生命周期； `[enforced_by: test:nexus@tests/e2e/server/test_session_runtime_p1b_e2e.py#test_p1b_implicit_task_resolution_attempt_and_home_zone_io]`
 - TaskSpec 的 breaking semantic change 遵循 ADR-005。
