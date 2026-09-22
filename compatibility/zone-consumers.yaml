@@ -16,7 +16,7 @@ zone_v1:
   package: "@sudo/contracts@0.2.0-rc.1 (TS) / sudo-contracts@0.2.0-rc.1 (Rust)"
   owner_revisions:
     nexus_vfs: 763f8c0fef392da8c1151fc3f17b3a6f3f707dbd
-    nexus: c98baa34d10e496caa8b01498661f7c634372f60
+    nexus: b19a9868c91fba89121d8f12dad6f74cc80d7b13
     moss_metadata_only: 406427e280b55d04b5dbf097bd84da1194ace6e9
   families:
     common.sudo.dev/v1: [PrincipalRef, ResourceRef]
@@ -25,14 +25,14 @@ zone_v1:
 consumers:
   moss:
     language: typescript
-    pin: "github:sudoprivacy/sudostack#45304cf15d1e8d02814e46b7b2fe0b3c30c1709c"
-    pin_status: "0.1.0, ./zone-id only — update to 0.2.0-rc.1 belongs to step 05 (MOSS-BINDING)"
-    consumes: { zone-id: [v0.1-shape] }
+    pin: "github:sudoprivacy/sudostack#a479b8cbfe0a144629764a060ef026fb6d043f7c"
+    pin_status: "0.2.0-rc.1 consumer adoption verified in step 10"
+    consumes: { zone-id: [v0.1-shape], "common.sudo.dev/v1": [v1], "auth.sudo.dev/v1": [v1] }
   sudocode:
     language: rust
     pin: "pinned via nexus workspace (nexusd cohost-sudocode feature); alignment enforced by release matrix at step 10"
-    pin_status: "consumer adoption is step 08 (SUDOCODE-ZONE, P1a)"
-    consumes: {}
+    pin_status: "step 08 complete at 7f1c90a2db9aed6dbe05d84e883915e105101b44; nexus-vfs pin 763f8c0fef392da8c1151fc3f17b3a6f3f707dbd"
+    consumes: { "common.sudo.dev/v1": [ResourceRef] }
   nexus:
     language: python-owner-local
     pin: "owner — no sudostack dependency by design"
@@ -54,7 +54,24 @@ pin_alignment_gate:
   covered_now:
     - "sudostack derivation pin -> same compatible owner rev (provenance.gen.json)"
     - "Nexus source Cargo pin -> nexus-vfs exact rev (nexus source-lock.gen.json; single rev verified in nexus tests)"
-    - "Moss @sudo/contracts pin -> derived package source manifest (recorded above; update is step 05)"
-  deferred_to_step_10_assembly:
-    - "Moss nexusd-cluster version -> Nexus release commit -> nexus-vfs exact rev (runtime pins move in step 05)"
-    - "sudocode nexus-vfs pin (moves in step 08)"
+    - "Moss @sudo/contracts pin -> derived package source manifest a479b8cbfe0a144629764a060ef026fb6d043f7c"
+    - "sudocode nexus-vfs pin -> 763f8c0fef392da8c1151fc3f17b3a6f3f707dbd (step 08)"
+    - "Moss nexusd-cluster topology -> three-line machine-readable record below"
+  deferred_to_step_10_assembly: []
+
+nexus_runtime_topology:
+  admin_plane:
+    transport: "MOSS_NEXUS_V2_BASE_URL HTTP"
+    nexus_commit: b19a9868c91fba89121d8f12dad6f74cc80d7b13
+    nexus_vfs_revision: 763f8c0fef392da8c1151fc3f17b3a6f3f707dbd
+    status: aligned
+  secrets_plane_embedded:
+    runtime_version_pin: "0.1.5"
+    observed_version: "nexusd-cluster v0.1.5 (nexus-cluster 0.1.1, plugin-abi 6)"
+    binary_sha256: 53b31d8f3e7d9280087ab1b9443b275706be629de0f47e24a0a31ddcf8f2a67c
+    binary_path: "moss/bin/nexus/nexusd.exe (git-ignored local artifact)"
+    historical_nexus_commit: 251333f87c136b0e3e530ab1a237f81320145240
+    historical_nexus_vfs_revision: b878b015bf2b4663063425af19902b18c09890b9
+    status: "mixed-version topology: secrets plane on legacy 0.1.5 (vfs b878b015-era) while admin plane on matrix HEAD"
+  external_grpc:
+    status: "unverified path"
