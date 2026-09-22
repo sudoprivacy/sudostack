@@ -1,7 +1,7 @@
 # ADR-004：Task、Execution Resolution 与 Attempt 生命周期
 
-- 状态：Proposed
-- 日期：2026-09-12
+- 状态：Accepted
+- 日期：2026-09-22
 - 决策范围：SudoWork、Moss、Nexus、sudocode、SudoEvolve
 - 目标契约版本：`task.sudo.dev/v1`
 - 相关文档：
@@ -67,7 +67,7 @@ Task：
 - 不等于队列内部 Job；
 - 不等于 VerifyResult。
 
-一个 Session 可以包含多个 Task。没有传统聊天 UI 的 Cron/API/IM 请求仍创建 Task；v1 中每个 Task 必须属于一个 Session，一次性任务创建一个最小 Session。
+一个 Session 可以包含多个 Task。没有传统聊天 UI 的 Cron/API/IM 请求仍创建 Task；v1 中每个 Task 必须属于一个 Session，一次性任务创建一个最小 Session。 `[enforced_by: none]`
 
 ### 2.2 Task 边界
 
@@ -177,14 +177,14 @@ interface TaskSpec {
 
 规则：
 
-- Secret value 禁止进入 TaskSpec；
+- Secret value 禁止进入 TaskSpec； `[enforced_by: none]`
 - 大输入使用 ResourceRef；
-- resource/workspace 必须带 Zone；
-- v1 中 Task 的 Agent Principal 必须与所属 Session 的 `agent_principal` 一致；切换 Principal 创建新 Session或显式 handoff；
+- resource/workspace 必须带 Zone； `[enforced_by: none]`
+- v1 中 Task 的 Agent Principal 必须与所属 Session 的 `agent_principal` 一致；切换 Principal 创建新 Session或显式 handoff； `[enforced_by: none]`
 - Task 可以请求该 Principal 的 version/channel，Resolution 将其解析为 Attempt 使用的 exact AgentVersion；
 - `requested_mode` 是请求，不是最终 Runtime 决策；
-- Agent channel 必须在 Resolution 阶段解析为 exact version；
-- expected output 可以为空，但正式自动化任务 SHOULD 提供 schema/rubric；
+- Agent channel 必须在 Resolution 阶段解析为 exact version； `[enforced_by: none]`
+- expected output 可以为空，但正式自动化任务 SHOULD 提供 schema/rubric； `[enforced_by: none]`
 - idempotency key 由 ingress scope 解释，不作为 task_id。
 
 ### 2.5 TaskExecutionResolution
@@ -249,18 +249,18 @@ Moss/Local resolver 至少按以下逻辑评估：
 10. deadline/budget/approval
 ```
 
-顺序可以优化，但输出必须记录参与决策的 policy version/snapshot。
+顺序可以优化，但输出必须记录参与决策的 policy version/snapshot。 `[enforced_by: none]`
 
 ### 2.7 accepted/rejected 原则
 
-Policy rejection 与 execution failure 必须分开：
+Policy rejection 与 execution failure 必须分开： `[enforced_by: none]`
 
 - 无权限、数据域不允许、需要审批、Agent version revoked、capability 不可用：rejected；
 - accepted 后网络失败、Pod 创建失败、模型失败、Tool 失败：Attempt failed；
 - Resolver 自身不可用或 policy 无法读取：fail-closed，返回明确 system decision error，不启动 PID；
 - rejected Task 仍可查询和审计；
 - interactive rejected Task 仍向 Canonical Transcript 追加用户原文和 rejection fact，保证 Conversation 可重建；
-- rejected Task 不创建 Attempt、PID 或 assistant execution output；TaskSpec/Resolution 必须持久化；
+- rejected Task 不创建 Attempt、PID 或 assistant execution output；TaskSpec/Resolution 必须持久化； `[enforced_by: none]`
 - non-interactive rejected Task 至少持久化 TaskSpec/Resolution，是否生成用户可见 Transcript record 由入口 profile 决定。
 
 ### 2.8 reason code
@@ -285,7 +285,7 @@ POLICY_UNAVAILABLE
 INVALID_TASK_SPEC
 ```
 
-consumer 必须处理 unknown code，并使用 `status + code`，不能只解析 human-readable reason。
+consumer 必须处理 unknown code，并使用 `status + code`，不能只解析 human-readable reason。 `[enforced_by: none]`
 
 ### 2.9 Runtime resolution 与 fallback
 
@@ -293,11 +293,11 @@ consumer 必须处理 unknown code，并使用 `status + code`，不能只解析
 
 - fallback 是重新执行 policy evaluation，不是 catch connection error 后换目标；
 - Private/Core data 不因 Cloud 可用自动 fallback；
-- local-only file/browser/credential 任务不得静默上传；
+- local-only file/browser/credential 任务不得静默上传； `[enforced_by: none]`
 - fallback Resolution 创建新的 resolution record；
 - 如果 fallback 改变 Agent version、execution Zone、data egress 或 requested constraints，创建新 Attempt；
 - infrastructure 在同一已接受 target 内换节点/PID不算 policy fallback；
-- UI 必须能展示 resolved runtime 和 reason。
+- UI 必须能展示 resolved runtime 和 reason。 `[enforced_by: none]`
 
 ### 2.10 Attempt
 
@@ -385,11 +385,11 @@ cancel task       当前及后续 Attempt，Task 进入 cancelled
 archive session   禁止新 Task，保留查询
 ```
 
-API 必须明确层级，不能继续用一个 `cancel` bool 混合。
+API 必须明确层级，不能继续用一个 `cancel` bool 混合。 `[enforced_by: none]`
 
 ### 2.13 Retry
 
-Retry request 必须包含：
+Retry request 必须包含： `[enforced_by: none]`
 
 ```ts
 interface TaskRetryRequest {
@@ -412,7 +412,7 @@ interface TaskRetryRequest {
 - 输入变化应创建 superseding Task，不用 retry 偷改输入；
 - Tool side effect 通过 idempotency/evidence 判断是否可重放；
 - max attempts 来自 Task constraints/policy；
-- retry 必须使用当前有效 delegation/policy，不复用过期 token。
+- retry 必须使用当前有效 delegation/policy，不复用过期 token。 `[enforced_by: none]`
 
 ### 2.14 Idempotency
 
@@ -446,6 +446,8 @@ Runtime start：
 | VerifyResult | Verifier/SudoEvolve | Nexus TaskStore | Moss projection/UI |
 
 Nexus 是持久存储/安全 SSOT，不代表 Nexus 决定业务 policy；Moss 是 Resolution writer，不代表 Moss 独占 Session/Task 数据副本。
+
+**P1b implicit-path amendment（SW-20260915-002）**：在尚未开放显式 Task ingress 的 P1b 阶段，Nexus Session Runtime Service 作为 Session Service 的一部分，是 implicit TaskSpec、TaskExecutionResolution 与 TaskAttempt 的授权 writer；显式 Task ingress 与 Moss Policy Resolver 的通用 writer 职责保留给后续 Task 产品化。 `[enforced_by: none]`
 
 ---
 
@@ -519,6 +521,8 @@ POST /v2/runtime/start
 
 只有 Moss/Local orchestrator 等授权 writer 可创建对应 record。Nexus API 不重新执行 Moss business policy，但验证 schema、identity、Zone、writer authority 和引用一致性。
 
+**P1b implicit-path amendment（SW-20260915-002）**：Nexus Session Runtime Service 可以在已认证、已授权的 runtime start/resume 内部创建 implicit TaskSpec、TaskExecutionResolution 与 TaskAttempt；该授权不新增公开 Task 写入 API，也不把 Nexus 扩展为显式 Task 的业务 policy owner。 `[enforced_by: none]`
+
 ### 5.3 sudocode execution boundary
 
 sudocode 接收：
@@ -550,9 +554,9 @@ sudocode：
 
 ## 6. 安全边界
 
-- TaskSpec `requested_by` 必须与 authenticated context/委派一致；
+- TaskSpec `requested_by` 必须与 authenticated context/委派一致； `[enforced_by: none]`
 - Task 中的 `zone_id`/ResourceRef 不授予权限；
-- Resolution 必须经过 policy writer 签名/身份验证；
+- Resolution 必须经过 policy writer 签名/身份验证； `[enforced_by: none]`
 - rejected Task 不创建 PID；
 - Agent version、Zone、delegation 在 runtime start 再次验证；
 - Task/Attempt/PID access 按 owner/Org/Zone/ReBAC；
@@ -560,7 +564,7 @@ sudocode：
 - policy snapshot 和 reason 不回显敏感内部规则；
 - Local resource 不静默发往 Cloud；
 - fallback 不绕过 data classification；
-- cancellation/retry 操作者必须有 Task relation；
+- cancellation/retry 操作者必须有 Task relation； `[enforced_by: none]`
 - Task ID 不是授权凭据。
 
 ---
@@ -588,7 +592,7 @@ sudocode：
 - legacy session 可生成一个 implicit Task/Attempt；
 - current generation rows 映射 PID history；
 - HA orphan adoption 在同一 Task Attempt 下创建新 RuntimeRun/PID；
-- 旧表先保留 projection，禁止直接重命名后宣称完成。
+- 旧表先保留 projection，禁止直接重命名后宣称完成。 `[enforced_by: none]`
 
 ### 7.3 Nexus generic Task queue
 
@@ -660,11 +664,11 @@ sudocode：
 
 ### 8.8 Attempt 等于每次 PID generation
 
-拒绝。基础设施恢复与业务 retry 必须可区分。
+拒绝。基础设施恢复与业务 retry 必须可区分。 `[enforced_by: none]`
 
 ### 8.9 Runtime 完成即 Task completed
 
-拒绝。需要 Verify 的任务必须在 Verify accepted 后完成。
+拒绝。需要 Verify 的任务必须在 Verify accepted 后完成。 `[enforced_by: none]`
 
 ---
 
@@ -728,9 +732,9 @@ sudocode：
 
 本 ADR 被接受后：
 
-- 新 Agent 工作入口 MUST 产生 Product TaskSpec 或明确 legacy adapter；
-- Nexus `TaskRecord` 与 sudocode `TaskPacket` 不得再被文档称为全局 Task Contract；
-- rejected 请求必须持久化；
-- fallback 必须重新 policy evaluation；
--业务 retry 与 PID restart 必须使用不同生命周期；
+- 新 Agent 工作入口 MUST 产生 Product TaskSpec 或明确 legacy adapter； `[enforced_by: none]`
+- Nexus `TaskRecord` 与 sudocode `TaskPacket` 不得再被文档称为全局 Task Contract； `[enforced_by: none]`
+- rejected 请求必须持久化； `[enforced_by: none]`
+- fallback 必须重新 policy evaluation； `[enforced_by: none]`
+- 业务 retry 与 PID restart 必须使用不同生命周期； `[enforced_by: none]`
 - TaskSpec 的 breaking semantic change 遵循 ADR-005。

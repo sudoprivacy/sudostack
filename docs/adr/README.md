@@ -1,7 +1,7 @@
 # Sudo 跨仓架构决策记录
 
 > 日期：2026-09-12
-> 当前状态：完整六份 Proposed ADR，等待联合架构评审接受
+> 当前状态：ADR-001 与 ADR-004 已 Accepted；其余 ADR 保持 Proposed
 
 ## 这些 ADR 是什么，不是什么（2026-09-13）
 
@@ -101,10 +101,10 @@ address 静默变成可远程访问"）已经是这个思路的雏形，这里�
 
 | 全局 ADR | 来源任务/Epic | 标题 | 状态 |
 |---|---|---|---|
-| [ADR-001](./ADR-001-identifiers-and-lifecycle.md) | E0-01 | Agent、Session、Task、Attempt 与 Runtime PID 标识及生命周期 | Proposed |
+| [ADR-001](./ADR-001-identifiers-and-lifecycle.md) | E0-01 | Agent、Session、Task、Attempt 与 Runtime PID 标识及生命周期 | Accepted |
 | [ADR-002](./ADR-002-zone-and-tenancy-model.md) | E0-02 | Zone 与多租户安全模型 | Proposed |
 | [ADR-003](./ADR-003-agent-principal-and-versioning.md) | E0-03 | Agent Principal、Version、Channel 与运行时证明 | Proposed |
-| [ADR-004](./ADR-004-task-and-execution-resolution.md) | Epic 3 语义前置 | Task、Execution Resolution 与 Attempt 生命周期 | Proposed |
+| [ADR-004](./ADR-004-task-and-execution-resolution.md) | Epic 3 语义前置 | Task、Execution Resolution 与 Attempt 生命周期 | Accepted |
 | [ADR-005](./ADR-005-product-contract-versioning.md) | E0-04 | 跨仓产品契约的版本、分发与兼容规则 | Proposed |
 | [ADR-006](./ADR-006-transcript-and-ui-overlay.md) | Epic 6 语义前置 | Canonical Transcript、UI Overlay 与 Conversation 重建 | Proposed |
 

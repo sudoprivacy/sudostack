@@ -1,7 +1,7 @@
 # ADR-001：Agent、Session、Task、Attempt 与 Runtime PID 标识及生命周期
 
-- 状态：Proposed
-- 日期：2026-09-12
+- 状态：Accepted
+- 日期：2026-09-22
 - 决策范围：Sudo 全产品族
 - 目标契约版本：`common.sudo.dev/v1`、`runtime.sudo.dev/v2`
 - 相关文档：
