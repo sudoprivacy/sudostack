@@ -27,6 +27,7 @@ consumers:
     language: typescript
     pin: "github:sudoprivacy/sudostack#a479b8cbfe0a144629764a060ef026fb6d043f7c"
     pin_status: "0.2.0-rc.1 consumer adoption verified in step 10"
+    implementation_revision: 27c6a43167ddcf50d61d11d50a7fad63a0cda83e
     consumes: { zone-id: [v0.1-shape], "common.sudo.dev/v1": [v1], "auth.sudo.dev/v1": [v1] }
   sudocode:
     language: rust

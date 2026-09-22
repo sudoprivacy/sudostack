@@ -1,0 +1,55 @@
+{
+  "generated_at": "2026-09-22T12:00:20.5054561Z",
+  "work_item": "SW-20260915-002-INTEGRATION G7 live proof",
+  "status": "Confirmed-Deployment",
+  "scope": "local real-process full-profile target-artifact verification; no release, production migration, traffic switch, or external deployment was executed",
+  "revisions": {
+    "nexus": "b19a9868c91fba89121d8f12dad6f74cc80d7b13",
+    "nexus_vfs": "763f8c0fef392da8c1151fc3f17b3a6f3f707dbd",
+    "moss": "27c6a43167ddcf50d61d11d50a7fad63a0cda83e",
+    "sudocode": "7f1c90a2db9aed6dbe05d84e883915e105101b44",
+    "sudostack_release": "a479b8cbfe0a144629764a060ef026fb6d043f7c"
+  },
+  "contract_release": {
+    "manifest": "releases/zone-v1/release-manifest.gen.json",
+    "manifest_sha256": "240a26c31c97028397014d9f4f5cab8d1a5215ffcc5db8a2f7e938a555d451dd",
+    "package": "@sudo/contracts@0.2.0-rc.1",
+    "offline_bundle_verified": true,
+    "sbom_verified": true
+  },
+  "full_profile": {
+    "nexus_api_started": true,
+    "auth_provider_armed": true,
+    "permission_provider_armed": true,
+    "rebac_armed": true,
+    "zone_runtime_armed": true,
+    "grant_projection_armed": true,
+    "composite_armed": true,
+    "zone_capability_version": "auth.sudo.dev/v1",
+    "service_identity": "local loopback bearer service identity",
+    "mtls": "not exercised; external gRPC path remains explicitly unverified"
+  },
+  "p1b_runtime_probe": {
+    "session_http": 201,
+    "start_http": 201,
+    "session_id": "g7-live-session",
+    "session_home_zone": "g7-live-zone",
+    "task_id": "task_6179df1312c859f8b9210d8db2de31f5",
+    "attempt_id": "attempt_f05f482f8559445882a3c69a1ad7f263",
+    "attempt_execution_zone": "g7-live-zone",
+    "attempt_state": "running",
+    "task_storage": {
+      "zone_id": "g7-live-zone",
+      "vfs_path": "/sessions/g7-live-session/tasks/task_6179df1312c859f8b9210d8db2de31f5/spec.json",
+      "bytes_written": 474
+    }
+  },
+  "moss_target_artifact": {
+    "entrypoint": "bin/moss-server.mjs",
+    "build": "passed",
+    "server_suite": "Bun 184/184; Node 184/184; real-process Zone E2E 12/12",
+    "embedded_nexus_version": "nexusd-cluster v0.1.5 (nexus-cluster 0.1.1, plugin-abi 6)",
+    "embedded_nexus_sha256": "53b31d8f3e7d9280087ab1b9443b275706be629de0f47e24a0a31ddcf8f2a67c",
+    "topology": "mixed-version: embedded secrets plane is legacy 0.1.5; admin plane and P1b probe use current Nexus"
+  }
+}

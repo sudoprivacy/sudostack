@@ -1,0 +1,60 @@
+{
+  "generated_at": "2026-09-22T12:00:20.5054561Z",
+  "work_item": "SW-20260915-002-INTEGRATION",
+  "revisions": {
+    "sudostack_release": "a479b8cbfe0a144629764a060ef026fb6d043f7c",
+    "sudostack_evidence_parent": "76ba89876973d6fede896e47a5bd33cc88b227cc",
+    "nexus": "b19a9868c91fba89121d8f12dad6f74cc80d7b13",
+    "moss": "27c6a43167ddcf50d61d11d50a7fad63a0cda83e",
+    "nexus_vfs": "763f8c0fef392da8c1151fc3f17b3a6f3f707dbd",
+    "sudocode": "7f1c90a2db9aed6dbe05d84e883915e105101b44"
+  },
+  "contract_release": {
+    "package": "@sudo/contracts@0.2.0-rc.1",
+    "manifest_sha256": "240a26c31c97028397014d9f4f5cab8d1a5215ffcc5db8a2f7e938a555d451dd",
+    "checksums_sha256": "26995a4dc6bead5dc53da50024746efd1cdc1947ee0a099f398792ce49f9e69c",
+    "sbom_sha256": "32ceaf87f1e46d8681234fc7c37a6acdd4f43a17d54c7917a25753fc14c71d44",
+    "pinned_owner_revisions": {
+      "nexus_vfs": "763f8c0fef392da8c1151fc3f17b3a6f3f707dbd",
+      "nexus": "b19a9868c91fba89121d8f12dad6f74cc80d7b13",
+      "moss_metadata_only": "406427e280b55d04b5dbf097bd84da1194ace6e9"
+    }
+  },
+  "consumer_pins": {
+    "moss_sudo_contracts": "a479b8cbfe0a144629764a060ef026fb6d043f7c",
+    "nexus_sudocode": "7f1c90a2db9aed6dbe05d84e883915e105101b44",
+    "nexus_nexus_vfs": "763f8c0fef392da8c1151fc3f17b3a6f3f707dbd",
+    "sudocode_nexus_vfs": "763f8c0fef392da8c1151fc3f17b3a6f3f707dbd"
+  },
+  "runtime_topology": {
+    "admin_plane": {
+      "nexus_commit": "b19a9868c91fba89121d8f12dad6f74cc80d7b13",
+      "nexus_vfs_revision": "763f8c0fef392da8c1151fc3f17b3a6f3f707dbd",
+      "status": "aligned"
+    },
+    "current_built_nexusd": {
+      "version": "nexusd-cluster 0.1.1 (nexus-cluster 0.1.1, plugin-abi 7)",
+      "sha256": "ee856c518a7df9239d3fa0586749723f923a76ec330fc8d1894d298e595d9f28",
+      "source_commit": "b19a9868c91fba89121d8f12dad6f74cc80d7b13",
+      "nexus_vfs_revision": "763f8c0fef392da8c1151fc3f17b3a6f3f707dbd"
+    },
+    "moss_embedded": {
+      "version_pin": "0.1.5",
+      "observed_version": "nexusd-cluster v0.1.5 (nexus-cluster 0.1.1, plugin-abi 6)",
+      "sha256": "53b31d8f3e7d9280087ab1b9443b275706be629de0f47e24a0a31ddcf8f2a67c",
+      "historical_nexus_commit": "251333f87c136b0e3e530ab1a237f81320145240",
+      "historical_nexus_vfs_revision": "b878b015bf2b4663063425af19902b18c09890b9",
+      "status": "mixed-version topology"
+    },
+    "external_grpc": {
+      "status": "unverified"
+    }
+  },
+  "checks": {
+    "release_owner_revisions_match_owner_contract_revisions": true,
+    "nexus_and_sudocode_nexus_vfs_pins_match": true,
+    "moss_contract_pin_matches_sudostack_release": true,
+    "three_line_runtime_topology_recorded": true,
+    "runtime_topology_fully_version_aligned": false
+  }
+}
