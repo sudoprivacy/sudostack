@@ -66,6 +66,8 @@ jobs:
 
   every-clause-names-what-enforces-it:
     runs-on: ubuntu-latest
+    env:
+      SUDOSTACK_REPOS_ROOT: ${{ github.workspace }}/.enforcement
     steps:
       - uses: actions/checkout@v4
         with:
@@ -81,6 +83,14 @@ jobs:
           path: .enforcement/nexus-vfs
           persist-credentials: false
 
+      - name: Check out exact Moss enforcement targets
+        uses: actions/checkout@v4
+        with:
+          repository: sudoprivacy/moss
+          ref: e9660ed1483cf01f96fe06c45ba7e070e0223ec3
+          path: .enforcement/moss
+          persist-credentials: false
+
       - name: The enforcement checker catches what it claims to
         run: node --test docs/adr/enforced-by.test.mjs
       - name: ADR-005 coverage checker catches omissions and overclaims
@@ -88,6 +98,4 @@ jobs:
       - name: ADR-005 clause ledger and generated view match the current source
         run: node docs/adr/adr005-coverage.mjs --check
       - name: Every normative clause answers for itself without baseline regressions
-        env:
-          SUDOSTACK_REPOS_ROOT: ${{ github.workspace }}/.enforcement
         run: node docs/adr/enforced-by.mjs --strict

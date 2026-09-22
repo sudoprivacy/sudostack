@@ -21,6 +21,12 @@
       "claim": "Canonical current ADR-005 normative wording and Proposed status."
     },
     {
+      "id": "historical-audit-disposition",
+      "type": "document",
+      "path": "docs/adr/ADR-005-product-contract-versioning.md",
+      "claim": "Section 18 records Main's original-obligation mapping, unresolved dispositions and scoped evidence review; the remote path-binding probe is reported evidence, not a new code fix or permanent CI regression."
+    },
+    {
       "id": "adr-parser",
       "type": "code",
       "path": "docs/adr/enforced-by.mjs",
@@ -320,11 +326,57 @@
       "claim": "Default offline CI runs the additive tests and bounded immutable-pair preflight; a local run is not hosted CI evidence."
     },
     {
-      "id": "node-floor",
+      "id": "successor-uncertainty-mutations",
+      "type": "mutation",
+      "path": "tools/contracts/successor-compatibility.test.mjs",
+      "test_name": "unknown keywords including unchanged unknown vocabulary never pass",
+      "claim": "Unknown vocabulary is explicitly manual_review rather than automatic compatibility; the suite also covers annotation, applicator and CLI refusal cases."
+    },
+    {
+      "id": "moss-binding-test",
       "type": "test",
-      "path": "tools/contracts/node-version.test.mjs",
-      "test_name": "Node engine floor matches proxy and CommonJS requirements",
-      "claim": "Node runtime floor is explicitly tested."
+      "path": "tools/contracts/activation-0.2.1.test.mjs",
+      "test_name": "Moss byte evidence proves the exact pin, real caller, default runner, and exclusions",
+      "claim": "The positive case executes the A verifier against the declared Moss pin, caller and default-runner evidence."
+    },
+    {
+      "id": "moss-binding-mutations",
+      "type": "mutation",
+      "path": "tools/contracts/activation-0.2.1.test.mjs",
+      "test_name": "Moss byte evidence proves the exact pin, real caller, default runner, and exclusions",
+      "claim": "The same suite's negative cases reject #main, removed production caller, missing runner inclusion, mode drift and changed integration bytes."
+    },
+    {
+      "id": "moss-evidence-remote-workflow",
+      "type": "workflow",
+      "path": ".github/workflows/contracts.yml",
+      "job": "owner-source-availability",
+      "contains": [
+        "node tools/contracts/activation-0.2.1.mjs --remote"
+      ],
+      "claim": "Existing default CI verifies exact historical C/M source and hosted records through A; it is not a watcher for future Moss commits."
+    },
+    {
+      "id": "moss-default-runner",
+      "type": "hosted-evidence",
+      "repository": "sudoprivacy/moss",
+      "revision": "e9660ed1483cf01f96fe06c45ba7e070e0223ec3",
+      "path": "scripts/test-server.js",
+      "attestation_path": "manifests/operations/0.2.1-activation-support.json",
+      "attestation_kind": "consumer-activation",
+      "url": "https://github.com/sudoprivacy/moss/pull/278",
+      "claim": "Exact M's default runner includes the installed-contract activation suite; A binds the runner path and bytes."
+    },
+    {
+      "id": "moss-default-ci",
+      "type": "hosted-evidence",
+      "repository": "sudoprivacy/moss",
+      "revision": "e9660ed1483cf01f96fe06c45ba7e070e0223ec3",
+      "path": ".github/workflows/build-release.yml",
+      "attestation_path": "manifests/operations/0.2.1-activation-support.json",
+      "attestation_kind": "consumer-activation",
+      "url": "https://github.com/sudoprivacy/moss/pull/278",
+      "claim": "Exact M's successful default CI checks out Moss, installs the Git-pinned C dependency and runs server tests; Main rechecked that historical job, not a new CI run."
     },
     {
       "id": "owner-manifest",
@@ -445,7 +497,6 @@
         "ADR005-COMPAT-01",
         "ADR005-COMPAT-04",
         "ADR005-COMPAT-05",
-        "ADR005-COMPAT-06",
         "ADR005-FREEZE-01"
       ]
     },
@@ -455,7 +506,6 @@
       "title": "Prove provisioned offline package consumption",
       "scope": "With an explicitly provisioned immutable dependency cache, install exact C under denied network access and run the existing import/runtime smoke without creating a registry or deployment claim.",
       "clause_keys": [
-        "ADR005-DIST-03",
         "ADR005-DIST-06",
         "ADR005-CI-02"
       ]
@@ -609,17 +659,17 @@
       "enforcement_tag": "none",
       "evidence_classification": "Confirmed-Code",
       "coverage": "partial",
-      "implemented_scope": "Current Nexus/nexus-vfs inputs use full commits, paths and digests with mutation coverage.",
+      "implemented_scope": "Full-SHA, repository/local Git-object and digest checks are enforced for current owner inputs. Main's isolated probe of source.mjs:108-130 showed that an unchecked ../ source path normalizes the remote URL away from the declared commit while the full closure accepts the original pinned bytes; content integrity was not bypassed.",
       "evidence_ids": [
         "source-lock",
         "source-loader",
         "source-mutations",
-        "contracts-workflow"
+        "contracts-workflow",
+        "historical-audit-disposition"
       ],
-      "remaining_work": "Generalize the same gate for each newly admitted owner source.",
+      "remaining_work": "Remote path-to-commit binding remains a concrete source-loader gap and grounds the whole-clause none. No current C, complete release-admission or instance impact was demonstrated; a code fix is outside this documentation correction.",
       "dependency_classes": [
-        "offline",
-        "missing-real-consumer"
+        "offline"
       ]
     },
     {
@@ -1817,46 +1867,39 @@
     {
       "key": "ADR005-COMPAT-06",
       "section": "8. 版本与兼容 / 8.2 Family major 规则",
-      "source_fingerprint": "0a22f565712d58f5ea8e8afb859eb52d39ba92b785d5acfbff73f8a7ec06568d",
-      "enforcement_tag": "none",
+      "source_fingerprint": "4bbd6ebe6559266221b0b38a05e9692165020a240da63d2e1da8cec6ecfa68f1",
+      "enforcement_tag": "test:tools/contracts/successor-compatibility.test.mjs",
       "evidence_classification": "Confirmed-Code",
-      "coverage": "partial",
-      "implemented_scope": "Unknown vocabulary, changed annotations/policy and unexplained artifact differences cannot pass the bounded Git preflight; in-memory results never claim verified provenance.",
+      "coverage": "complete",
+      "implemented_scope": "Current successor comparison maps unknown vocabulary, applicators and annotation/policy uncertainty to manual_review and denies automatic passage; the CLI succeeds only for no_contract_byte_change. This covers review-required routing, not completion of human review or release approval.",
       "evidence_ids": [
-        "resource-conformance",
-        "compatibility-checker",
-        "compatibility-mutations",
         "successor-preflight",
         "successor-git-tests",
+        "successor-uncertainty-mutations",
         "successor-preflight-workflow"
       ],
-      "remaining_work": "Human semantic/security review and real producer/consumer compatibility remain required; the byte-identical bridge is not release admission.",
-      "dependency_classes": [
-        "offline",
-        "product-security-decision",
-        "missing-real-consumer"
-      ]
+      "remaining_work": "",
+      "dependency_classes": []
     },
     {
       "key": "ADR005-DIST-01",
       "section": "9. v0 分发与未来发布 / 9.1 当前 v0.x 入口",
-      "source_fingerprint": "e754ba39ea79a90563cd447cb7f6dfb5624e75c5fb649cd90e4559d632ff4a8d",
-      "enforcement_tag": "none",
+      "source_fingerprint": "40de19e228ccb61d7feab2ce57be65e2eb929371afd502f1113481de75aba30e",
+      "enforcement_tag": "test:moss@src/server/__tests__/contractsActivation.test.ts",
       "evidence_classification": "Confirmed-Code",
-      "coverage": "partial",
-      "implemented_scope": "Private exact-Git TypeScript package C is deterministically installable and bound to the Moss ZoneId consumer.",
+      "coverage": "complete",
+      "implemented_scope": "For the current TypeScript consumer closure, @sudo/contracts C 273fd4097cbc33c1c049c39bb1fb60cef2663e2b and Moss M e9660ed1483cf01f96fe06c45ba7e070e0223ec3, M's default suite rejects floating or changed dependency/lock pins and verifies the installed package identity. A replays this exact historical boundary, not every future consumer commit.",
       "evidence_ids": [
-        "package-metadata",
-        "package-smoke",
-        "content-c",
-        "activation-a",
-        "moss-consumer"
+        "activation-verifier",
+        "moss-binding-test",
+        "moss-binding-mutations",
+        "moss-evidence-remote-workflow",
+        "moss-consumer",
+        "moss-default-runner",
+        "moss-default-ci"
       ],
-      "remaining_work": "Audit future exports and consumers against the same exact-pin/support gates.",
-      "dependency_classes": [
-        "offline",
-        "missing-real-consumer"
-      ]
+      "remaining_work": "",
+      "dependency_classes": []
     },
     {
       "key": "ADR005-DIST-02",
@@ -1882,21 +1925,22 @@
     {
       "key": "ADR005-DIST-03",
       "section": "9. v0 分发与未来发布 / 9.1 当前 v0.x 入口",
-      "source_fingerprint": "a475e19fcff5cc539850fa58a692fc5f3d24825cd586bd6bed7721230017b208",
-      "enforcement_tag": "none",
+      "source_fingerprint": "1db41081791e10203b7351dc486ba40c1a75b941cec65508bfa32ee94e7f733a",
+      "enforcement_tag": "test:moss@src/server/__tests__/contractsActivation.test.ts",
       "evidence_classification": "Confirmed-Code",
-      "coverage": "partial",
-      "implemented_scope": "Exact C is installable in a clean directory with deterministic package identity and an explicit Node runtime floor.",
+      "coverage": "complete",
+      "implemented_scope": "Moss M e9660ed1483cf01f96fe06c45ba7e070e0223ec3 clean-checkout default CI installs exact Git C 273fd4097cbc33c1c049c39bb1fb60cef2663e2b; installed tests verify the manifest, runtime and all 43 package paths with owner closure/digests, and A verifies source/hosted evidence. This is current exact-Git install evidence, not tarball-only or network-denied release proof.",
       "evidence_ids": [
-        "package-metadata",
-        "package-smoke",
-        "content-c",
-        "node-floor"
+        "activation-verifier",
+        "moss-binding-test",
+        "moss-binding-mutations",
+        "moss-evidence-remote-workflow",
+        "moss-consumer",
+        "moss-default-runner",
+        "moss-default-ci"
       ],
-      "remaining_work": "Add a network-denied smoke using a provisioned immutable dependency cache.",
-      "dependency_classes": [
-        "offline"
-      ]
+      "remaining_work": "",
+      "dependency_classes": []
     },
     {
       "key": "ADR005-DIST-04",

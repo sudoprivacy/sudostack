@@ -51,6 +51,56 @@ const EXECUTABLE_EVIDENCE_TYPES = new Set([
 ])
 
 const sha256 = (text) => createHash('sha256').update(text).digest('hex')
+const MOSS_REVIEW_EVIDENCE = [
+  'activation-verifier', 'moss-binding-test', 'moss-binding-mutations',
+  'moss-evidence-remote-workflow', 'moss-consumer', 'moss-default-runner', 'moss-default-ci',
+]
+// These fingerprints bind Main's review, not a ledger-supplied approval flag.
+const REVIEWED_CLAUSES = {
+  'ADR005-COMPAT-06': {
+    fingerprint: '4bbd6ebe6559266221b0b38a05e9692165020a240da63d2e1da8cec6ecfa68f1',
+    target: 'test:tools/contracts/successor-compatibility.test.mjs',
+    scope: '1cb3f936c302d8562da397cf249afcf8d618fc248072be7357cc0a1254e96f36',
+    evidence: ['successor-preflight', 'successor-git-tests', 'successor-uncertainty-mutations', 'successor-preflight-workflow'],
+  },
+  'ADR005-DIST-01': {
+    fingerprint: '40de19e228ccb61d7feab2ce57be65e2eb929371afd502f1113481de75aba30e',
+    target: 'test:moss@src/server/__tests__/contractsActivation.test.ts',
+    scope: 'baac3964fb52c8efaee78da676ca812ad96b6dc9d8835cb6c7aecec2243e48fc',
+    evidence: MOSS_REVIEW_EVIDENCE,
+  },
+  'ADR005-DIST-03': {
+    fingerprint: '1db41081791e10203b7351dc486ba40c1a75b941cec65508bfa32ee94e7f733a',
+    target: 'test:moss@src/server/__tests__/contractsActivation.test.ts',
+    scope: '2facb98f4e4419fa3c49cea563ce963a6341d8c06bb44ed158ba5639d3880bfd',
+    evidence: MOSS_REVIEW_EVIDENCE,
+  },
+}
+const REVIEWED_EVIDENCE = {
+  'successor-preflight': '39e9bb27edfc4e3d362d97ec0231cae37a2bf88a1d16e9044e65750464124018',
+  'successor-git-tests': '6aae4df0bdd6852bbee16d6bb610165a465d4ec1e525c77d043e4a1cb7914632',
+  'successor-uncertainty-mutations': '10d832be047c692ccf56ecba093705ec08e00095c31369e366793eac55b5f9f7',
+  'successor-preflight-workflow': 'f2bbc7f3298bf45791e0aded252e1e14f3084e7775d8e96b03afffaf67bb175a',
+  'activation-verifier': '14c1c129e55989f27816361595df413664b8db122c0d560322f83d915c313f27',
+  'moss-binding-test': '6d437619c2c097f054836bc57f94677b5e029460ed26e691eec34e18b01621ca',
+  'moss-binding-mutations': 'fabc0216ea712022cd0be470a17f73e33c37d423a62bcc177057e062a8c6c2e7',
+  'moss-evidence-remote-workflow': '706616439141ee88a184cafe3188c32db414967b11bf5931f847a7a662f02a20',
+  'moss-consumer': 'a534463bfdaf192a561bd076d8f9233dd55c86d215d40e0e532bb9f55221eff0',
+  'moss-default-runner': '026d25c7e752e1100bd1af5feed02de927c7bc13c99c53413ec46504c8d97258',
+  'moss-default-ci': '43b280718142674cb4087bea3ce6ea5d170a1b34fc3874f83b3dd5c392ca5fe5',
+}
+// Any workflow byte change requires renewed review of the three claims, not partial YAML interpretation.
+const REVIEWED_WORKFLOW_SHA256 = '5e52412f49f0fd90520ae3e7d8e1de94ce9cffe8beb39fd61bb32051730bfdd3'
+const REVIEWED_LOCAL_BYTES = {
+  'package.json': '5800916d364e6f32dee97e9d58bfbccb932338a4ba148fe4a673c6cca8ac9fcb',
+  'tools/contracts/successor-compatibility.mjs': '26e50ec9c3172e7efeee63c619f3869befd2fbcc7fd4ec154174a02508cba618',
+  'tools/contracts/successor-compatibility.test.mjs': 'b38ea1921a128dedc431ee4e6a5846cbcc9bbc45cd161b5250c705b1dc8e0f4c',
+  'tools/contracts/activation-0.2.1.mjs': '17778b6796f135de80ace0becb99e6e30d4fac947805a736b96f3f4f2ae933ab',
+  'tools/contracts/activation-0.2.1.test.mjs': 'fa79bf9dce8aa96d7eb869b49123f42746eec8c4401db7b1c2166092802e7c7c',
+}
+const evidenceFingerprint = (entry) => sha256(JSON.stringify(
+  Object.fromEntries(Object.keys(entry).sort().map((key) => [key, entry[key]])),
+))
 const safeRelativePath = (path) =>
   typeof path === 'string' &&
   path.length > 0 &&
@@ -292,6 +342,40 @@ function validateEvidenceCatalog(ledger, readLocal) {
   return { catalog, findings }
 }
 
+function reviewedRowFindings(row, clause, catalog, readLocal, checkedBytes) {
+  const review = REVIEWED_CLAUSES[row.key]
+  if (!review) return [finding('coverage-overclaim', 'clause has no bounded whole-clause review', row.key)]
+  const findings = []
+  if (clause.source_fingerprint !== review.fingerprint || row.enforcement_tag !== review.target) {
+    findings.push(finding('review-binding', 'reviewed obligation fingerprint or target changed', row.key))
+  }
+  if (typeof row.implemented_scope !== 'string' || sha256(normalizedBlockText(row.implemented_scope)) !== review.scope) {
+    findings.push(finding('review-binding', 'reviewed implementation scope changed', row.key))
+  }
+  if (!Array.isArray(row.evidence_ids) || row.evidence_ids.length !== review.evidence.length ||
+      !review.evidence.every((id) => row.evidence_ids.includes(id))) {
+    findings.push(finding('review-binding', 'reviewed evidence set changed', row.key))
+  }
+  const paths = new Set(['package.json'])
+  for (const id of review.evidence) {
+    const entry = catalog.get(id)
+    if (!entry || evidenceFingerprint(entry) !== REVIEWED_EVIDENCE[id]) {
+      findings.push(finding('review-binding', `reviewed evidence definition changed: ${id}`, row.key))
+    }
+    if (entry && Object.hasOwn(REVIEWED_LOCAL_BYTES, entry.path)) paths.add(entry.path)
+  }
+  for (const path of paths) {
+    if (checkedBytes.has(path)) continue
+    checkedBytes.add(path)
+    try {
+      if (sha256(readLocal(path)) !== REVIEWED_LOCAL_BYTES[path]) throw new Error('changed')
+    } catch {
+      findings.push(finding('review-binding', `reviewed mechanism bytes changed or unavailable: ${path}`, row.key))
+    }
+  }
+  return findings
+}
+
 export function checkCoverage({ adrText, ledger, readLocal = (path) => readFileSync(join(REPO, path)) }) {
   const findings = []
   const clauses = collectAdr005Clauses(adrText)
@@ -303,7 +387,7 @@ export function checkCoverage({ adrText, ledger, readLocal = (path) => readFileS
     findings.push(finding('source-status', `ADR-005 status must remain Proposed, got ${actualStatus ?? 'missing'}`))
   }
   if (ledger.policy !== 'accounting_only_no_enforcement_promotion') {
-    findings.push(finding('invalid-ledger', 'ledger policy must forbid enforcement promotion'))
+    findings.push(finding('invalid-ledger', 'ledger policy must forbid unreviewed enforcement promotion'))
   }
   const expectedCi = {
     workflow_path: '.github/workflows/contracts.yml',
@@ -316,7 +400,11 @@ export function checkCoverage({ adrText, ledger, readLocal = (path) => readFileS
     findings.push(finding('invalid-ci', 'ledger CI configuration changed'))
   }
   try {
-    const workflow = readLocal(expectedCi.workflow_path).toString('utf8')
+    const workflowBytes = readLocal(expectedCi.workflow_path)
+    if (sha256(workflowBytes) !== REVIEWED_WORKFLOW_SHA256) {
+      findings.push(finding('broken-ci', 'reviewed workflow bytes changed; renew review of the three complete claims'))
+    }
+    const workflow = workflowBytes.toString('utf8')
     const job = workflowJobSource(workflow, expectedCi.job)
     if (!job) findings.push(finding('broken-ci', `missing workflow job ${expectedCi.job}`))
     else {
@@ -361,6 +449,7 @@ export function checkCoverage({ adrText, ledger, readLocal = (path) => readFileS
   }
 
   const usedEvidence = new Set()
+  const checkedReviewBytes = new Set()
   for (const row of validRows) {
     const clause = clauseByKey.get(row.key)
     if (!clause) continue
@@ -403,24 +492,20 @@ export function checkCoverage({ adrText, ledger, readLocal = (path) => readFileS
         findings.push(finding('invalid-dependencies', `invalid dependency ${dependency}`, row.key))
       }
     }
+    if (sourceTag && sourceTag !== 'none' && row.coverage !== 'complete') {
+      findings.push(finding('coverage-overclaim', 'a non-none target requires reviewed complete coverage', row.key))
+    }
     if (row.coverage === 'complete') {
-      findings.push(finding(
-        'coverage-overclaim',
-        'accounting-only policy requires a separate whole-clause review before complete coverage',
-        row.key,
-      ))
-      if ((row.dependency_classes ?? []).length > 0) {
-        findings.push(finding('coverage-overclaim', 'complete coverage cannot have remaining dependencies', row.key))
+      findings.push(...reviewedRowFindings(row, clause, catalog, readLocal, checkedReviewBytes))
+      if (!Array.isArray(row.dependency_classes) || row.dependency_classes.length > 0 || row.remaining_work !== '') {
+        findings.push(finding('coverage-overclaim', 'complete coverage cannot have remaining work or dependencies', row.key))
       }
-      if (!['Confirmed-Code', 'Confirmed-Deployment'].includes(row.evidence_classification)) {
-        findings.push(finding('coverage-overclaim', 'complete coverage requires confirmed evidence', row.key))
+      if (row.evidence_classification !== 'Confirmed-Code') {
+        findings.push(finding('coverage-overclaim', 'the bounded reviews require Confirmed-Code evidence', row.key))
       }
       const types = new Set(rowEvidence.map(({ type }) => type))
       for (const required of ['code', 'test', 'workflow', 'mutation']) {
         if (!types.has(required)) findings.push(finding('coverage-overclaim', `complete coverage missing ${required} evidence`, row.key))
-      }
-      if (/partial|manual|pending|unknown/i.test(row.implemented_scope)) {
-        findings.push(finding('coverage-overclaim', 'complete coverage describes partial/manual/pending scope', row.key))
       }
     } else {
       if (typeof row.remaining_work !== 'string' || !row.remaining_work.trim()) {
@@ -489,13 +574,14 @@ export function renderMarkdown({ ledger, result }) {
     '',
     '# ADR-005 implementation status',
     '',
-    '> Accounting view only. ADR-005 remains `Proposed`; every source clause remains `[enforced_by: none]`.',
-    '> A row can cite bounded code evidence without proving whole-clause enforcement, release, deployment, or acceptance.',
+    '> Accounting view only. ADR-005 remains `Proposed`; whole-clause claims are limited to explicitly reviewed fingerprints, targets and evidence.',
+    '> Complete coverage records the reviewed current mechanism, not ADR acceptance, artifact release or deployment.',
     '',
     '## Summary',
     '',
     `- Current parser-selected clauses: **${result.summary.clauses}** (${result.summary.named} named, ${result.summary.unnamed} unnamed).`,
     `- Coverage: **${result.summary.coverage.partial} partial**, **${result.summary.coverage.none} none**, **${result.summary.coverage.complete} complete**.`,
+    `- Source tags: **${result.clauses.filter((clause) => clause.enforcement_tags[0] !== 'none').length} non-none**, **${result.clauses.filter((clause) => clause.enforcement_tags[0] === 'none').length} none**.`,
     `- Evidence classifications: **${result.summary.classifications['Confirmed-Code']} Confirmed-Code**, **${result.summary.classifications.Expected} Expected**, **${result.summary.classifications.Unknown} Unknown**, **${result.summary.classifications.Conflicting} Conflicting**.`,
     `- Remaining dependencies: **${result.summary.dependencies.offline} offline**, **${result.summary.dependencies['product-security-decision']} product/security decision**, **${result.summary.dependencies['missing-real-consumer']} missing real consumer**, **${result.summary.dependencies['live-environment']} live environment**.`,
     `- Confirmed-Deployment rows: **${result.summary.confirmed_deployment}**.`,
@@ -563,7 +649,7 @@ function main() {
     process.exit(1)
   }
   if (json) console.log(JSON.stringify({ summary: result.summary, findings: [] }, null, 2))
-  else console.log(`ADR-005 coverage OK: ${result.summary.clauses} clauses, ${result.summary.coverage.partial} partial, ${result.summary.coverage.none} none, ${result.summary.confirmed_deployment} deployed`)
+  else console.log(`ADR-005 coverage OK: ${result.summary.clauses} clauses, ${result.summary.coverage.partial} partial, ${result.summary.coverage.none} none, ${result.summary.coverage.complete} complete, ${result.summary.confirmed_deployment} deployed`)
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main()
