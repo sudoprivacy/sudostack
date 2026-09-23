@@ -1,8 +1,9 @@
 # G7 跨仓集成与部署证明 — SW-20260915-002
 
 结论：按已批准的计划口径，G7 的 exact-pin 记录、full-profile 本地真实进程
-证明与 rollback rehearsal 已完成，状态为 **Confirmed-Deployment**。本结论表示
-目标 artifact 已被真实启动和验证，不表示已执行 release、外部生产部署、生产
+证明与 rollback rehearsal 已完成，状态为 **Confirmed-Deployment（范围：本地
+full-profile 目标 artifact）**。本结论表示目标 artifact 已作为独立 OS 子进程
+启动并通过 loopback HTTP 验证，不表示已执行 release、外部生产部署、生产
 migration 或流量切换。
 
 ## Exact revisions
@@ -35,6 +36,13 @@ Moss `@sudo/contracts` 已精确 pin 到 sudostack release commit `a479b8c...`�
   对应历史 Nexus `251333f...` / nexus-vfs `b878b015...`；
 - 因此实际拓扑明确标记为 **mixed-version**；external gRPC/mTLS 路径未验证。
 
+ABI 事实单独核验：Moss embedded daemon 与 `nexus_vault.dll` 均报告 plugin ABI
+6；当前 daemon/source 为 ABI 7；当前 kernel loader 源码明确接受 ABI 6 或当前
+ABI 7。因此这是“当前兼容但存在漂移”，不能由 cohost build 推导兼容性。执行
+`python compatibility/check-runtime-topology.py` 会实时读取两个 daemon、vault
+plugin 导出符号、二进制 digest 与 loader 接受规则；daemon/plugin 不匹配或 ABI
+不再被当前 loader 接受时失败，6/7 漂移仍存在时输出 warning 状态。
+
 上述记录满足本计划批准的“三线事实 + digest”口径，但不等价于所有 runtime
 binary 与 release manifest 已版本对齐。
 
@@ -43,6 +51,8 @@ binary 与 release manifest 已版本对齐。
 证据见 `live-deployment-proof.json`：
 
 - 启动当前 Nexus Python full profile 与当前 full+cohost Rust kernel；
+- Nexus 由 `subprocess.Popen` 启动真实 Python daemon；Moss 由 Node `spawn` 启动
+  `bin/moss-server.mjs`。测试 harness 仅负责编排，server 不是进程内 mock；
 - `/v2/zone-capabilities` 返回 auth、Zone runtime、ReBAC、grant projection、
   composite 全部 armed；
 - 通过真实 HTTP 创建 Zone、delegation、Session 并启动 runtime；

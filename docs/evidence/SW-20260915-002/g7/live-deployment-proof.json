@@ -2,7 +2,14 @@
   "generated_at": "2026-09-22T12:00:20.5054561Z",
   "work_item": "SW-20260915-002-INTEGRATION G7 live proof",
   "status": "Confirmed-Deployment",
+  "status_scope": "local-full-profile-target-artifact",
+  "production_deployment_executed": false,
   "scope": "local real-process full-profile target-artifact verification; no release, production migration, traffic switch, or external deployment was executed",
+  "process_model": {
+    "nexus": "real OS subprocess: Python nexusd full profile, which spawns the current Rust nexusd-cluster kernel; exercised over loopback HTTP",
+    "moss": "real OS subprocess: node bin/moss-server.mjs; exercised over loopback HTTP",
+    "orchestration": "automated E2E harness; servers are not in-process test doubles"
+  },
   "revisions": {
     "nexus": "b19a9868c91fba89121d8f12dad6f74cc80d7b13",
     "nexus_vfs": "763f8c0fef392da8c1151fc3f17b3a6f3f707dbd",
@@ -50,6 +57,12 @@
     "server_suite": "Bun 184/184; Node 184/184; real-process Zone E2E 12/12",
     "embedded_nexus_version": "nexusd-cluster v0.1.5 (nexus-cluster 0.1.1, plugin-abi 6)",
     "embedded_nexus_sha256": "53b31d8f3e7d9280087ab1b9443b275706be629de0f47e24a0a31ddcf8f2a67c",
+    "embedded_daemon_plugin_abi": 6,
+    "vault_plugin_abi": 6,
+    "vault_plugin_sha256": "23feff52fa05d14d404db05bc27b0a84b9ef3a27447851842b03cd70c476cdad",
+    "current_daemon_plugin_abi": 7,
+    "current_loader_accepts_plugin_abi": [6, 7],
+    "plugin_abi_status": "compatible-but-drifted; executable check: compatibility/check-runtime-topology.py",
     "topology": "mixed-version: embedded secrets plane is legacy 0.1.5; admin plane and P1b probe use current Nexus"
   }
 }

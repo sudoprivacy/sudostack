@@ -48,6 +48,16 @@
     },
     "external_grpc": {
       "status": "unverified"
+    },
+    "plugin_abi_compatibility": {
+      "moss_embedded_daemon_abi": 6,
+      "moss_vault_plugin_abi": 6,
+      "moss_vault_plugin_sha256": "23feff52fa05d14d404db05bc27b0a84b9ef3a27447851842b03cd70c476cdad",
+      "current_daemon_abi": 7,
+      "current_source_abi": 7,
+      "current_loader_accepts": [6, 7],
+      "status": "compatible-but-drifted",
+      "monitoring_rule": "fail when embedded daemon ABI differs from its vault plugin or is absent from current_loader_accepts; warn while embedded ABI differs from current daemon ABI"
     }
   },
   "checks": {
@@ -55,6 +65,7 @@
     "nexus_and_sudocode_nexus_vfs_pins_match": true,
     "moss_contract_pin_matches_sudostack_release": true,
     "three_line_runtime_topology_recorded": true,
-    "runtime_topology_fully_version_aligned": false
+    "runtime_topology_fully_version_aligned": false,
+    "plugin_abi_pair_verified": true
   }
 }
