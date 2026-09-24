@@ -264,7 +264,11 @@ function renderInterface(schema, ownSchemasByFile) {
   return `export interface ${schema.title} {\n${lines.join('\n')}\n}`
 }
 
-const familyOf = (doc) => (doc.$id.includes('/schemas/common/') ? 'common/v1' : 'auth/v1')
+const familyOf = (doc) => {
+  if (doc.$id.includes('/schemas/common/')) return 'common/v1'
+  if (doc.$id.includes('/schemas/runtime/')) return 'runtime/v2'
+  return 'auth/v1'
+}
 
 async function deriveZoneV1(stale) {
   const vfs = zoneV1Pin['nexus-vfs']
@@ -360,7 +364,7 @@ async function deriveZoneV1(stale) {
   stale = emit('zone-v1/codes.gen.js', codes, stale)
 
   // -- per-family entry points (index.gen.js pairs with index.gen.d.ts) -------
-  for (const family of ['common/v1', 'auth/v1']) {
+  for (const family of ['common/v1', 'auth/v1', 'runtime/v2']) {
     const members = Object.entries(schemasByFile).filter(([, doc]) => familyOf(doc) === family)
     const fnNames = members.map(([, doc]) => validatorName(doc)).join(', ')
 
@@ -372,7 +376,7 @@ async function deriveZoneV1(stale) {
 
     // Cross-family referenced interfaces (auth -> common's PrincipalRef/ResourceRef).
     const ownTitles = new Set(members.map(([, doc]) => doc.title))
-    const crossTitles = new Set()
+    const crossTitlesByFamily = new Map()
     for (const [, doc] of members) {
       for (const prop of Object.values(doc.properties ?? {})) {
         const target = prop.$ref
@@ -380,12 +384,18 @@ async function deriveZoneV1(stale) {
           : prop.items?.$ref
             ? Object.values(schemasByFile).find((s) => s.$id === prop.items.$ref)
             : null
-        if (target && !ownTitles.has(target.title)) crossTitles.add(target.title)
+        if (target && !ownTitles.has(target.title)) {
+          const targetFamily = familyOf(target)
+          const titles = crossTitlesByFamily.get(targetFamily) ?? new Set()
+          titles.add(target.title)
+          crossTitlesByFamily.set(targetFamily, titles)
+        }
       }
     }
-    const importLine = crossTitles.size
-      ? `import type { ${[...crossTitles].join(', ')} } from '../../common/v1/index.gen.js'\n\n`
-      : ''
+    const importLine = [...crossTitlesByFamily.entries()]
+      .map(([targetFamily, titles]) =>
+        `import type { ${[...titles].join(', ')} } from '../../${targetFamily}/index.gen.js'`)
+      .join('\n') + (crossTitlesByFamily.size ? '\n\n' : '')
     const interfaces = members.map(([, doc]) => renderInterface(doc, schemasByFile)).join('\n\n')
     const fnDecls = members
       .map(([, doc]) => `export declare function ${validatorName(doc)}(data: unknown): data is ${doc.title}`)

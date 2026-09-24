@@ -22,9 +22,13 @@ import {
   validateZoneGrant,
   validateZoneGrantCreateRequest,
   validateZoneOperation,
+  validateZoneDelegationScopeRule,
+  validateZoneDelegationIssueRequest,
+  validateZoneDelegation,
   KNOWN_ERROR_CODES,
   CAPABILITY_PATTERN,
 } from '../auth/v1/index.gen.js'
+import { validateRuntimeResourceScope } from '../runtime/v2/index.gen.js'
 import { validateZoneId } from '../../zone-id/zone-id.gen.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -39,6 +43,10 @@ const VALIDATORS = {
   'auth/v1/zone-grant.schema.json': validateZoneGrant,
   'auth/v1/zone-grant-create-request.schema.json': validateZoneGrantCreateRequest,
   'auth/v1/zone-operation.schema.json': validateZoneOperation,
+  'auth/v1/zone-delegation-scope-rule.schema.json': validateZoneDelegationScopeRule,
+  'auth/v1/zone-delegation-issue-request.schema.json': validateZoneDelegationIssueRequest,
+  'auth/v1/zone-delegation.schema.json': validateZoneDelegation,
+  'runtime/v2/runtime-resource-scope.schema.json': validateRuntimeResourceScope,
 }
 
 const load = (name) => JSON.parse(readFileSync(join(FIXTURES, name), 'utf8'))
@@ -98,7 +106,7 @@ test('compatibility baseline verdicts hold on the derived package', () => {
 })
 
 test('open registries: known constants exported, unknown codes survive validation', () => {
-  assert.equal(KNOWN_ERROR_CODES.length, 21)
+  assert.equal(KNOWN_ERROR_CODES.length, 24)
   assert.match('zone.data.read', CAPABILITY_PATTERN)
   assert.match('zone.brand.new', CAPABILITY_PATTERN)
   assert.doesNotMatch('zone_data_read', CAPABILITY_PATTERN)

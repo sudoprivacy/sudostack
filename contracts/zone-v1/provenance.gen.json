@@ -5,7 +5,7 @@
   "owners": [
     {
       "repo": "https://github.com/nexi-lab/nexus-vfs",
-      "rev": "763f8c0fef392da8c1151fc3f17b3a6f3f707dbd",
+      "rev": "bc89aa638b6ebfa05ce9491fb6a2e0c841febe2c",
       "role": "zone-id/zone-path projections (referenced by $id; rules never restated)",
       "paths": [
         "contracts/zone-id/tenant-zone-id-create.schema.gen.json",
@@ -17,7 +17,7 @@
     },
     {
       "repo": "https://github.com/nexi-lab/nexus",
-      "rev": "b19a9868c91fba89121d8f12dad6f74cc80d7b13",
+      "rev": "d78448594c7dd00d71581b62919ab0ca60cfedbb",
       "role": "product schemas + error codes + shared fixtures",
       "paths": [
         "contracts/common/v1/principal-ref.schema.json",
@@ -28,6 +28,10 @@
         "contracts/auth/v1/zone-grant.schema.json",
         "contracts/auth/v1/zone-grant-create-request.schema.json",
         "contracts/auth/v1/zone-operation.schema.json",
+        "contracts/auth/v1/zone-delegation-scope-rule.schema.json",
+        "contracts/auth/v1/zone-delegation-issue-request.schema.json",
+        "contracts/auth/v1/zone-delegation.schema.json",
+        "contracts/runtime/v2/runtime-resource-scope.schema.json",
         "contracts/auth/v1/error-codes.json",
         "contracts/fixtures/**"
       ]

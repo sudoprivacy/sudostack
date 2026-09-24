@@ -41,7 +41,7 @@ try {
       '--experimental-strip-types',
       '--input-type=module',
       '--eval',
-      "await import('@sudo/contracts/zone-id'); await import('@sudo/contracts/common/v1'); await import('@sudo/contracts/auth/v1')",
+      "await import('@sudo/contracts/zone-id'); await import('@sudo/contracts/common/v1'); await import('@sudo/contracts/auth/v1'); await import('@sudo/contracts/runtime/v2')",
     ],
     { cwd: scratch, encoding: 'utf8' },
   )

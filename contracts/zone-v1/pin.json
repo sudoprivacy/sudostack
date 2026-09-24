@@ -13,7 +13,7 @@
     "the nexus rev is the draft-frozen owner commit that carries contracts/."
   ],
   "nexus-vfs": {
-    "rev": "763f8c0fef392da8c1151fc3f17b3a6f3f707dbd",
+    "rev": "bc89aa638b6ebfa05ce9491fb6a2e0c841febe2c",
     "specs": {
       "zone-id": "contracts/zone-id/spec.json",
       "zone-path": "contracts/zone-path/spec.json"
@@ -27,7 +27,7 @@
     ]
   },
   "nexus": {
-    "rev": "b19a9868c91fba89121d8f12dad6f74cc80d7b13",
+    "rev": "d78448594c7dd00d71581b62919ab0ca60cfedbb",
     "schemas": [
       "contracts/common/v1/principal-ref.schema.json",
       "contracts/common/v1/resource-ref.schema.json",
@@ -36,7 +36,11 @@
       "contracts/auth/v1/zone-patch-request.schema.json",
       "contracts/auth/v1/zone-grant.schema.json",
       "contracts/auth/v1/zone-grant-create-request.schema.json",
-      "contracts/auth/v1/zone-operation.schema.json"
+      "contracts/auth/v1/zone-operation.schema.json",
+      "contracts/auth/v1/zone-delegation-scope-rule.schema.json",
+      "contracts/auth/v1/zone-delegation-issue-request.schema.json",
+      "contracts/auth/v1/zone-delegation.schema.json",
+      "contracts/runtime/v2/runtime-resource-scope.schema.json"
     ],
     "error_codes": "contracts/auth/v1/error-codes.json",
     "fixtures_dir": "contracts/fixtures/"

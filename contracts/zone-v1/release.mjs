@@ -44,6 +44,8 @@ const bundleFiles = [
   ['common/v1/index.gen.d.ts', 'contracts/zone-v1/common/v1/index.gen.d.ts'],
   ['auth/v1/index.gen.js', 'contracts/zone-v1/auth/v1/index.gen.js'],
   ['auth/v1/index.gen.d.ts', 'contracts/zone-v1/auth/v1/index.gen.d.ts'],
+  ['runtime/v2/index.gen.js', 'contracts/zone-v1/runtime/v2/index.gen.js'],
+  ['runtime/v2/index.gen.d.ts', 'contracts/zone-v1/runtime/v2/index.gen.d.ts'],
   ['validators.gen.js', 'contracts/zone-v1/validators.gen.js'],
   ['codes.gen.js', 'contracts/zone-v1/codes.gen.js'],
   ['../zone-id/zone-id.gen.ts', 'contracts/zone-id/zone-id.gen.ts'],

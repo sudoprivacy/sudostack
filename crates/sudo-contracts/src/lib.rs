@@ -90,6 +90,9 @@ pub const KNOWN_ERROR_CODES: &[&str] = &[
     "GRANT_NOT_ACTIVE",
     "GRANT_REVOKED",
     "GRANT_EXPIRED",
+    "MEMBERSHIP_UNAVAILABLE",
+    "AMBIGUOUS_GRANT",
+    "SCOPE_REQUIRED",
     "RESOURCE_RELATION_DENIED",
     "IDEMPOTENCY_CONFLICT",
     "UNSUPPORTED_CONTRACT_MAJOR",
@@ -527,6 +530,190 @@ impl Validate for ZoneGrantCreateRequest {
         (!self.reason.is_empty()).then_some(()).ok_or(ContractViolation { field: "reason" })?;
         self.grantee.validate()?;
         Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ZoneDelegationScopeRule {
+    pub capability: String,
+    pub resource_prefixes: Vec<String>,
+}
+
+impl Validate for ZoneDelegationScopeRule {
+    fn validate(&self) -> Result<(), ContractViolation> {
+        is_capability(&self.capability)
+            .then_some(())
+            .ok_or(ContractViolation {
+                field: "capability",
+            })?;
+        (!self.resource_prefixes.is_empty()
+            && self.resource_prefixes.iter().all(|p| validate_zone_path(p)))
+        .then_some(())
+        .ok_or(ContractViolation {
+            field: "resource_prefixes",
+        })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum DelegationPurpose {
+    #[default]
+    DataAccess,
+    Runtime,
+}
+
+fn default_delegation_ttl() -> u64 {
+    900
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ZoneDelegationIssueRequest {
+    pub api_version: String,
+    pub kind: String,
+    pub user_id: String,
+    pub org_id: String,
+    pub membership_version: String,
+    pub zone_id: String,
+    pub audience: String,
+    #[serde(default = "default_delegation_ttl")]
+    pub ttl_s: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grant_id: Option<String>,
+    #[serde(default)]
+    pub purpose: DelegationPurpose,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope_rules: Option<Vec<ZoneDelegationScopeRule>>,
+}
+
+impl Validate for ZoneDelegationIssueRequest {
+    fn validate(&self) -> Result<(), ContractViolation> {
+        (self.api_version == API_VERSION_AUTH_V1)
+            .then_some(())
+            .ok_or(ContractViolation {
+                field: "api_version",
+            })?;
+        (self.kind == "ZoneDelegationIssueRequest")
+            .then_some(())
+            .ok_or(ContractViolation { field: "kind" })?;
+        (!self.user_id.is_empty()
+            && !self.org_id.is_empty()
+            && !self.membership_version.is_empty())
+        .then_some(())
+        .ok_or(ContractViolation {
+            field: "membership",
+        })?;
+        validate_existing_zone_id_ref(&self.zone_id)
+            .then_some(())
+            .ok_or(ContractViolation { field: "zone_id" })?;
+        (!self.audience.is_empty())
+            .then_some(())
+            .ok_or(ContractViolation { field: "audience" })?;
+        (60..=3600)
+            .contains(&self.ttl_s)
+            .then_some(())
+            .ok_or(ContractViolation { field: "ttl_s" })?;
+        if let Some(grant_id) = &self.grant_id {
+            (!grant_id.is_empty())
+                .then_some(())
+                .ok_or(ContractViolation { field: "grant_id" })?;
+        }
+        if let Some(rules) = &self.scope_rules {
+            (!rules.is_empty() && rules.iter().all(|rule| rule.validate().is_ok()))
+                .then_some(())
+                .ok_or(ContractViolation {
+                    field: "scope_rules",
+                })?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum DelegationStatus {
+    Active,
+    Revoked,
+    Expired,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ZoneDelegation {
+    pub api_version: String,
+    pub kind: String,
+    pub delegation_id: String,
+    pub user_id: String,
+    pub org_id: String,
+    pub zone_id: String,
+    pub grant_id: String,
+    pub grant_revision: String,
+    pub authorization_epoch: u64,
+    pub audience: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub purpose: Option<DelegationPurpose>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope_rules: Option<Vec<ZoneDelegationScopeRule>>,
+    pub expires_at: String,
+    pub status: DelegationStatus,
+}
+
+impl Validate for ZoneDelegation {
+    fn validate(&self) -> Result<(), ContractViolation> {
+        (self.api_version == API_VERSION_AUTH_V1)
+            .then_some(())
+            .ok_or(ContractViolation {
+                field: "api_version",
+            })?;
+        (self.kind == "ZoneDelegation")
+            .then_some(())
+            .ok_or(ContractViolation { field: "kind" })?;
+        (!self.delegation_id.is_empty()
+            && !self.user_id.is_empty()
+            && !self.org_id.is_empty()
+            && !self.grant_id.is_empty()
+            && !self.grant_revision.is_empty()
+            && !self.audience.is_empty())
+        .then_some(())
+        .ok_or(ContractViolation { field: "identity" })?;
+        validate_existing_zone_id_ref(&self.zone_id)
+            .then_some(())
+            .ok_or(ContractViolation { field: "zone_id" })?;
+        is_rfc3339(&self.expires_at)
+            .then_some(())
+            .ok_or(ContractViolation {
+                field: "expires_at",
+            })?;
+        if let Some(rules) = &self.scope_rules {
+            (!rules.is_empty() && rules.iter().all(|rule| rule.validate().is_ok()))
+                .then_some(())
+                .ok_or(ContractViolation {
+                    field: "scope_rules",
+                })?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct RuntimeResourceScope {
+    pub schema_version: u32,
+    pub zone_id: String,
+    pub rules: Vec<ZoneDelegationScopeRule>,
+}
+
+impl Validate for RuntimeResourceScope {
+    fn validate(&self) -> Result<(), ContractViolation> {
+        (self.schema_version == 1)
+            .then_some(())
+            .ok_or(ContractViolation {
+                field: "schema_version",
+            })?;
+        validate_existing_zone_id_ref(&self.zone_id)
+            .then_some(())
+            .ok_or(ContractViolation { field: "zone_id" })?;
+        (!self.rules.is_empty() && self.rules.iter().all(|rule| rule.validate().is_ok()))
+            .then_some(())
+            .ok_or(ContractViolation { field: "rules" })
     }
 }
 

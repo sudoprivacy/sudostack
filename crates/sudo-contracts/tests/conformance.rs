@@ -7,8 +7,9 @@
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 use sudo_contracts::{
-    Validate, Zone, ZoneCreateRequest, ZoneGrant, ZoneGrantCreateRequest, ZoneOperation,
-    ZonePatchRequest,
+    RuntimeResourceScope, Validate, Zone, ZoneCreateRequest, ZoneDelegation,
+    ZoneDelegationIssueRequest, ZoneDelegationScopeRule, ZoneGrant, ZoneGrantCreateRequest,
+    ZoneOperation, ZonePatchRequest,
 };
 use std::fs;
 use std::path::PathBuf;
@@ -47,6 +48,10 @@ fn judge_by_schema(schema: &str, payload: &Value) -> bool {
         "auth/v1/zone-grant.schema.json" => judge::<ZoneGrant>(payload),
         "auth/v1/zone-grant-create-request.schema.json" => judge::<ZoneGrantCreateRequest>(payload),
         "auth/v1/zone-operation.schema.json" => judge::<ZoneOperation>(payload),
+        "auth/v1/zone-delegation-scope-rule.schema.json" => judge::<ZoneDelegationScopeRule>(payload),
+        "auth/v1/zone-delegation-issue-request.schema.json" => judge::<ZoneDelegationIssueRequest>(payload),
+        "auth/v1/zone-delegation.schema.json" => judge::<ZoneDelegation>(payload),
+        "runtime/v2/runtime-resource-scope.schema.json" => judge::<RuntimeResourceScope>(payload),
         // common/v1 kinds appear nested inside the auth fixtures; standalone
         // cases for them live in the valid corpus under their own schema key.
         "common/v1/principal-ref.schema.json" => {

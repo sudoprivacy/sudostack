@@ -7,7 +7,8 @@
   "exports": {
     "./zone-id": "./contracts/zone-id/zone-id.gen.ts",
     "./common/v1": "./contracts/zone-v1/common/v1/index.gen.js",
-    "./auth/v1": "./contracts/zone-v1/auth/v1/index.gen.js"
+    "./auth/v1": "./contracts/zone-v1/auth/v1/index.gen.js",
+    "./runtime/v2": "./contracts/zone-v1/runtime/v2/index.gen.js"
   },
   "files": [
     "contracts/**/*.gen.ts",
