@@ -19,7 +19,7 @@ P1b Attempt 或完整 data-placement 完成。验证完成日期：2026-09-22。
 | 5 | runtime 使用短期 delegation，无全局 admin token | Nexus `test_p1a_runtime_delegation_revalidation_and_revoke_isolation`；Moss `R5.4` 与 runner-env secret-negative 断言 |
 | 6 | revoke 后 active runtime 取消/隔离 | Nexus grant revoke → dependency worker → `revocation_pending`；Moss detach → `parkRunsForZone` |
 | 7 | revocation_pending 不获得新资源 | Nexus record write 返回 `REVOCATION_PENDING`；旧 delegation revoke 后返回 `GRANT_REVOKED` |
-| 8 | subprocess/cohost Zone 语义一致 | sudocode 同一 `HostZoneContext`/ResourceRef 判定及真实 Kernel I/O 测试 |
+| 8 | subprocess/cohost 类型语义一致（测试级）+ cohost 生产链路 context 已接线（阶段3 H-3，2026-09-24 修订） | nexus-vfs `bc89aa6` `ManagedAgentService::dispatch_with_context` 三方法接线 owner/zone 解析（共享 `agent_context` helper），`cancel_v1`/`get_session_v1` 补 owner 校验，非 system `start_session_v1` 直接 `PermissionDenied`；sudocode `ContextSource::{TrustedLocal, UnverifiedDelegationRef}` 令 descriptor/env 两构造路径对同组 ResourceRef 判定逐项相等且均 fail-closed（`fs_backend_vfs.rs` 断言 PermissionDenied 与 RPC 计数 0）。非 system cohost 因缺少服务端可验证 delegation credential 继续 fail-closed，生产授权链未完成并已独立立项——不得写成真实 delegation/assertion、续期或全部执行点已接线 |
 | 9 | restart/resume 后 Zone identity 不漂移 | Nexus hard-restart read-back；cross-Zone resume 继承 execution Zone，漂移请求返回 `ZONE_IDENTITY_DRIFT` |
 | 10 | 五类真实字节默认落 home Zone | Nexus Session/Transcript/Context/Artifact/Verify 真实 VFS write + routing ledger |
 
@@ -34,7 +34,7 @@ P1b Attempt 或完整 data-placement 完成。验证完成日期：2026-09-22。
 | ResourceRef 每次 target access 重新授权 | sudocode Kernel/NexusVfs backend target guard |
 | grant revoke 取消/隔离依赖 runtime | grant/epoch dependency index + worker revalidation |
 | revocation_pending 无新资源 | Nexus fail-closed E2E |
-| subprocess/cohost 一致 | sudocode integration evidence |
+| subprocess/cohost 一致（类型语义一致，测试级；生产链 fail-closed） | 同 §11.4-8 修订口径 |
 | 声明不越界 | 本文声明边界 |
 
 ## Pin matrix

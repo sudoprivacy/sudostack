@@ -18,7 +18,7 @@
 | 10 | receipt/read-back 对账 | create saga runtime read-back（场景 2/17 重启后收敛）；`test_active_maps_only_with_runtime_readback` |
 | 11 | Moss 只走 public API | `NexusZoneClient` 仅 `/v2`；E2E 全链 Moss HTTP → /v2 → worker → runtime |
 | 12 | 多对多；rename/delete 不变/不删 | 场景 5（一 Org 两 Zone）、6（一 Zone 两 Org）、11（rename 不改 ID）、12（detach 不删数据） |
-| 13 | membership delegation + 失效 | 场景 4（自身 delegation 访问/跨 Org 拒）、8（suspend→旧 delegation 拒+登录拒+恢复对称） |
+| 13 | membership delegation + 失效 | 场景 4（自身 delegation 访问/跨 Org 拒）、8（2026-09-22 版：suspend→旧 delegation 拒+登录拒+恢复对称，依赖 moss 进程内 revoke；2026-09-24 H-2 修复后升级为三段 fail-closed——停机回查失败拒、DB 直改 disable+revision+1 拒且 delegation 行仍 active、restore revision 再+1 仍拒，证明拒绝来自 Nexus 侧 `MossMembershipVerifier` 回查而非 revoke；`MEMBERSHIP_UNAVAILABLE` 503/retryable fail-closed） |
 | 14 | pending 不授权；revoke access-time；原子提交无 fail-open | 场景 9（revoke 即拒）、注入测试 6/7（kill 后仍 fail-closed）、17（重启仍拒）；moss BINDING_PENDING 拒发 |
 | 15 | ReBAC provenance；overlapping 不误删 | 场景 10（revoke 一个，重换发后另一个仍授权；全撤后发行即拒）；`test_overlapping_grant_edges_survive_one_revoke` |
 | 16 | 真值表四行+补充 | 场景 7（grant∩ReBAC 四态）+ `test_p0_c2_truth_table_supplements`（read-only/path/zone header spoof/zone-less/root 禁删） |
@@ -42,4 +42,4 @@
 
 1. **cohost pin mismatch**：nexus workspace @vfs 763f8c0f，而 cohost `sudocode-tools@59df7a9d` 携带 b878b015；`--features full,cohost-sudocode` 构建 E0277（双 Kernel 类型分叉，与 Cargo.toml 注释预言一致）。上游无任何携带 763f8c0f 的 sudocode commit。处置：步骤 08（R6.5）三联动（sudocode vfs bump+push、nexus pin 同步、构建回绿）。
 2. **mTLS**：本地 proof 为 loopback + bearer（NEXUS_NO_TLS）；mTLS 属外部集群拓扑（MOSS_NEXUS_TLS_*），未在本地演练。
-3. **nexus 侧 membership 复查 seam**：`moss_membership_verifier` 装配位存在但无跨进程回调实现——membership 失效当前由 moss 侧（发行前校验+进程内 revoke 钩子，watch3/E2E 场景 8 实证）承担；nexus 侧复查为后续集成项。
+3. **nexus 侧 membership 复查 seam（已于 2026-09-24 闭合，H-2 修复轮）**：`src/nexus/services/zones/membership.py` 的 `MossMembershipVerifier` 经 `NEXUS_ZONE_MEMBERSHIP_URL/TOKEN` 装配进 issue/verify 面与 worker（三态：inactive→park、unreachable→skip+计数告警、HTTP 访问路径不缓存）；membership revision 单调化（`r{revision}` 比对，restore 不复活旧 delegation）；issuer 启用而 URL/token 缺配时 `ZoneControlNotArmed` 拒启，未启用 issuer 的默认 full 部署不受影响（三 compose + CLI 模板 + Helm 均带可选三元组）。重验：moss p0E2e 场景 8 三段（`p0E2e.test.ts:197` 起，真实链路）+ nexus `tests/unit/services/test_zone_membership.py` 单测 + `membership_version` 字面量对齐后的 P0 matrix/fault/routes/p1a E2E（nexus 提交 `88e883e`、moss 提交 `764183b`，均按计划纪律在 required checks 通过后落盘）。原"后续集成项"状态消除，本条目与 C7-13 不再矛盾。
