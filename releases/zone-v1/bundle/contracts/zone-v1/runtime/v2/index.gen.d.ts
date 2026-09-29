@@ -2,4 +2,12 @@
 // Owners at pinned revisions: nexus-vfs bc89aa638 (projections), nexus d78448594 (schemas/fixtures).
 // Validators are ajv 8.18.0 standalone output (2020-12): self-contained, consumers need no ajv at runtime.
 
-export { validatePrincipalRef, validateResourceRef } from '../../validators.gen.js'
+import type { ZoneDelegationScopeRule } from '../../auth/v1/index.gen.js'
+
+export interface RuntimeResourceScope {
+  schema_version: 1
+  zone_id: string
+  rules: Array<ZoneDelegationScopeRule>
+}
+
+export declare function validateRuntimeResourceScope(data: unknown): data is RuntimeResourceScope

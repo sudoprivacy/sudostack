@@ -12,12 +12,13 @@
     "exports": [
       "./zone-id",
       "./common/v1",
-      "./auth/v1"
+      "./auth/v1",
+      "./runtime/v2"
     ]
   },
   "pinned_owner_revisions": {
-    "nexus-vfs": "763f8c0fef392da8c1151fc3f17b3a6f3f707dbd",
-    "nexus": "b19a9868c91fba89121d8f12dad6f74cc80d7b13",
+    "nexus-vfs": "bc89aa638b6ebfa05ce9491fb6a2e0c841febe2c",
+    "nexus": "d78448594c7dd00d71581b62919ab0ca60cfedbb",
     "moss (metadata only)": "406427e280b55d04b5dbf097bd84da1194ace6e9"
   },
   "schemas": [
@@ -62,6 +63,26 @@
       "sha256": "92b472f646b3f297362104f273f3fa7cb145415b080f6b9760595e2a7a0aa8bf"
     },
     {
+      "$id": "https://contracts.sudo.dev/schemas/auth/v1/zone-delegation-scope-rule.schema.json",
+      "title": "ZoneDelegationScopeRule",
+      "sha256": "fbe1fb148065dc223b64704ff404461337fccd57ff414f46ffea387d66e8bc45"
+    },
+    {
+      "$id": "https://contracts.sudo.dev/schemas/auth/v1/zone-delegation-issue-request.schema.json",
+      "title": "ZoneDelegationIssueRequest",
+      "sha256": "9ce28a7bed983be1f199b4208915a437b5d857812b0d1348b7e9b3e6e0f52c6f"
+    },
+    {
+      "$id": "https://contracts.sudo.dev/schemas/auth/v1/zone-delegation.schema.json",
+      "title": "ZoneDelegation",
+      "sha256": "6cb7fe8250d757ecc45a2227f0c2a3415567c8da37b990051424f7bcef83e0df"
+    },
+    {
+      "$id": "https://contracts.sudo.dev/schemas/runtime/v2/runtime-resource-scope.schema.json",
+      "title": "RuntimeResourceScope",
+      "sha256": "732ddf507e56a2835bed06dd54ad4d0b32bea1e7e72991477e280060013e06e4"
+    },
+    {
       "$id": "https://nexus-vfs.dev/contracts/zone-id/tenant-zone-id-create.schema.gen.json",
       "title": "TenantZoneIdCreate",
       "sha256": "067d9bbf3e4f1a1be62420cc6641033884a9ab6210e8fbccb0a5b1dae0f96aa0"
@@ -94,31 +115,31 @@
     },
     {
       "path": "contracts/zone-v1/auth/v1/index.gen.d.ts",
-      "sha256": "e8e204a8ffc2becedd52ad027152ecf4ef1e8ee943a38d0d45abeecf659bb287"
+      "sha256": "d1bc72b5a8838f522d78b2dbb0841829521524825c592f1d95e6c7317245ed3d"
     },
     {
       "path": "contracts/zone-v1/auth/v1/index.gen.js",
-      "sha256": "fe7998c0ebd578692b18548723a080cffc80cf714503820138609d7b3c080e41"
+      "sha256": "509dccc1bed6293ea3b743d272135f9f9ae9b9ff767776a235488f074c4d41b3"
     },
     {
       "path": "contracts/zone-v1/codes.gen.js",
-      "sha256": "620150853cfff87b9b88bdcb59211776fbd32010f8d77f84218052160a275252"
+      "sha256": "4c1776a6bc9347681fcc4b96c67bf7c7eb0e06003b6e4ebac69ed55ff0b2daf7"
     },
     {
       "path": "contracts/zone-v1/common/v1/index.gen.d.ts",
-      "sha256": "73bf54af9876bb97d31309c40168350990c24185ff4ce4e8b3b804a28da473f3"
+      "sha256": "54e13cc17ebedee142be2947896c095a20394250a61c857d11628a5f3d23a2f8"
     },
     {
       "path": "contracts/zone-v1/common/v1/index.gen.js",
-      "sha256": "513e45bd407432eb4b3819967fd3ae8088b37b3d3e4f96dfd558e53382370dfa"
+      "sha256": "0cb4c23d7986d3f8176527dbaa66b06423c7d3e2369c4d4643b55b6763dc981d"
     },
     {
       "path": "contracts/zone-v1/fixtures/compatibility.gen.json",
-      "sha256": "b8a96126447aca665b41a8104a77e20aa8599dfc0dd43c6edebd2d7a3762932e"
+      "sha256": "a62a9641bcdc5cb312626819e74d16e96328e4fe9f727a79e56fff645b68c2f1"
     },
     {
       "path": "contracts/zone-v1/fixtures/invalid.gen.json",
-      "sha256": "675f574f8320dc8534820eaaead07e254946b1c90a69874f556d2a5afbdfa82d"
+      "sha256": "ff961d93b238e87657cb334edbd9db35d0db99fbf1a983479059ff5968f651de"
     },
     {
       "path": "contracts/zone-v1/fixtures/path-traversal.gen.json",
@@ -126,7 +147,7 @@
     },
     {
       "path": "contracts/zone-v1/fixtures/roundtrip.gen.json",
-      "sha256": "8a29006b1cedf202318ab03426e83b349a3a3d724455cb062bcefab23d256b0b"
+      "sha256": "973b5b089f0f063147c289cdcfeccd039a590ba3e67e6af1c04371084b4a0d49"
     },
     {
       "path": "contracts/zone-v1/fixtures/secret-negative.gen.json",
@@ -134,23 +155,31 @@
     },
     {
       "path": "contracts/zone-v1/fixtures/valid.gen.json",
-      "sha256": "df0d8dbdd503af168abb941b9f7ed426d5499d38fb0b9cedd013927fe3cfc984"
+      "sha256": "255662b50b17cc8774568c9c6eb98a23036798a2cf2333dcabeff4e75d922fae"
     },
     {
       "path": "contracts/zone-v1/provenance.gen.json",
-      "sha256": "1811c284ecc5fd437b07816e41bbdc3b9875f3a5451f4d4e6706c42ca4abfb96"
+      "sha256": "ff86a64516c89812ef8a9bc3bbafabd70e68c4b0d804ace73ae5195e82b4c09f"
+    },
+    {
+      "path": "contracts/zone-v1/runtime/v2/index.gen.d.ts",
+      "sha256": "15f401a9d50ed225efb97669058c39a60c80405f3eff5898278876aff6372abc"
+    },
+    {
+      "path": "contracts/zone-v1/runtime/v2/index.gen.js",
+      "sha256": "ef7563bef688d00ef8c38aa5cda7ad87da40d7e6bc294d865139cf98cbde94ee"
     },
     {
       "path": "contracts/zone-v1/schema-bundle.gen.json",
-      "sha256": "49f6395ef64e87534953094d06a6fc2fce8b84c98584e07629eec49475a3da6f"
+      "sha256": "f6ea076f644ca18061e41201009c7670d9d61d95fad0c1ff190514a4a8d7a351"
     },
     {
       "path": "contracts/zone-v1/validators.gen.js",
-      "sha256": "630e92ac2d7ebe9b62bbae188c228d634e9aafaf969e2a7462efa3ae616bc852"
+      "sha256": "8a72ecdd4a877b6ef226a44311bb53cf199bb5a44555d6eec259035a4cee20a4"
     },
     {
       "path": "package.json",
-      "sha256": "f794af92f7d04dbb9ec49910498da78c1b7dc6641bcadad02b3459eadbbcb7d6"
+      "sha256": "07787596cc103c19ee0ea9f5e93ada324fe116c95d5eb2e76fb12136f67be531"
     }
   ],
   "provenance_regenerate": "node --use-env-proxy contracts/generate.mjs"

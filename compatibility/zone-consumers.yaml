@@ -15,24 +15,29 @@
 zone_v1:
   package: "@sudo/contracts@0.2.0-rc.1 (TS) / sudo-contracts@0.2.0-rc.1 (Rust)"
   owner_revisions:
-    nexus_vfs: 763f8c0fef392da8c1151fc3f17b3a6f3f707dbd
-    nexus: b19a9868c91fba89121d8f12dad6f74cc80d7b13
+    nexus_vfs: bc89aa638b6ebfa05ce9491fb6a2e0c841febe2c
+    nexus: d78448594c7dd00d71581b62919ab0ca60cfedbb
     moss_metadata_only: 406427e280b55d04b5dbf097bd84da1194ace6e9
   families:
     common.sudo.dev/v1: [PrincipalRef, ResourceRef]
-    auth.sudo.dev/v1: [Zone, ZoneCreateRequest, ZonePatchRequest, ZoneGrant, ZoneGrantCreateRequest, ZoneOperation, ErrorInfo]
+    auth.sudo.dev/v1: [Zone, ZoneCreateRequest, ZonePatchRequest, ZoneGrant, ZoneGrantCreateRequest, ZoneOperation, ErrorInfo, ZoneDelegation, ZoneDelegationIssueRequest, ZoneDelegationScopeRule]
 
 consumers:
   moss:
     language: typescript
-    pin: "github:sudoprivacy/sudostack#a479b8cbfe0a144629764a060ef026fb6d043f7c"
-    pin_status: "0.2.0-rc.1 consumer adoption verified in step 10"
-    implementation_revision: 27c6a43167ddcf50d61d11d50a7fad63a0cda83e
+    pin: "github:sudoprivacy/sudostack#8323b0f6ac50270594dd76120919c20cc57318dd"
+    pin_status: >-
+      equivalence-judged: the moss consumption surface (contracts/zone-v1/
+      derived artifacts) is byte-identical from 8323b0f through HEAD —
+      generate inputs are unchanged, so regeneration does not alter them
+      ("up to date" confirmed by the regeneration run). Kept at 8323b0f:
+      the consumption surface has no functional difference to upgrade to.
+    implementation_revision: 0bf6f4ff08fcf854f1b0f75d5e4f77d605736948
     consumes: { zone-id: [v0.1-shape], "common.sudo.dev/v1": [v1], "auth.sudo.dev/v1": [v1] }
   sudocode:
     language: rust
-    pin: "pinned via nexus workspace (nexusd cohost-sudocode feature); alignment enforced by release matrix at step 10"
-    pin_status: "step 08 complete at 7f1c90a2db9aed6dbe05d84e883915e105101b44; nexus-vfs pin 763f8c0fef392da8c1151fc3f17b3a6f3f707dbd"
+    pin: "pinned via nexus workspace (nexusd cohost-sudocode feature); alignment enforced by release matrix"
+    pin_status: "cohost pin complete at 4740251c7f; nexus-vfs pin bc89aa638b6ebfa05ce9491fb6a2e0c841febe2c"
     consumes: { "common.sudo.dev/v1": [ResourceRef] }
   nexus:
     language: python-owner-local
@@ -55,24 +60,30 @@ pin_alignment_gate:
   covered_now:
     - "sudostack derivation pin -> same compatible owner rev (provenance.gen.json)"
     - "Nexus source Cargo pin -> nexus-vfs exact rev (nexus source-lock.gen.json; single rev verified in nexus tests)"
-    - "Moss @sudo/contracts pin -> derived package source manifest a479b8cbfe0a144629764a060ef026fb6d043f7c"
-    - "sudocode nexus-vfs pin -> 763f8c0fef392da8c1151fc3f17b3a6f3f707dbd (step 08)"
+    - "Moss @sudo/contracts pin -> derived package source manifest 8323b0f6ac50270594dd76120919c20cc57318dd (equivalence-judged, see consumers.moss)"
+    - "sudocode nexus-vfs pin -> bc89aa638b6ebfa05ce9491fb6a2e0c841febe2c (cohost pin 4740251c7f)"
     - "Moss nexusd-cluster topology -> three-line machine-readable record below"
   deferred_to_step_10_assembly: []
 
 nexus_runtime_topology:
   admin_plane:
     transport: "MOSS_NEXUS_V2_BASE_URL HTTP"
-    nexus_commit: b19a9868c91fba89121d8f12dad6f74cc80d7b13
-    nexus_vfs_revision: 763f8c0fef392da8c1151fc3f17b3a6f3f707dbd
+    nexus_commit: a8194cf444c0b35cc056ea8950f659135776a11f
+    nexus_vfs_revision: bc89aa638b6ebfa05ce9491fb6a2e0c841febe2c
     status: aligned
   secrets_plane_embedded:
-    runtime_version_pin: "0.1.5"
-    observed_version: "nexusd-cluster v0.1.5 (nexus-cluster 0.1.1, plugin-abi 6)"
-    binary_sha256: 53b31d8f3e7d9280087ab1b9443b275706be629de0f47e24a0a31ddcf8f2a67c
+    runtime_version_pin: "0.1.6"
+    observed_version: "nexusd-cluster 0.1.6 (nexus-cluster 0.1.1, plugin-abi 7)"
+    binary_sha256: 466fdd50deba9000f4219387d58e7c24fb8f37a2701f3c530df1c28e2d628871
     binary_path: "moss/bin/nexus/nexusd.exe (git-ignored local artifact)"
-    historical_nexus_commit: 251333f87c136b0e3e530ab1a237f81320145240
-    historical_nexus_vfs_revision: b878b015bf2b4663063425af19902b18c09890b9
-    status: "mixed-version topology: secrets plane on legacy 0.1.5 (vfs b878b015-era) while admin plane on matrix HEAD"
+    build_provenance: >-
+      locally built from feat/contract-zone HEADs (nexus-vfs bc89aa638 for
+      the daemon; vault cdylib from nexus a8194cf444), version stamped via
+      NEXUSD_BUILD_VERSION=0.1.6, not distributed from any release source;
+      vault plugin signed with a local Ed25519 key trusted through the
+      kernel NEXUS_LOCAL_TRUSTED_KEYS_DIR DEV seam
+    vault_plugin_sha256: 941892ccccf1eeb15590cf8e0c2577468ab88f95be1d39eec416a0dbb18c5c3d
+    vault_plugin_abi: 7
+    status: "converged locally: secrets plane built from the same source revisions as the admin plane (plugin-abi 7/7, drift resolved)"
   external_grpc:
     status: "unverified path"

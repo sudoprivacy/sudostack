@@ -2,4 +2,4 @@
 // Owners at pinned revisions: nexus-vfs bc89aa638 (projections), nexus d78448594 (schemas/fixtures).
 // Validators are ajv 8.18.0 standalone output (2020-12): self-contained, consumers need no ajv at runtime.
 
-export { validatePrincipalRef, validateResourceRef } from '../../validators.gen.js'
+export { validateRuntimeResourceScope } from '../../validators.gen.js'
