@@ -1,68 +1,69 @@
 {
-  "generated_at": "2026-09-22T12:00:20.5054561Z",
-  "work_item": "SW-20260915-002-INTEGRATION G7 live proof",
+  "generated_at": "2026-09-29T07:30:00Z",
+  "work_item": "SW-20260915-002-INTEGRATION G7 live proof (rerun after 2026-09-29 audit remediation)",
   "status": "Confirmed-Deployment",
   "status_scope": "local-full-profile-target-artifact",
   "production_deployment_executed": false,
   "scope": "local real-process full-profile target-artifact verification; no release, production migration, traffic switch, or external deployment was executed",
   "process_model": {
     "nexus": "real OS subprocess: Python nexusd full profile, which spawns the current Rust nexusd-cluster kernel; exercised over loopback HTTP",
-    "moss": "real OS subprocess: node bin/moss-server.mjs; exercised over loopback HTTP",
-    "orchestration": "automated E2E harness; servers are not in-process test doubles"
+    "moss": "real OS subprocess: node bin/moss-server.mjs with the locally converged embedded secrets plane; exercised over loopback HTTP",
+    "orchestration": "ad-hoc proof script driving real processes; servers are not in-process test doubles"
   },
   "revisions": {
-    "nexus": "b19a9868c91fba89121d8f12dad6f74cc80d7b13",
-    "nexus_vfs": "763f8c0fef392da8c1151fc3f17b3a6f3f707dbd",
-    "moss": "27c6a43167ddcf50d61d11d50a7fad63a0cda83e",
-    "sudocode": "7f1c90a2db9aed6dbe05d84e883915e105101b44",
-    "sudostack_release": "a479b8cbfe0a144629764a060ef026fb6d043f7c"
+    "nexus": "a8194cf444c0b35cc056ea8950f659135776a11f",
+    "nexus_vfs": "bc89aa638b6ebfa05ce9491fb6a2e0c841febe2c",
+    "moss": "0bf6f4ff08fcf854f1b0f75d5e4f77d605736948",
+    "sudocode": "4740251c7f",
+    "sudostack_release": "f4b9020"
   },
   "contract_release": {
     "manifest": "releases/zone-v1/release-manifest.gen.json",
-    "manifest_sha256": "240a26c31c97028397014d9f4f5cab8d1a5215ffcc5db8a2f7e938a555d451dd",
+    "manifest_sha256": "3b0283232bb6982947725242019d7a50b6f0de10c73e56917b53129ba34f13d8",
     "package": "@sudo/contracts@0.2.0-rc.1",
     "offline_bundle_verified": true,
     "sbom_verified": true
   },
   "full_profile": {
     "nexus_api_started": true,
-    "auth_provider_armed": true,
-    "permission_provider_armed": true,
+    "auth_armed": true,
     "rebac_armed": true,
     "zone_runtime_armed": true,
     "grant_projection_armed": true,
+    "delegation_membership_armed": true,
     "composite_armed": true,
+    "worker_enabled": true,
+    "transfer_armed": false,
+    "transfer_note": "transfer stays fail-closed by design (no policy/executor armed); unsupported requests return UNSUPPORTED_CAPABILITY",
     "zone_capability_version": "auth.sudo.dev/v1",
-    "service_identity": "local loopback bearer service identity",
+    "service_identity": "local loopback bearer service identity (trusted issuer moss-e2e for delegations)",
     "mtls": "not exercised; external gRPC path remains explicitly unverified"
   },
   "p1b_runtime_probe": {
     "session_http": 201,
     "start_http": 201,
-    "session_id": "g7-live-session",
-    "session_home_zone": "g7-live-zone",
-    "task_id": "task_6179df1312c859f8b9210d8db2de31f5",
-    "attempt_id": "attempt_f05f482f8559445882a3c69a1ad7f263",
-    "attempt_execution_zone": "g7-live-zone",
+    "session_id": "g7r-live-session",
+    "session_home_zone": "g7r-live-zone",
+    "task_id": "task_c3ac5f79e56a5410b835bb8498aaa267",
+    "attempt_id": "attempt_1ec6c9b8f7634819aea731168ffa9871",
+    "attempt_execution_zone": "g7r-live-zone",
     "attempt_state": "running",
     "task_storage": {
-      "zone_id": "g7-live-zone",
-      "vfs_path": "/sessions/g7-live-session/tasks/task_6179df1312c859f8b9210d8db2de31f5/spec.json",
-      "bytes_written": 474
+      "zone_id": "g7r-live-zone",
+      "vfs_path": "/sessions/g7r-live-session/tasks/task_c3ac5f79e56a5410b835bb8498aaa267/spec.json",
+      "bytes_written": 499
     }
   },
   "moss_target_artifact": {
     "entrypoint": "bin/moss-server.mjs",
-    "build": "passed",
-    "server_suite": "Bun 184/184; Node 184/184; real-process Zone E2E 12/12",
-    "embedded_nexus_version": "nexusd-cluster v0.1.5 (nexus-cluster 0.1.1, plugin-abi 6)",
-    "embedded_nexus_sha256": "53b31d8f3e7d9280087ab1b9443b275706be629de0f47e24a0a31ddcf8f2a67c",
-    "embedded_daemon_plugin_abi": 6,
-    "vault_plugin_abi": 6,
-    "vault_plugin_sha256": "23feff52fa05d14d404db05bc27b0a84b9ef3a27447851842b03cd70c476cdad",
-    "current_daemon_plugin_abi": 7,
-    "current_loader_accepts_plugin_abi": [6, 7],
-    "plugin_abi_status": "compatible-but-drifted; executable check: compatibility/check-runtime-topology.py",
-    "topology": "mixed-version: embedded secrets plane is legacy 0.1.5; admin plane and P1b probe use current Nexus"
+    "build": "passed (build:node; nexus runtime fetch skipped via matching markers)",
+    "server_suite": "bun + node runners passed (scripts/test-server.js); real-process Zone E2E included and green",
+    "embedded_nexus_version": "nexusd-cluster 0.1.6 (nexus-cluster 0.1.1, plugin-abi 7)",
+    "embedded_nexus_sha256": "466fdd50deba9000f4219387d58e7c24fb8f37a2701f3c530df1c28e2d628871",
+    "embedded_daemon_plugin_abi": 7,
+    "vault_plugin_abi": 7,
+    "vault_plugin_sha256": "941892ccccf1eeb15590cf8e0c2577468ab88f95be1d39eec416a0dbb18c5c3d",
+    "vault_plugin_signing": "local Ed25519 key via NEXUS_LOCAL_TRUSTED_KEYS_DIR (kernel loader DEV seam); signature verified at startup (loader is fail-loud, so successful startup is the verification)",
+    "topology_check": "python compatibility/check-runtime-topology.py -> runtime topology verified, drift=no"
   }
 }
