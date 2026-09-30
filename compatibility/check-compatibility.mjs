@@ -6,9 +6,11 @@
  * change that would break an existing consumer:
  *
  *   required-added   — a field that was optional (or absent) becomes required
+ *   property-removed — a field disappears from the schema
+ *   schema-removed   — a whole schema disappears from the set
  *   type-changed     — a field's type/const/enum shape changes
- *   validation-tightened — pattern changes, enum shrinks, maxLength shrinks,
- *                          minLength grows, maximum drops, minimum rises
+ *   validation-tightened — pattern changes or appears, enum shrinks or appears,
+ *                          maxLength/minLength/maximum/minimum tighten or appear
  *
  *   node compatibility/check-compatibility.mjs                     # vs the committed baseline snapshot
  *   node compatibility/check-compatibility.mjs --snapshot           # refresh the baseline (after an accepted release)
@@ -90,7 +92,12 @@ function diffSchema(oldDoc, newDoc, findings) {
   }
   for (const [name, oldProp] of Object.entries(oldProps)) {
     const newProp = newProps[name]
-    if (!newProp) continue // deletions are a major bump, flagged by required-added logic elsewhere
+    if (!newProp) {
+      // A property disappearing breaks every consumer that sends or reads it —
+      // the mirror image of required-added, not a major-bump footnote.
+      findings.push({ kind: 'property-removed', schema: id, field: name })
+      continue
+    }
     if (typeShape(oldProp) !== typeShape(newProp)) {
       findings.push({ kind: 'type-changed', schema: id, field: name, from: typeShape(oldProp), to: typeShape(newProp) })
       continue
@@ -103,18 +110,33 @@ function diffSchema(oldDoc, newDoc, findings) {
       if (removed.length) {
         findings.push({ kind: 'validation-tightened', schema: id, field: name, rule: 'enum-shrunk', removed })
       }
+    } else if (!Array.isArray(oldProp.enum) && Array.isArray(newProp.enum)) {
+      // Constraining a previously free-form field rejects values that used to pass.
+      findings.push({ kind: 'validation-tightened', schema: id, field: name, rule: 'enum-added' })
     }
     if (oldProp.maxLength !== undefined && newProp.maxLength !== undefined && newProp.maxLength < oldProp.maxLength) {
       findings.push({ kind: 'validation-tightened', schema: id, field: name, rule: 'maxLength' })
     }
+    if (oldProp.maxLength === undefined && newProp.maxLength !== undefined) {
+      findings.push({ kind: 'validation-tightened', schema: id, field: name, rule: 'maxLength-added' })
+    }
     if (oldProp.minLength !== undefined && newProp.minLength !== undefined && newProp.minLength > oldProp.minLength) {
       findings.push({ kind: 'validation-tightened', schema: id, field: name, rule: 'minLength' })
+    }
+    if (oldProp.minLength === undefined && newProp.minLength !== undefined) {
+      findings.push({ kind: 'validation-tightened', schema: id, field: name, rule: 'minLength-added' })
     }
     if (oldProp.maximum !== undefined && newProp.maximum !== undefined && newProp.maximum < oldProp.maximum) {
       findings.push({ kind: 'validation-tightened', schema: id, field: name, rule: 'maximum' })
     }
+    if (oldProp.maximum === undefined && newProp.maximum !== undefined) {
+      findings.push({ kind: 'validation-tightened', schema: id, field: name, rule: 'maximum-added' })
+    }
     if (oldProp.minimum !== undefined && newProp.minimum !== undefined && newProp.minimum > oldProp.minimum) {
       findings.push({ kind: 'validation-tightened', schema: id, field: name, rule: 'minimum' })
+    }
+    if (oldProp.minimum === undefined && newProp.minimum !== undefined) {
+      findings.push({ kind: 'validation-tightened', schema: id, field: name, rule: 'minimum-added' })
     }
   }
 }
@@ -123,7 +145,12 @@ export function diffSets(oldSet, newSet) {
   const findings = []
   for (const [id, oldDoc] of Object.entries(oldSet)) {
     const newDoc = newSet[id]
-    if (newDoc) diffSchema(oldDoc, newDoc, findings)
+    if (!newDoc) {
+      // A schema disappearing breaks every consumer of that $id outright.
+      findings.push({ kind: 'schema-removed', schema: id })
+      continue
+    }
+    diffSchema(oldDoc, newDoc, findings)
   }
   return findings
 }

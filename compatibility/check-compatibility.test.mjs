@@ -69,3 +69,61 @@ test('relaxations stay silent (maxLength grows)', () => {
   const findings = diffSets({ [old.$id]: old }, { [now.$id]: now })
   assert.equal(findings.length, 0)
 })
+
+test('detects property-removed', () => {
+  const old = base('https://x/v1/a.schema.json', { name: { type: 'string' }, note: { type: 'string' } }, ['name'])
+  const now = base('https://x/v1/a.schema.json', { name: { type: 'string' } }, ['name'])
+  const findings = diffSets({ [old.$id]: old }, { [now.$id]: now })
+  assert.equal(findings.length, 1)
+  assert.equal(findings[0].kind, 'property-removed')
+  assert.equal(findings[0].field, 'note')
+})
+
+test('detects schema-removed', () => {
+  const old = base('https://x/v1/a.schema.json', { name: { type: 'string' } }, ['name'])
+  const findings = diffSets({ [old.$id]: old }, {})
+  assert.equal(findings.length, 1)
+  assert.equal(findings[0].kind, 'schema-removed')
+  assert.equal(findings[0].schema, old.$id)
+})
+
+test('detects validation tightening: enum added where none was', () => {
+  const old = base('https://x/v1/a.schema.json', { status: { type: 'string' } }, ['status'])
+  const now = base('https://x/v1/a.schema.json', { status: { type: 'string', enum: ['a', 'b'] } }, ['status'])
+  const findings = diffSets({ [old.$id]: old }, { [now.$id]: now })
+  assert.equal(findings.length, 1)
+  assert.equal(findings[0].kind, 'validation-tightened')
+  assert.equal(findings[0].rule, 'enum-added')
+})
+
+test('detects validation tightening: maxLength added', () => {
+  const old = base('https://x/v1/a.schema.json', { n: { type: 'string' } }, ['n'])
+  const now = base('https://x/v1/a.schema.json', { n: { type: 'string', maxLength: 63 } }, ['n'])
+  const findings = diffSets({ [old.$id]: old }, { [now.$id]: now })
+  assert.equal(findings.length, 1)
+  assert.equal(findings[0].rule, 'maxLength-added')
+})
+
+test('detects validation tightening: minLength added', () => {
+  const old = base('https://x/v1/a.schema.json', { n: { type: 'string' } }, ['n'])
+  const now = base('https://x/v1/a.schema.json', { n: { type: 'string', minLength: 3 } }, ['n'])
+  const findings = diffSets({ [old.$id]: old }, { [now.$id]: now })
+  assert.equal(findings.length, 1)
+  assert.equal(findings[0].rule, 'minLength-added')
+})
+
+test('detects validation tightening: maximum added', () => {
+  const old = base('https://x/v1/a.schema.json', { n: { type: 'integer' } }, ['n'])
+  const now = base('https://x/v1/a.schema.json', { n: { type: 'integer', maximum: 3600 } }, ['n'])
+  const findings = diffSets({ [old.$id]: old }, { [now.$id]: now })
+  assert.equal(findings.length, 1)
+  assert.equal(findings[0].rule, 'maximum-added')
+})
+
+test('detects validation tightening: minimum added', () => {
+  const old = base('https://x/v1/a.schema.json', { n: { type: 'integer' } }, ['n'])
+  const now = base('https://x/v1/a.schema.json', { n: { type: 'integer', minimum: 60 } }, ['n'])
+  const findings = diffSets({ [old.$id]: old }, { [now.$id]: now })
+  assert.equal(findings.length, 1)
+  assert.equal(findings[0].rule, 'minimum-added')
+})
