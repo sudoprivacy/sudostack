@@ -1,0 +1,38 @@
+{
+  "override_version": 1,
+  "state": "owner_sources_remotely_available",
+  "candidate_content_revision": "30da0ddd953268ff8a9a0f0980276300ab153003",
+  "activation_revision": "60bd8dda6fb2d348ec8571b9b1a4eaa535e36dc5",
+  "previous": {
+    "source_availability": {
+      "local": "requires_SUDOSTACK_REPOS_ROOT",
+      "remote": "blocked_unpublished",
+      "reason": "The pinned Nexus and nexus-vfs owner commits are immutable local commits but are not available on their remotes."
+    },
+    "source_lock_sha256": "6528b2b77f0dfd5c8c990461530c850aadd1227b889bbc331ad2171064cc9d36",
+    "source_closure_sha256": "619fe96585cf71038b19a2177f5a040ee618c719f32723dbbb12ea731be29dfd",
+    "candidate_manifest_sha256": "736b96332c13e0c99c13cb2458df0da5fcc64c1a1730967f2438e9199c8f80c4"
+  },
+  "current": {
+    "source_availability": {
+      "local": "requires_SUDOSTACK_REPOS_ROOT",
+      "remote": "available",
+      "reason": "Exact Nexus and nexus-vfs owner commits are published and remotely byte-verifiable."
+    }
+  },
+  "published_owner_evidence": {
+    "nexus-vfs": {
+      "branch": "claude/lucid-mclaren-a2add9",
+      "revision": "24f6730ec90fab8a035b2f5400ed313bda343fbe",
+      "probe_path": "contracts/zone-id/spec.json",
+      "probe_sha256": "6f5fb408d08de19172ac1d10b793a143588494ec6dae5326e60f9de5a2bce4d7"
+    },
+    "nexus": {
+      "branch": "claude/zealous-spence-a6e3c5",
+      "definition_revision": "5139e2019d7f46d4dde3f73ee6cd21bb094a7dc1",
+      "provenance_revision": "759842551697efa2579a92f24b16f8ae43829e7b",
+      "probe_path": "src/nexus/contracts/schemas/common/v1/resource-ref.schema.json",
+      "probe_sha256": "15ce4b2ed53f1278a40dc313a837e170a77fb4ea026022898479dd0135b798b7"
+    }
+  }
+}

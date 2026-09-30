@@ -2,33 +2,11 @@
   "name": "@sudo/contracts",
   "version": "0.2.0-rc.1",
   "private": true,
-  "description": "Derived cross-repo contract artifacts. Generated from upstream specs at the revisions named in contracts/*/pin.json — do not edit the .gen.* files.",
   "type": "module",
   "exports": {
-    "./zone-id": "./contracts/zone-id/zone-id.gen.ts",
+    "./zone-id": "./contracts/zone-id/zone-id.gen.js",
     "./common/v1": "./contracts/zone-v1/common/v1/index.gen.js",
     "./auth/v1": "./contracts/zone-v1/auth/v1/index.gen.js",
     "./runtime/v2": "./contracts/zone-v1/runtime/v2/index.gen.js"
-  },
-  "files": [
-    "contracts/**/*.gen.ts",
-    "contracts/**/*.gen.js",
-    "contracts/**/*.gen.json",
-    "contracts/**/*.gen.d.ts"
-  ],
-  "scripts": {
-    "generate": "node --use-env-proxy contracts/generate.mjs",
-    "check": "node contracts/generate.mjs --check",
-    "test": "node --experimental-strip-types --test contracts/zone-id/conformance.test.mjs contracts/zone-v1/conformance/conformance.test.mjs compatibility/check-compatibility.test.mjs",
-    "compatibility": "node compatibility/check-compatibility.mjs",
-    "release": "node contracts/zone-v1/release.mjs",
-    "verify:offline": "node contracts/zone-v1/verify-offline-bundle.mjs",
-    "sbom": "npx @cyclonedx/cyclonedx-npm --output-file releases/zone-v1/sbom.cdx.gen.json --flatten-components --output-reproducible --validate && node contracts/zone-v1/normalize-sbom.mjs",
-    "adr:enforced-by": "node docs/adr/enforced-by.mjs",
-    "adr:enforced-by:test": "node --test docs/adr/enforced-by.test.mjs"
-  },
-  "devDependencies": {
-    "@cyclonedx/cyclonedx-npm": "6.0.1",
-    "ajv": "8.18.0"
   }
 }

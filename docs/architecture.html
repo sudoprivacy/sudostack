@@ -348,7 +348,7 @@ interface TaskExecutionResolution {
 </div>
 
 <h2>五、六个产品契约与物理落点</h2>
-<p>六契约是 ACP/MCP/WebSocket/IPC <b>之上</b>的产品语义层，不替代传输层。短期把现有 bridge/API 返回值逐步包进版本化 schema（Zod → <code>@sudo/contracts</code> → 契约注册中心）；semver，breaking = major bump，CI 加兼容性检查。</p>
+<p>六契约是 ACP/MCP/WebSocket/IPC <b>之上</b>的产品语义层，不替代传输层。短期把现有 bridge/API 返回值逐步对齐到由 semantic owner 维护的版本化定义，再按「semantic-owner canonical source → <code>sudostack</code> exact pin / 派生 <code>@sudo/contracts</code> 或离线 artifact → consumer exact pin」分发；family major 管 wire breaking，CI 加兼容性检查，不依赖在线契约注册中心。</p>
 <table>
 <tr><th>契约</th><th>作用</th><th>matrix 物理落点</th><th>层</th></tr>
 <tr><td><b>TaskSpec</b></td><td>描述一个可执行任务</td><td><code>/proc/{pid}/</code>（+ session 关联）</td><td>runtime</td></tr>

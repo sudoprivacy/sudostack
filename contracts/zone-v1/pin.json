@@ -10,7 +10,13 @@
     "consumes would be worse than none).",
     "",
     "The nexus-vfs rev must match the revision the shipped daemon builds use;",
-    "the nexus rev is the draft-frozen owner commit that carries contracts/."
+    "the nexus rev is the draft-frozen owner commit that carries contracts/.",
+    "",
+    "Scope: this pin fixes the ZONE-V1 FAMILY derivation only. The",
+    "zone-id/zone-path mainline (contracts/zone-id, contracts/zone-path) is",
+    "pinned separately by contracts/sources.lock.json — two lineages, each",
+    "locked to full immutable commits (ADR005-SOURCE-02). Aligning this pin",
+    "onto the sources.lock revision is its own work item, not a silent bump."
   ],
   "nexus-vfs": {
     "rev": "bc89aa638b6ebfa05ce9491fb6a2e0c841febe2c",

@@ -29,7 +29,7 @@ import {
   CAPABILITY_PATTERN,
 } from '../auth/v1/index.gen.js'
 import { validateRuntimeResourceScope } from '../runtime/v2/index.gen.js'
-import { validateZoneId } from '../../zone-id/zone-id.gen.ts'
+import { validateZoneId } from '../../zone-id/zone-id.gen.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const FIXTURES = join(HERE, '..')

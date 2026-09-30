@@ -1,0 +1,25 @@
+{
+  "activation_version": 1,
+  "state": "candidate_content_revision_recorded",
+  "candidate_content_revision": "30da0ddd953268ff8a9a0f0980276300ab153003",
+  "commit_binding": "activated_by_containing_commit",
+  "precursor_candidate_manifest": {
+    "path": "manifests/releases/0.2.0-candidate.gen.json",
+    "sha256": "85fef7a5a918333684cbf912361b4ae9455565a32474b17c9f5c0cd652ed71fd"
+  },
+  "additional_attributed_paths": [
+    "README.md",
+    "compatibility/baselines/0.1.0.json",
+    "contracts/sources.lock.json",
+    "package-lock.json",
+    "package.json"
+  ],
+  "lifecycle_constraints": {
+    "adr_maturity": "proposed",
+    "contract_baseline": "draft-frozen",
+    "artifact_publication": "candidate_unpublished",
+    "deployment_evidence": "not_deployed",
+    "actual_producers": [],
+    "actual_consumers": []
+  }
+}

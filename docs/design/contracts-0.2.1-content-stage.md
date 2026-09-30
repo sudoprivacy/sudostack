@@ -1,0 +1,114 @@
+# `@sudo/contracts@0.2.1` content-stage candidate
+
+Date: 2026-09-20
+Scope: immutable `SW-20260917-001-SUDOSTACK-CANDIDATE2` content-stage record plus package-external `SUDOSTACK-ACTIVATE2` outcome
+
+This document is a staging record, not a second Contract source of truth. Canonical definitions remain with their semantic owners, and the generated SudoStack artifacts remain the distribution source of record.
+
+## Current facts
+
+| Fact | State | Evidence classification |
+|---|---|---|
+| Historical package | `@sudo/contracts@0.2.0`, 42 files, 37,901 bytes, SHA-1 `2aa7a118da0adf6b7b486f9538fe20204001dcae`, SHA-256 `6f3b1bbbcc669b0b9dadd2dbdbc2c01fc5eb473a4839ddad45e0d172343073f8` | Confirmed-Code |
+| Candidate package version | `0.2.1` | Confirmed-Code |
+| Runtime Contract, Schema, fixture, validator and owner-source bytes | Byte-identical to the immutable `0.2.0` baseline | Confirmed-Code |
+| Embedded candidate revision | `null`; immutable C-stage metadata preserved at content C `273fd4097cbc33c1c049c39bb1fb60cef2663e2b` | Confirmed-Code |
+| Candidate lifecycle | Package metadata remains `staged`, `unfrozen`, `candidate_unpublished`, `not_deployed` | Confirmed-Code |
+| Embedded producer/consumer support | Empty; the exact C package is unchanged | Confirmed-Code |
+| Candidate-specific Moss evidence | M `e9660ed1483cf01f96fe06c45ba7e070e0223ec3`, integrated as `18a0a069b808c295287675afc6346f411be971a5`, exact-pins C and passes required CI | Confirmed-Code |
+| Package-external activation | [`0.2.1-activation-support.json`](../../manifests/operations/0.2.1-activation-support.json) verifies exact C+M, unchanged package bytes and no repin A | Confirmed-Code |
+| C-03 | Resolved only for the included Moss/ZoneId embedded boundary; package-wide freeze and assembly remain out of scope | Confirmed-Code; scope-bounded |
+| Release or deployment | None | Confirmed-Code for manifest declarations; live deployment remains Unknown |
+
+A patch version is appropriate because the candidate changes package/version metadata, compatibility and provenance metadata, and staging verification only. It makes no wire, runtime, Schema, fixture, validator, owner-source, dependency, export, or package-script change.
+
+## Immutable `0.2.0` baseline
+
+[`compatibility/baselines/0.2.0-package.json`](../../compatibility/baselines/0.2.0-package.json) is derived from SudoStack revision `5a2a53130e37d1c63993ebf8ba1253b15eb9eebf`. It records the complete historical tarball identity, all 42 packed paths and per-file SHA-256 values, internal generated/source files, and the historical candidate, activation, availability, support, and verifier bytes.
+
+Current tooling verifies that baseline against Git objects at the exact revision and runs the original `0.2.0` verification logic from an isolated detached checkout. The historical records are not interpreted under `0.2.1` rules. The package-included README and source-closure manifest also remain byte-identical historical/source-closure context; their `draft-frozen` wording does not override the staged candidate manifest's explicit `unfrozen` lifecycle.
+
+The only permitted packed-content delta from `0.2.0` is:
+
+1. `package.json`: the package version changes from `0.2.0` to `0.2.1` and no other byte changes;
+2. `compatibility/current.gen.json`: records the `0.2.0` to `0.2.1` byte-identical compatibility result and pending support state;
+3. `manifests/releases/0.2.1-candidate.gen.json`: one new staged candidate manifest.
+
+`package-lock.json` changes only its top-level and root-package version fields. The historical `0.2.0` candidate remains packed and byte-identical.
+
+## Terminating C → M → A choreography
+
+The dependency graph is acyclic because every stage refers only to an already-existing earlier stage:
+
+1. **C — SudoStack content commit.** C contains the installable `0.2.1` package, immutable baseline, staged manifest, and verification tooling. Its manifest keeps `candidate_revision: null` and `activation_state: pending_future_commit`; C never records its own SHA.
+2. **M — Moss evaluation/re-pin commit.** After C exists, Moss exact-pins `github:sudoprivacy/sudostack#<C full SHA>`. M must prove the installed `0.2.1` identity and unchanged embedded `NexusManager.start()` boundary in default CI. This is an unfrozen evaluation pin used to collect evidence, not support-matrix admission, release, or deployment.
+3. **A — SudoStack package-external activation/support record.** After M exists, A records and verifies the already-known C and M SHAs, immutable package bytes, real caller, exact pin, rejection/no-side-effect behavior, and default CI. A does not modify the package bytes that Moss consumed at C, does not require Moss to repin A, and is the earliest stage at which C-03 may be decided.
+
+No stage embeds a future revision. A must not record its own containing commit SHA. If A cannot verify both C and M without changing C's package bytes, it must fail closed rather than request another repin.
+
+## Downstream Moss packet contract
+
+`MOSS-REPIN2` receives these immutable inputs after C is committed:
+
+- repository: `sudoprivacy/sudostack`;
+- package: `@sudo/contracts@0.2.1`;
+- exact dependency: `github:sudoprivacy/sudostack#273fd4097cbc33c1c049c39bb1fb60cef2663e2b`;
+- candidate manifest: `manifests/releases/0.2.1-candidate.gen.json`;
+- candidate manifest SHA-256: `956a19cbc6b42ebc3c4e1c9ebe93e0842e1c295d1f6465e0d42d532d45785a9b`;
+- compatibility manifest SHA-256: `a27553991ab8bd57d66bc12aaca4b08f52cd8def13a1f971d698fa3f435b35ad`;
+- immutable predecessor baseline SHA-256: `9ec2cffbcb19f3e728a6691176ed739bab6de52a56b60abe4217420d2ce0c17c`;
+- expected package support state: empty producer/consumer arrays and `pending_moss_repin`;
+- required boundary: installed ZoneId validator at the real embedded `NexusManager.start()` path, immutable binding, exactly one `--cluster-init` argument, invalid-value rejection before process creation, no side effects, and explicit external-mode exclusion;
+- forbidden claims: `ResourceRef` adoption, runtime `ZonePath` adoption, release, deployment, or C-03 closure.
+
+The content-stage manifest intentionally retains `candidate_revision: null`; immutable C is resolved externally as `273fd4097cbc33c1c049c39bb1fb60cef2663e2b`. Moss M `e9660ed1483cf01f96fe06c45ba7e070e0223ec3`, integrated as `18a0a069b808c295287675afc6346f411be971a5`, consumed that exact C without requiring an A repin.
+
+## Package-external activation outcome
+
+`SUDOSTACK-ACTIVATE2` records exact C, M and integration evidence in [`0.2.1-activation-support.json`](../../manifests/operations/0.2.1-activation-support.json) (SHA-256 `ae956ef3c0cc4f97b1601395e89464006453a01b50f0df7856a464529b65f4ed`), verified by [`activation-0.2.1.mjs`](../../tools/contracts/activation-0.2.1.mjs) (SHA-256 `17778b6796f135de80ace0becb99e6e30d4fac947805a736b96f3f4f2ae933ab`). Its offline mode validates the record, all 43 C package paths and tarball identity; local mode additionally verifies the exact three-file Moss repin, unchanged production source/caller tests, installed `0.2.1` identity and default runner/workflow bytes from an explicit repository; only remote mode verifies the pinned GitHub PR, workflow attempts and check-run IDs. The record contains no A SHA, changes no C package byte, and requires no Moss repin.
+
+This evidence resolves C-03 only for the included Moss/ZoneId embedded boundary. C remains internally staged/unfrozen with empty package support; `ResourceRef`, runtime `ZonePath`, external topology, B0 live inputs, mixed-version smoke, rollback, release and deployment remain unchanged or pending.
+
+## Reproducible checks
+
+The content stage is checked by:
+
+- local and offline regeneration;
+- immutable historical activation, availability, support, tests, typecheck, and package smoke from the detached `0.2.0` checkout;
+- staged candidate digest and lifecycle verification;
+- runtime/schema/fixture/source/provenance and version-forgery mutation tests;
+- deterministic pack, exact package delta, fresh install, TypeScript import, ESM import, and CommonJS import;
+- strict ADR audit and B0 invariant tests;
+- package-external A verification in offline, explicit local-repository, and GitHub remote modes, including exact C/M/merge/check-run attribution and no package delta.
+
+These checks establish reproducible code and package evidence only. They do not publish, release, deploy, migrate, approve assembly, or prove a live environment.
+
+## Package-external successor compatibility preflight
+
+The additive [`successor-compatibility.mjs`](../../tools/contracts/successor-compatibility.mjs) reads local immutable Git objects without checkout, fetch, source-script execution, or substitution of working-tree files. From a full-history SudoStack checkout with the existing locked dependencies installed:
+
+```sh
+node tools/contracts/successor-compatibility.mjs --previous 5a2a53130e37d1c63993ebf8ba1253b15eb9eebf --candidate 273fd4097cbc33c1c049c39bb1fb60cef2663e2b
+```
+
+The two directions are named `previous_payloads_to_candidate_validator` and `candidate_payloads_to_previous_validator`. Both reuse the protected structural comparator; closed-enum growth can be accepted in the first direction while presenting breaking risk in the second. Changed annotations/defaults/security policy and unsupported schema vocabulary require manual review, not assumed compatibility. Raw in-memory comparisons are always unverified and cannot grant Git provenance or semantic approval.
+
+Initial support is deliberately limited to the existing `0.2.0` and `0.2.1` snapshot formats, anchored to the two commits above. The tool independently accounts for packed paths, generated/internal inventories, owner/source closure, runtime and fixture bytes, toolchain hashes, exports, dependency/engine identities and npm inclusion controls. Missing/duplicate/unsafe inventories, digest inconsistencies, non-commit or mutable inputs, unrecognized versions/families and version reuse with different package content fail closed. Re-hashing changed bytes does not authorize them: unexplained differences from each version's immutable anchor still require review. This is not a general-purpose future release-admission platform.
+
+For the documented historical pair, exit `0` means only `no_contract_byte_change`: each snapshot matches its respective anchored package and reviewed metadata, and no new Contract-byte risk was found. Changes to this additive tool, CI or package-external documentation are not themselves package changes. Breaking risk, uncertainty, missing predecessor or invalid input yields nonzero. Every result retains `release_admission: false`, `consumer_adoption_verified: false`, `deployment_verified: false`, `semantic_compatibility_verified: false`, and ResourceRef's deferred manual semantic review. Local Git-byte verification is not hosted CI or support evidence; C → M → A facts above remain unchanged. Successor semantic/security review, real consumer support, release, migration and rollback prerequisites remain separate gates.
+
+## Read-only export and support accounting
+
+[`export-support-audit.mjs`](../../tools/contracts/export-support-audit.mjs) produces a deterministic stdout report for immutable C and A without creating a separate maintained manifest:
+
+```sh
+node tools/contracts/export-support-audit.mjs
+```
+
+The audit enumerates both public subpaths (`./zone-id`, `./common/v1/resource-ref`) and all four condition targets (`types`, `import`, `require`, `default`), checks their membership in the complete 43-path package inventory, and accounts for owner and fixture preparation. ZonePath's three shipped files remain owner/reference dependencies with runtime adoption deferred, not an additional public export.
+
+The CLI reads its analysis data from immutable C `273fd4097cbc33c1c049c39bb1fb60cef2663e2b` and operation A `665f0c6b83bc3c80b4cb697dc86ac1b6aa92bf4d`. It calls the unchanged public `verifyActivationSupport({sourceMode: 'offline'})` and binds the consumed support record, operation digest, C/M/integration identities and package identity to that result. It does not verify one snapshot and then reread mutable analysis data. Git network protocols/lazy fetch and npm network use are disabled during these synchronous calls; the existing verifier may create and clean a disposable local pack receipt. No source checkout, revision script, durable report or source fetch is performed.
+
+`accounting_valid: true` and exit `0` mean the current inventory and scoped records are consistently accounted for, **not** that ADR005-DIST-04 is satisfied. The known ResourceRef export-without-confirmed-production-consumer conflict remains explicit, with zero actual producer/consumer roles and `dist04_satisfied: false`. Planned roles, fixture runs and package import tests are never counted as production adoption. The Moss/ZoneId embedded boundary is an exact **stored support record**; external mode remains excluded, and this offline run does not freshly verify its consumer or hosted CI evidence. Stored GitHub evidence is not queried.
+
+Every report retains `release_admission: false`, `consumer_adoption_verified: false`, `deployment_verified: false`, `consumer_evidence_verified: false` and `hosted_evidence_verified: false`. Pure `analyzeExportSupport(jsonText)` checks bounded unverified JSON data only; supplied hashes or proof-shaped fields cannot authenticate it. Malformed, duplicate, missing, extra or unsafe exports/inventories and unsupported support claims fail with sanitized diagnostics and nonzero CLI exit. Resolving the ResourceRef conflict still requires separate owner/product decisions and real consumer evidence; C's exports, package bytes, lifecycle and the historical C → M → A evidence remain unchanged.

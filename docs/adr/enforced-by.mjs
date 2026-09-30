@@ -38,6 +38,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO = resolve(HERE, '..', '..')
 const BASELINE = join(HERE, 'enforced-by-baseline.json')
+const GENERATED_ADR_VIEWS = new Set(['ADR-005-implementation-status.md'])
+
+export function isAdrSourceFile(name) {
+  return /^ADR-\d+.*\.md$/.test(name) && !GENERATED_ADR_VIEWS.has(name)
+}
 
 /**
  * Sibling repositories, for `<repo>@<path>` targets. sudostack is an assembly
@@ -73,6 +78,17 @@ const NORMATIVE = [
 
 const TAG_RE = /\[enforced_by:\s*([^\]]+)\]/g
 const NOT_NORMATIVE_RE = /\[not-normative\]/
+
+export function classifyBlock(text) {
+  const normative = NORMATIVE.some((re) => re.test(text))
+  const tags = [...text.matchAll(TAG_RE)].map((match) => match[1].trim())
+  return {
+    normative,
+    tags,
+    included: normative || tags.length > 0,
+    exempt: normative && NOT_NORMATIVE_RE.test(text),
+  }
+}
 
 /** Every legal `enforced_by` kind, and how each one is resolved. */
 const KINDS = {
@@ -198,8 +214,8 @@ export function checkText(text, name) {
   const counts = { verified: 0, none: 0, unverifiable: 0, notNormative: 0, untagged: 0 }
 
   for (const block of blocks(text)) {
-    const normative = NORMATIVE.some((re) => re.test(block.text))
-    const tags = [...block.text.matchAll(TAG_RE)].map((m) => m[1].trim())
+    const classification = classifyBlock(block.text)
+    const { tags } = classification
 
     // Every tag is resolved, whether or not a keyword put it there. The
     // keyword list is a FLOOR, not a definition: §2.4's "长度 3–63" is as
@@ -207,9 +223,9 @@ export function checkText(text, name) {
     // So an author may tag any clause, and a tag that is ignored would be the
     // same lie this tool exists to catch — worse, a quiet one, since the
     // author believes it is checked.
-    if (!normative && tags.length === 0) continue
+    if (!classification.included) continue
 
-    if (normative && NOT_NORMATIVE_RE.test(block.text)) {
+    if (classification.exempt) {
       counts.notNormative++
       continue
     }
@@ -274,7 +290,7 @@ function main() {
   }
 
   const files = readdirSync(HERE)
-    .filter((f) => /^ADR-\d+.*\.md$/.test(f))
+    .filter(isAdrSourceFile)
     .sort()
   if (files.length === 0) {
     console.error(`no ADR files under ${HERE} — the walker is looking in the wrong place`)

@@ -1,0 +1,411 @@
+{
+  "choreography": {
+    "activation_A": {
+      "binds": [
+        "content_commit_C",
+        "moss_integration_M"
+      ],
+      "c03_decision": "pending",
+      "consumer_repin_required": false,
+      "evidence_scope": "package_external",
+      "mutates_candidate_package_bytes": false
+    },
+    "content_C": {
+      "produces": "installable_immutable_0.2.1_candidate",
+      "records_own_revision": false
+    },
+    "moss_repin_M": {
+      "dependency_spec_format": "github:sudoprivacy/sudostack#{C}",
+      "pins": "content_commit_C",
+      "required_evidence": "installed_package_identity_and_default_ci_at_the_real_embedded_boundary"
+    },
+    "sequence": [
+      "content_C",
+      "moss_repin_M",
+      "activation_A"
+    ]
+  },
+  "compatibility": {
+    "prior_baseline_path": "compatibility/baselines/0.2.0-package.json",
+    "prior_baseline_sha256": "9ec2cffbcb19f3e728a6691176ed739bab6de52a56b60abe4217420d2ce0c17c",
+    "resource_ref": "byte_identical_behavior",
+    "runtime_contract": "byte_identical",
+    "zone_id": "compatible_behavior"
+  },
+  "deferred": [
+    "Moss 0.2.1 exact-pin and production-boundary evidence",
+    "C-03 decision until package-external activation A binds C and M",
+    "runtime writer and canonical runtime store changes",
+    "ResourceRef authorization and routing resolver",
+    "runtime ZonePath adoption",
+    "artifact release and remote publication",
+    "deployment and migration",
+    "unrequested language packages"
+  ],
+  "fixtures": {
+    "aggregate_index_sha256": "e1cd69b3033a0ed593d1e4c5b8dd4ec66678cd4d633438eae50624b46425fcee",
+    "resource_ref": 25,
+    "zone_id": 12,
+    "zone_path": 23
+  },
+  "generated_artifacts": [
+    {
+      "path": "compatibility/current.gen.json",
+      "sha256": "a27553991ab8bd57d66bc12aaca4b08f52cd8def13a1f971d698fa3f435b35ad"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixture-index.gen.json",
+      "sha256": "e1cd69b3033a0ed593d1e4c5b8dd4ec66678cd4d633438eae50624b46425fcee"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/invalid/empty-version.gen.json",
+      "sha256": "b55867fa38f5f137c6e98346230e156e77adcb8069d80e5815204498d188af93"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/invalid/extension-too-deep.gen.json",
+      "sha256": "e46fc88656e5423e31772c3b91c26f721f39ef91345a468c09c2504e38961e04"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/invalid/invalid-digest-encoding.gen.json",
+      "sha256": "2283dfb0d59a48e87a51bfa9151f604e0af13b29a70017d7ff57dd589e84affb"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/invalid/invalid-digest-length.gen.json",
+      "sha256": "ceb61d7737bbba432eb9608583164b99761de289d00a20912f6386469b177b2e"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/invalid/invalid-digest.gen.json",
+      "sha256": "02395c41127b2c6c4579bfa4991a50dd72a4537db9323dac3dc4ea0d6e764265"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/invalid/invalid-media-type.gen.json",
+      "sha256": "38c9941f50bcc0cc7ad4618ad6885a4bfd153a11dd6fa55f27d91774365238de"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/invalid/invalid-size.gen.json",
+      "sha256": "3914257de9cdf6f7fe7be24dfddc06c726cdcd990a62a13794341e9c8cde71bc"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/invalid/invalid-zone-id.gen.json",
+      "sha256": "930f83204fa1a9561103508e8357e5d88c52d75d7731fa2ab7a1dd32bf972f74"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/invalid/invalid-zone-path-repeated-separator.gen.json",
+      "sha256": "4e5b046afde0f89bc0e2bab98469fd76ece2d3110eda1c6e17fccd07c38ae82e"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/invalid/invalid-zone-path-traversal.gen.json",
+      "sha256": "71bfe4726b92ddaab76e35c40112a786929f52c4aba06def10f470b3248c9100"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/invalid/large-extension.gen.json",
+      "sha256": "d74733612a3d2bcb785158503d738496f78a3f627646bac691c7fe0c95b848f2"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/invalid/missing-required.gen.json",
+      "sha256": "50ece9d4136926418a1b162f52b5a869ba541e57cf13c41f4d85bbdf5d9c2675"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/invalid/nested-secret-extension.gen.json",
+      "sha256": "04f0c005c5e934ffd48191572fd0a54a28934c5248e8e8c6b4807037b99099d6"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/invalid/non-ascii-version.gen.json",
+      "sha256": "72302194fb47a2a16f7e6758e3b957886dec63acce15f89c3ac0fc74f9265e03"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/invalid/null-known-optional.gen.json",
+      "sha256": "dcfe212f6cfa0ede38617765f7310bedd6284b7e375be0a1a61c1bd9bd9b8747"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/invalid/trailing-newline.gen.json",
+      "sha256": "6f58433b64b416003245223ce185f746adb1686364ce22df78e75f7f745b33c3"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/invalid/unknown-major.gen.json",
+      "sha256": "1cf18e1efa1b3c926509d55cf0be3b6490aed5206f27227d0728400209809e8d"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/invalid/wrong-type.gen.json",
+      "sha256": "22ca233f7b7a35fe6cc86bba9ac7d878008eb6492f8320ceab3ab154c94d66ae"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/valid/arbitrary-precision-size.gen.json",
+      "sha256": "4de5b83bf4a8f723e0749f10d1faa17f034d37a35748a19086fb8172cf1fcbde"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/valid/full.gen.json",
+      "sha256": "75c826df8b6ecf819bc384818d7608f2505110a5cd989275b9a734f41c437bd5"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/valid/minimal.gen.json",
+      "sha256": "32d99a00be668a368004e80eb01cfaa9c6f246cb4ca2cbc1b84c1ae3afc01b67"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/valid/previous-minor.gen.json",
+      "sha256": "2345de63e2ad3aa2295be045de63eed8ea6d4dc52967c024e51cbcbbfbe9bf67"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/valid/reserved-root-zone-reference.gen.json",
+      "sha256": "7b6c47d8f6cd7a4386761ef240de75324dedd1c8d4a1cbf0dc13b86be4f32e49"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/valid/unknown-field-control.gen.json",
+      "sha256": "1933bd069d58a7e10571a2f22054181d505c07feb04cd5bfec4cf2785a24786f"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/fixtures/valid/unknown-optional.gen.json",
+      "sha256": "4117b581efaa8e9b82a5029cac499f9befe91200134b44e97c6a3ff0056fb6b1"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/owner-manifest.source.gen.json",
+      "sha256": "4a28e5dd99c74e49979af9313f18cb9957a5c87a97b2f226847831721c50855d"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/resource-ref.gen.d.ts",
+      "sha256": "561da913038f2b26cf9858ab7a3686a4ded3f30ca9b6ecedd7db1740b85799cd"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/resource-ref.gen.js",
+      "sha256": "6dc2a502848bea6fa5f1d177f6b19451289916d29afaa149f365ce4313d0e720"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/schema.gen.json",
+      "sha256": "15ce4b2ed53f1278a40dc313a837e170a77fb4ea026022898479dd0135b798b7"
+    },
+    {
+      "path": "contracts/zone-id/schema.gen.json",
+      "sha256": "3e2a9a5286450293a65f3db2b5189a47383e5f9b1da7f434e1d25a1371e16473"
+    },
+    {
+      "path": "contracts/zone-id/vectors.source.gen.json",
+      "sha256": "6d840d389f1fa3dc41ddd5c4c33eab2fb37792bfa144b43881cda3bd245c083a"
+    },
+    {
+      "path": "contracts/zone-id/zone-id.gen.d.ts",
+      "sha256": "87224a76eea6f6b1aed0797e49d45842e23358a9a4a35130af325384d0bb8ad1"
+    },
+    {
+      "path": "contracts/zone-id/zone-id.gen.js",
+      "sha256": "87734eb51ac89a9ca9d50bbb4993ac6fba42af50c6d0c612cfe1b49fbb0a9b56"
+    },
+    {
+      "path": "contracts/zone-path/cases.source.gen.json",
+      "sha256": "944a5c63e368ece3a38e13a92851cd31d918a7a56d847d833469bff40f3d2a93"
+    },
+    {
+      "path": "contracts/zone-path/meta-schema.gen.json",
+      "sha256": "c44f0827848d08a4f89e31f04d7b4ad02b9bfc896ded46a0e223e8de1f8e0047"
+    },
+    {
+      "path": "contracts/zone-path/schema.gen.json",
+      "sha256": "cd9c09d197b1afa061fd28ce36d8561163eb06b2185631116c72956937434f94"
+    },
+    {
+      "path": "manifests/source-closure.gen.json",
+      "sha256": "10613674eea0884607c7ce1b05bff3cd8e0139119a420cde04dc9c85e81a67ea"
+    }
+  ],
+  "internal_generation_artifacts": [
+    {
+      "path": "contracts/common/v1/resource-ref/owner-source-lock.source.gen.json",
+      "sha256": "924dfefd9cf1f73264b355d1059ae7fb03d5f950253a87a99184539b57dfbf7c"
+    },
+    {
+      "path": "contracts/common/v1/resource-ref/resource-ref.gen.ts",
+      "sha256": "43c7027f672826fe911924dc14ca713c50757fe83ea082de513ee53b89dd1639"
+    },
+    {
+      "path": "contracts/zone-id/EXAMPLES.gen.md",
+      "sha256": "71151f7cfbcb4b8e7865f2e44afbbad22028b2f2937e940580d4574ab545eb6f"
+    },
+    {
+      "path": "contracts/zone-id/pin.json",
+      "sha256": "19243a2ce0802b12604abb48837cedd9a0fab84cf7cf48bbde4649a797e600fa"
+    },
+    {
+      "path": "contracts/zone-id/spec.source.gen.json",
+      "sha256": "6f5fb408d08de19172ac1d10b793a143588494ec6dae5326e60f9de5a2bce4d7"
+    },
+    {
+      "path": "contracts/zone-id/vectors.gen.json",
+      "sha256": "61706fad6d209094dc530e9354b888e4e8e3bb03ddb7641245cb5ea2c2ed60bd"
+    },
+    {
+      "path": "contracts/zone-id/zone-id.gen.ts",
+      "sha256": "5c6603934527a935da8821a2834106c8401378a6427de2aef59c243d04be6b93"
+    },
+    {
+      "path": "contracts/zone-path/spec.source.gen.json",
+      "sha256": "9869c731ffcf38c0f28267ddb74f725f40f1d3d76b52d6b3f78e7e93b6b1e462"
+    },
+    {
+      "path": "contracts/zone-path/validator-lock.source.gen.json",
+      "sha256": "07a399352f13fd71bdef77c7d37f4dfddbde8bf4e5fb949d493708057de29a2c"
+    }
+  ],
+  "lifecycle": {
+    "adr_maturity": "proposed",
+    "artifact_publication": "candidate_unpublished",
+    "content_stage": "staged",
+    "contract_baseline": "unfrozen",
+    "deployment_evidence": "not_deployed"
+  },
+  "manifest_version": 2,
+  "owners": {
+    "nexus": {
+      "definition_revision": "5139e2019d7f46d4dde3f73ee6cd21bb094a7dc1",
+      "definition_revision_verification": "schema_source_lock_and_fixtures_byte_identical_to_provenance_revision",
+      "manifest_path": "src/nexus/contracts/schemas/common/v1/resource-ref.manifest.json",
+      "manifest_sha256": "4a28e5dd99c74e49979af9313f18cb9957a5c87a97b2f226847831721c50855d",
+      "provenance_revision": "759842551697efa2579a92f24b16f8ae43829e7b",
+      "schema_path": "src/nexus/contracts/schemas/common/v1/resource-ref.schema.json",
+      "schema_sha256": "15ce4b2ed53f1278a40dc313a837e170a77fb4ea026022898479dd0135b798b7",
+      "source_lock_path": "src/nexus/contracts/schemas/common/v1/nexus-vfs.source-lock.json",
+      "source_lock_sha256": "924dfefd9cf1f73264b355d1059ae7fb03d5f950253a87a99184539b57dfbf7c"
+    },
+    "nexus-vfs": {
+      "files": {
+        "zone_id_schema": {
+          "path": "contracts/zone-id/schema.json",
+          "sha256": "3e2a9a5286450293a65f3db2b5189a47383e5f9b1da7f434e1d25a1371e16473"
+        },
+        "zone_id_spec": {
+          "path": "contracts/zone-id/spec.json",
+          "sha256": "6f5fb408d08de19172ac1d10b793a143588494ec6dae5326e60f9de5a2bce4d7"
+        },
+        "zone_id_vectors": {
+          "path": "contracts/zone-id/vectors.json",
+          "sha256": "6d840d389f1fa3dc41ddd5c4c33eab2fb37792bfa144b43881cda3bd245c083a"
+        },
+        "zone_path_cases": {
+          "path": "contracts/zone-path/cases.json",
+          "sha256": "944a5c63e368ece3a38e13a92851cd31d918a7a56d847d833469bff40f3d2a93"
+        },
+        "zone_path_meta_schema": {
+          "path": "contracts/zone-path/meta-schema.json",
+          "sha256": "c44f0827848d08a4f89e31f04d7b4ad02b9bfc896ded46a0e223e8de1f8e0047"
+        },
+        "zone_path_package_lock": {
+          "path": "contracts/zone-path/package-lock.json",
+          "sha256": "07a399352f13fd71bdef77c7d37f4dfddbde8bf4e5fb949d493708057de29a2c"
+        },
+        "zone_path_schema": {
+          "path": "contracts/zone-path/schema.json",
+          "sha256": "cd9c09d197b1afa061fd28ce36d8561163eb06b2185631116c72956937434f94"
+        },
+        "zone_path_spec": {
+          "path": "contracts/zone-path/spec.json",
+          "sha256": "9869c731ffcf38c0f28267ddb74f725f40f1d3d76b52d6b3f78e7e93b6b1e462"
+        }
+      },
+      "revision": "24f6730ec90fab8a035b2f5400ed313bda343fbe"
+    }
+  },
+  "package": {
+    "actual_consumers": [],
+    "actual_producers": [],
+    "name": "@sudo/contracts",
+    "package_json_sha256": "5800916d364e6f32dee97e9d58bfbccb932338a4ba148fe4a673c6cca8ac9fcb",
+    "package_lock_sha256": "1a6782d8059230a98ffcf1a497783cd31e25a3adeac1374ecac4f59272afe519",
+    "private": true,
+    "support_state": "pending_moss_repin",
+    "version": "0.2.1"
+  },
+  "source_availability": {
+    "local": "requires_SUDOSTACK_REPOS_ROOT",
+    "reason": "Exact Nexus and nexus-vfs owner commits are published and remotely byte-verifiable.",
+    "remote": "available"
+  },
+  "sudostack": {
+    "activation_state": "pending_future_commit",
+    "assembly_source_lock": {
+      "path": "contracts/sources.lock.json",
+      "sha256": "454a36c2ca65785b62e31c5d2cdb6c280499ae6e4a820fc11f35df7b4cd593e6"
+    },
+    "candidate_revision": null,
+    "content_stage": {
+      "exact_pin_target": "content_commit_C",
+      "metadata_path": "manifests/candidates/0.2.1-content.json",
+      "metadata_sha256": "0b648ce7d7d7e83cd1e63a34ec66776545ca2b60949d0c72b5c8e70c7a69df27",
+      "revision_source": "containing_commit",
+      "state": "staged"
+    },
+    "g0_revision": "fe27da807594da85f8bc26c5b5394c516f21c80e",
+    "predecessor": {
+      "activation_revision": "60bd8dda6fb2d348ec8571b9b1a4eaa535e36dc5",
+      "baseline_path": "compatibility/baselines/0.2.0-package.json",
+      "baseline_sha256": "9ec2cffbcb19f3e728a6691176ed739bab6de52a56b60abe4217420d2ce0c17c",
+      "baseline_source_revision": "5a2a53130e37d1c63993ebf8ba1253b15eb9eebf",
+      "candidate_content_revision": "30da0ddd953268ff8a9a0f0980276300ab153003",
+      "package_version": "0.2.0",
+      "source_availability_revision": "aec52e9dc5438946dd83d5c56c07149a4800120a",
+      "support_evidence_revision": "5a2a53130e37d1c63993ebf8ba1253b15eb9eebf"
+    }
+  },
+  "support_evidence": {
+    "current_candidate": "none_pending_moss_repin",
+    "prior_classification": "historical_only_not_candidate_support",
+    "prior_operation_path": "manifests/operations/consumer-support.json",
+    "prior_version": "0.2.0"
+  },
+  "toolchain": {
+    "baseline_verifier": {
+      "path": "tools/contracts/baseline.mjs",
+      "sha256": "3138ac99f230567e6268f6cdc02eda347d69665686d7c91ac8095efbce402111"
+    },
+    "candidate_verifier": {
+      "path": "tools/contracts/verify-candidate.mjs",
+      "sha256": "0fffde2b129faaf5fdb1c74622b8e7826e28ec8043dd2dc7b66b199ee0e5930e"
+    },
+    "compatibility_checker": {
+      "path": "tools/contracts/compatibility.mjs",
+      "sha256": "8d05837b0598db60e2ff2086cc68550bd2dcea00d586f092c4c8d47f787116a2"
+    },
+    "content_candidate_verifier": {
+      "path": "tools/contracts/content-candidate.mjs",
+      "sha256": "d5f9643c9c8b928001ae13045dfcaab187c5ade46bf31f9aaba001cc8f1c26c7"
+    },
+    "generator": {
+      "id": "contracts/generate.mjs@2",
+      "path": "contracts/generate.mjs",
+      "sha256": "2eb70cdcde96a7ea227cd8ad193b41538b1e52fbb5d2fa074f534215c9402e70"
+    },
+    "historical_activation_verifier": {
+      "path": "tools/contracts/activation.mjs",
+      "sha256": "173899f6cc56d1dfbf50480d65e1c8247f690d4609ea7cefaaf0aecf8303ed00"
+    },
+    "historical_availability_verifier": {
+      "path": "tools/contracts/availability.mjs",
+      "sha256": "f294e94730d0c700770c87f93b63540ce5e85daec52cf0ebcfb4e4d90a8d2007"
+    },
+    "historical_release_verifier": {
+      "path": "tools/contracts/history-0.2.0.mjs",
+      "sha256": "138c25ceaf3587dcbc421be22f1141be22b7ccd4643fd1a27f0a5ca00747d952"
+    },
+    "historical_support_verifier": {
+      "path": "tools/contracts/support.mjs",
+      "sha256": "881004f781397ef96b1a16fad1c14e08e9a784cbbca785cbc9d8d1cb5cd44a21"
+    },
+    "node": ">=22.21.0",
+    "node_version_gate": {
+      "path": "tools/contracts/node-version.mjs",
+      "sha256": "52d3bade5366eda003b63c448d9039c0dbc1f16849c92a5205e23bcf171f103e"
+    },
+    "npm_runner": {
+      "path": "tools/contracts/npm-runner.mjs",
+      "sha256": "c93a6d5f256a22536989ea11fe7dbd35c04a929c3875496c4e985c2f453a9593"
+    },
+    "raw_json_parser": "jsonc-parser@3.3.1",
+    "runtime_template": {
+      "path": "tools/contracts/runtime-template.mjs",
+      "sha256": "7c06dba333071591bb36f08b3690353ab3956d87210d41417c0b356a60a30961"
+    },
+    "runtime_validator": "ajv@8.20.0",
+    "source_loader": {
+      "path": "tools/contracts/source.mjs",
+      "sha256": "48445b62ff0c5cf432edf4444977d0977ea9cbfb179c53bd80a55a9b4ae7eb65"
+    },
+    "typescript_checker": "typescript@5.9.3"
+  }
+}
