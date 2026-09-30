@@ -183,6 +183,23 @@ async function main() {
     newSet = loadSchemaSet(newDir)
   } else {
     // Default: compare the pinned revision against the committed baseline.
+    // The baseline records the revision it was snapshotted at; a pin bump
+    // without --snapshot would silently compare against a stale set and
+    // leave every newly pinned schema outside the diff entirely.
+    let baselinePin
+    try {
+      baselinePin = JSON.parse(readFileSync(join(BASELINE_DIR, '_pin.json'), 'utf8'))
+    } catch {
+      console.error('baseline/_pin.json is missing — re-run with --snapshot to create the baseline')
+      return 1
+    }
+    if (baselinePin.nexus !== PIN.nexus.rev) {
+      console.error(
+        `baseline drift: snapshot is at nexus ${String(baselinePin.nexus).slice(0, 9)}, ` +
+          `pin.json names ${PIN.nexus.rev.slice(0, 9)} — re-run with --snapshot after a pin bump`,
+      )
+      return 1
+    }
     oldSet = loadSchemaSet(BASELINE_DIR)
     newSet = await loadCurrentFromBundle()
   }
