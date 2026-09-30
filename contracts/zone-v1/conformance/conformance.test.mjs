@@ -74,9 +74,6 @@ test('secret-styled unknown optionals are accepted at the wire layer', () => {
     const validate = VALIDATORS[c.schema]
     assert.ok(validate(c.payload), `${c.name}: unknown optionals must not reject`)
   }
-  for (const name of doc.secret_style_field_names) {
-    assert.ok(!('api_version' in {} && name === 'api_version'))
-  }
 })
 
 test('path-traversal fixtures are rejected (vendor zone-path projection holds)', () => {

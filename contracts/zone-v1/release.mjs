@@ -20,8 +20,8 @@
  * (cyclonedx-npm) into the same directory.
  */
 import { createHash } from 'node:crypto'
-import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync, statSync } from 'node:fs'
-import { basename, dirname, join, relative } from 'node:path'
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url)) // contracts/zone-v1
@@ -29,7 +29,6 @@ const REPO = join(HERE, '..', '..')
 const RELEASE = join(REPO, 'releases', 'zone-v1')
 const BUNDLE = join(RELEASE, 'bundle')
 
-const sha256 = (data) => createHash('update' in data ? data : Buffer.from(data)).digest('hex')
 const sha256File = (path) => createHash('sha256').update(readFileSync(path)).digest('hex')
 
 const pkg = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8'))
