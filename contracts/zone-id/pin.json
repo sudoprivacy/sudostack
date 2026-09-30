@@ -13,7 +13,7 @@
     "it refuses, and either way the operator is told something false."
   ],
   "nexus-vfs": {
-    "rev": "21789169d207abeef727768ce94d7a2484361a4b",
+    "rev": "bc89aa638b6ebfa05ce9491fb6a2e0c841febe2c",
     "specs": {
       "zone-id": "contracts/zone-id/spec.json"
     }
