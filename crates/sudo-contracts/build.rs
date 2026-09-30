@@ -95,6 +95,7 @@ pub const RESERVED_EXISTING: &[&str] = &[{reserved_existing}];
 
 pub const ZONE_PATH_MAX_LEN: usize = {path_max};
 pub const ZONE_PATH_MAX_DEPTH: usize = {depth};
+pub const ZONE_PATH_COMPONENT_MAX_LEN: usize = {comp_max};
 pub const ZONE_PATH_COMPONENT_ALLOWED: &str = {comp_allowed};
 pub const ZONE_PATH_FORBIDDEN_COMPONENTS: &[&str] = &[{comp_forbidden}];
 pub const ZONE_PATH_RESERVED_PREFIXES: &[&str] = &[{path_reserved}];
@@ -121,6 +122,7 @@ pub const ZONE_PATH_RESERVED_PREFIXES: &[&str] = &[{path_reserved}];
             .join(", "),
         path_max = path["length"]["max"],
         depth = path["depth"]["max"],
+        comp_max = path["component"]["max_length"],
         comp_allowed = format!("{:?}", path["component"]["allowed"].as_str().unwrap()),
         comp_forbidden = path["component"]["forbidden"]
             .as_array()

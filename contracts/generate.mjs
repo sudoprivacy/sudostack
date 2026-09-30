@@ -354,13 +354,16 @@ async function deriveZoneV1(stale) {
   // -- shared standalone validator module + auth codes ------------------------
   stale = emit('zone-v1/validators.gen.js', header + '\n' + standalone + '\n', stale)
 
+  // The capability shape belongs to the owner schema (zone-grant
+  // capabilities.items.pattern) — derive it, never restate it.
+  const capabilityPattern = schemasByFile['contracts/auth/v1/zone-grant.schema.json'].properties.capabilities.items.pattern
   const codes =
     header +
     `\n/** Open registry: unknown codes are legal wire values within the same major. */\n` +
     `export const KNOWN_ERROR_CODES = /** @type {readonly string[]} */ (${JSON.stringify(
       errorCodes.codes.map((c) => c.code),
     )})\n` +
-    `export const CAPABILITY_PATTERN = /^zone\\.[a-z-]+\\.[a-z-]+$/\n`
+    `export const CAPABILITY_PATTERN = /${capabilityPattern}/\n`
   stale = emit('zone-v1/codes.gen.js', codes, stale)
 
   // -- per-family entry points (index.gen.js pairs with index.gen.d.ts) -------
