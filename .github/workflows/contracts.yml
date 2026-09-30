@@ -72,13 +72,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: nexi-lab/nexus-vfs
-          path: .contract-repos/nexus-vfs
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+
+      # Sibling repos resolve at the SAME immutable revisions the derived
+      # artifacts were generated from (contracts/zone-v1/pin.json), never at
+      # a moving default-branch HEAD — otherwise "the tag points at something
+      # real" would drift with upstream renames.
+      - name: Read owner pins
+        id: pins
+        run: |
+          echo "vfs=$(node -p "JSON.parse(require('fs').readFileSync('contracts/zone-v1/pin.json','utf8'))['nexus-vfs'].rev")" >> "$GITHUB_OUTPUT"
+          echo "nexus=$(node -p "JSON.parse(require('fs').readFileSync('contracts/zone-v1/pin.json','utf8')).nexus.rev")" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: nexi-lab/nexus-vfs
+          ref: ${{ steps.pins.outputs.vfs }}
+          path: .contract-repos/nexus-vfs
+      - uses: actions/checkout@v4
+        with:
+          repository: nexi-lab/nexus
+          ref: ${{ steps.pins.outputs.nexus }}
+          path: .contract-repos/nexus
 
       # The checker has to be able to fail, or it is the prose it replaced.
       - name: The enforcement checker catches what it claims to
