@@ -9,7 +9,7 @@
         {
           "type": "application",
           "name": "npm",
-          "version": "11.6.2"
+          "version": "env-normalized"
         },
         {
           "type": "library",
