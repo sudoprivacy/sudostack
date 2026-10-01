@@ -96,11 +96,11 @@ const REVIEWED_EVIDENCE = {
 // pre-existing jobs and checkouts) is retained verbatim — additions only.
 const REVIEWED_WORKFLOW_SHA256 = 'fcc13b96bfe3c8b0b8547cc2632ddaa961847c7423a8da142ee8c41a8de74c96'
 const REVIEWED_LOCAL_BYTES = {
-  'package.json': '5800916d364e6f32dee97e9d58bfbccb932338a4ba148fe4a673c6cca8ac9fcb',
-  'tools/contracts/successor-compatibility.mjs': '26e50ec9c3172e7efeee63c619f3869befd2fbcc7fd4ec154174a02508cba618',
+  'package.json': '7c621d7e1b01de1da14c524b0c7b2200f7f786cda90cb9c56d5a3b389b49a2d7',
+  'tools/contracts/successor-compatibility.mjs': 'a23974e5571344c406de61a88ad7a2f2851f430dda1a60710248206b5dc38ad5',
   'tools/contracts/successor-compatibility.test.mjs': 'b38ea1921a128dedc431ee4e6a5846cbcc9bbc45cd161b5250c705b1dc8e0f4c',
-  'tools/contracts/activation-0.2.1.mjs': '17778b6796f135de80ace0becb99e6e30d4fac947805a736b96f3f4f2ae933ab',
-  'tools/contracts/activation-0.2.1.test.mjs': 'fa79bf9dce8aa96d7eb869b49123f42746eec8c4401db7b1c2166092802e7c7c',
+  'tools/contracts/activation-0.2.1.mjs': 'b679c1347f9d2a2f928cc8e7aa90aec8b83d3c37c421c1eb7cb8273ce12ec929',
+  'tools/contracts/activation-0.2.1.test.mjs': '16615856492d1709b80003135fa511f76ee53012a92bc8702655c4b4046bdc1d',
 }
 const evidenceFingerprint = (entry) => sha256(JSON.stringify(
   Object.fromEntries(Object.keys(entry).sort().map((key) => [key, entry[key]])),

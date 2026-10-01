@@ -19,6 +19,24 @@
       "import": "./contracts/common/v1/resource-ref/resource-ref.gen.js",
       "require": "./contracts/common/v1/resource-ref/resource-ref.gen.js",
       "default": "./contracts/common/v1/resource-ref/resource-ref.gen.js"
+    },
+    "./common/v1": {
+      "types": "./contracts/zone-v1/common/v1/index.gen.d.ts",
+      "import": "./contracts/zone-v1/common/v1/index.gen.js",
+      "require": "./contracts/zone-v1/common/v1/index.gen.js",
+      "default": "./contracts/zone-v1/common/v1/index.gen.js"
+    },
+    "./auth/v1": {
+      "types": "./contracts/zone-v1/auth/v1/index.gen.d.ts",
+      "import": "./contracts/zone-v1/auth/v1/index.gen.js",
+      "require": "./contracts/zone-v1/auth/v1/index.gen.js",
+      "default": "./contracts/zone-v1/auth/v1/index.gen.js"
+    },
+    "./runtime/v2": {
+      "types": "./contracts/zone-v1/runtime/v2/index.gen.d.ts",
+      "import": "./contracts/zone-v1/runtime/v2/index.gen.js",
+      "require": "./contracts/zone-v1/runtime/v2/index.gen.js",
+      "default": "./contracts/zone-v1/runtime/v2/index.gen.js"
     }
   },
   "files": [
@@ -35,6 +53,27 @@
     "contracts/common/v1/resource-ref/owner-manifest.source.gen.json",
     "contracts/common/v1/resource-ref/fixtures/",
     "contracts/common/v1/resource-ref/fixture-index.gen.json",
+    "contracts/zone-v1/auth/v1/index.gen.d.ts",
+    "contracts/zone-v1/auth/v1/index.gen.js",
+    "contracts/zone-v1/codes.gen.js",
+    "contracts/zone-v1/common/v1/index.gen.d.ts",
+    "contracts/zone-v1/common/v1/index.gen.js",
+    "contracts/zone-v1/fixtures/compatibility.gen.json",
+    "contracts/zone-v1/fixtures/invalid.gen.json",
+    "contracts/zone-v1/fixtures/path-traversal.gen.json",
+    "contracts/zone-v1/fixtures/roundtrip.gen.json",
+    "contracts/zone-v1/fixtures/secret-negative.gen.json",
+    "contracts/zone-v1/fixtures/valid.gen.json",
+    "contracts/zone-v1/projections.gen/existing-zone-id-ref.schema.gen.json",
+    "contracts/zone-v1/projections.gen/remote-learned-zone-id.schema.gen.json",
+    "contracts/zone-v1/projections.gen/system-zone-id.schema.gen.json",
+    "contracts/zone-v1/projections.gen/tenant-zone-id-create.schema.gen.json",
+    "contracts/zone-v1/projections.gen/zone-path.schema.gen.json",
+    "contracts/zone-v1/provenance.gen.json",
+    "contracts/zone-v1/runtime/v2/index.gen.d.ts",
+    "contracts/zone-v1/runtime/v2/index.gen.js",
+    "contracts/zone-v1/schema-bundle.gen.json",
+    "contracts/zone-v1/validators.gen.js",
     "compatibility/current.gen.json",
     "manifests/source-closure.gen.json",
     "manifests/releases/"
