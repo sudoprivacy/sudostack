@@ -1,0 +1,13 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "application",
+      "bom-ref": "@sudo/contracts@0.2.0-rc.1",
+      "name": "@sudo/contracts",
+      "version": "0.2.0-rc.1"
+    }
+  }
+}

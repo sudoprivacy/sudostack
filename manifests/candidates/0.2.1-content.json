@@ -20,7 +20,7 @@
     "revision_source": "containing_commit",
     "historical_baseline": {
       "path": "compatibility/baselines/0.2.0-package.json",
-      "sha256": "9ec2cffbcb19f3e728a6691176ed739bab6de52a56b60abe4217420d2ce0c17c",
+      "sha256": "364c68731c754e563dcea8855aae0263e7014fa4f8e1aeb3331c37959164aed7",
       "source_revision": "5a2a53130e37d1c63993ebf8ba1253b15eb9eebf"
     }
   },

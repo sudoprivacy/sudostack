@@ -292,6 +292,18 @@ function inventory(entries) {
   return result
 }
 
+// The preflight validates the baseline bytes as recorded at C against the
+// C-era expectation — the working-tree baseline and successor policy now
+// carry the zone-v1 lineage additions and no longer match history byte for
+// byte. Pinned like the historical revisions above.
+const C_ERA_BASELINE_SHA256 = '9ec2cffbcb19f3e728a6691176ed739bab6de52a56b60abe4217420d2ce0c17c'
+const C_ERA_SUCCESSOR_POLICY = {
+  candidate_version: '0.2.1',
+  changed_packed_paths: ['compatibility/current.gen.json', 'package.json'],
+  added_packed_paths: ['manifests/releases/0.2.1-candidate.gen.json'],
+  version_only_paths: ['package.json', 'package-lock.json'],
+}
+
 function referenceSnapshots(repository) {
   const historical = reader(repository, HISTORICAL_REVISION)
   const content = reader(repository, CONTENT_C)
@@ -299,7 +311,14 @@ function referenceSnapshots(repository) {
   const baselineData = parseJson(baselineBytes)
   historical.prefetch([...baselineData.packed_files, ...baselineData.protected_files].map(({ path }) => path))
   let baseline
-  try { baseline = verifyPackageBaseline({ baselineBytes, historicalBytes: historical.read }) }
+  try {
+    baseline = verifyPackageBaseline({
+      baselineBytes,
+      historicalBytes: historical.read,
+      expectedBaselineSha256: C_ERA_BASELINE_SHA256,
+      expectedSuccessorPolicy: C_ERA_SUCCESSOR_POLICY,
+    })
+  }
   catch { throw new InvalidInput('historical_baseline_invalid') }
   return Object.fromEntries(Object.entries(REFERENCES).map(([version, revision]) => {
     const source = version === '0.2.0' ? historical : content
