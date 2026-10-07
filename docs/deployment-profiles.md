@@ -73,6 +73,10 @@ Edge: WebUI -> local Moss -> local ManagedAgentService -> in-process scode
       -> session Nexus /model -> new-api -> GPUStack
 ```
 
+The default was also checked without sending a runtime override:
+`37de752c-20fc-4646-a04b-96009b9e0e0e` selected cohost from
+`MOSS_DEFAULT_RUNTIME=cohost` and returned `DEFAULT_COHOST_OK` successfully.
+
 Cloud still needs its own deployment evidence against the production cluster;
 the Edge acceptance does not imply that cloud sessions have moved from
 external spawn. For either form, cancellation, recovery, model-mount restore
