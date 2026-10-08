@@ -1,0 +1,19 @@
+name: security acceptance
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  workspace-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuse reused evidence before touching host resources
+        run: |
+          bash -n security/egress-gate/acceptance/run.sh
+          bash security/egress-gate/acceptance/workspace-safety.sh
