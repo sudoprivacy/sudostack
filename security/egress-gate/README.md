@@ -84,3 +84,9 @@ redaction markers, the ungated route carries the originals, the real model
 answers all three, and the daemon log never contains a raw value. The script
 header lists its inputs; `MODEL_MOUNTS=` and `PRESIDIO=0` are its red
 controls. Each deployment records its run in its own runbook.
+
+`acceptance/analyzer-regression.py` calls the real Chinese analyzer at the gate's
+default `0.5` threshold. CI builds the pinned analyzer image and checks two names,
+two company names, a location and ordinary technical prose. Organization scores
+are not multiplied down below the gate threshold. This small regression set
+does not establish business-corpus precision/recall or artifact export coverage.

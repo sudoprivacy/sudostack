@@ -23,6 +23,5 @@ ner_model_configuration:
     TIME: DATE_TIME
 
   low_confidence_score_multiplier: 0.4
-  low_score_entity_names:
-    - ORG
-    - ORGANIZATION
+  # Chinese customer organization names must reach the gate's 0.5 threshold.
+  low_score_entity_names: []
