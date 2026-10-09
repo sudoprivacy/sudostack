@@ -18,5 +18,9 @@ RUN python -m spacy download zh_core_web_lg
 COPY conf/ /app/conf-zh/
 ENV NLP_CONF_FILE=/app/conf-zh/nlp.yaml \
     ANALYZER_CONF_FILE=/app/conf-zh/analyzer.yaml \
-    RECOGNIZER_REGISTRY_CONF_FILE=/app/conf-zh/recognizers.yaml
+    RECOGNIZER_REGISTRY_CONF_FILE=/app/conf-zh/recognizers.yaml \
+    GUNICORN_CMD_ARGS=--no-control-socket
+# Gunicorn 25.1.0 can deadlock while forking its first worker with the
+# control thread enabled: https://github.com/benoitc/gunicorn/issues/3529.
+# This analyzer uses HTTP health checks and container lifecycle management.
 USER 1001
