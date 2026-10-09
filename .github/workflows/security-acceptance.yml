@@ -17,3 +17,30 @@ jobs:
         run: |
           bash -n security/egress-gate/acceptance/run.sh
           bash security/egress-gate/acceptance/workspace-safety.sh
+
+  chinese-analyzer-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the shared Chinese analyzer
+        run: docker build -t egress-analyzer:regression security/egress-gate/presidio
+      - name: Chinese names pass the gate threshold; ordinary prose stays intact
+        run: |
+          set -euo pipefail
+          trap 'docker rm -f egress-analyzer-regression >/dev/null 2>&1 || true' EXIT
+          docker run -d --name egress-analyzer-regression --memory=4g --cpus=2 \
+            -p 127.0.0.1:59080:3000 egress-analyzer:regression
+          is_ready=0
+          for attempt in $(seq 1 90); do
+            if curl --fail --silent http://127.0.0.1:59080/health >/dev/null; then
+              is_ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$is_ready" != 1 ]; then
+            docker logs egress-analyzer-regression
+            exit 1
+          fi
+          python3 security/egress-gate/acceptance/analyzer-regression.py
