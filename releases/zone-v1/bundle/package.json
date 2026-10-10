@@ -1,0 +1,12 @@
+{
+  "name": "@sudo/contracts",
+  "version": "0.2.0-rc.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./zone-id": "./contracts/zone-id/zone-id.gen.js",
+    "./common/v1": "./contracts/zone-v1/common/v1/index.gen.js",
+    "./auth/v1": "./contracts/zone-v1/auth/v1/index.gen.js",
+    "./runtime/v2": "./contracts/zone-v1/runtime/v2/index.gen.js"
+  }
+}
