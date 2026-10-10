@@ -14,3 +14,4 @@ package.json text eol=lf
 package-lock.json text eol=lf
 contracts/generate.mjs text eol=lf
 tools/contracts/*.mjs text eol=lf
+README.md text eol=lf
