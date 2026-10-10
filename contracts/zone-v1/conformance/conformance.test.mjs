@@ -103,7 +103,7 @@ test('compatibility baseline verdicts hold on the derived package', () => {
 })
 
 test('open registries: known constants exported, unknown codes survive validation', () => {
-  assert.equal(KNOWN_ERROR_CODES.length, 24)
+  assert.equal(KNOWN_ERROR_CODES.length, 31)
   assert.match('zone.data.read', CAPABILITY_PATTERN)
   assert.match('zone.brand.new', CAPABILITY_PATTERN)
   assert.doesNotMatch('zone_data_read', CAPABILITY_PATTERN)
