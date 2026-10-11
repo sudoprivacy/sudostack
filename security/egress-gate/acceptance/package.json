@@ -1,0 +1,10 @@
+{
+  "name": "egress-gate-acceptance",
+  "private": true,
+  "type": "module",
+  "description": "Drives a gate-armed daemon over gRPC for the egress-gate acceptance (run.sh).",
+  "dependencies": {
+    "@grpc/grpc-js": "1.14.0",
+    "@grpc/proto-loader": "0.8.0"
+  }
+}

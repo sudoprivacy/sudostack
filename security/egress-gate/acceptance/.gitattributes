@@ -1,0 +1,4 @@
+# Run on Linux hosts; a CRLF checkout would break the shebang line.
+*.sh text eol=lf
+*.py text eol=lf
+*.mjs text eol=lf
