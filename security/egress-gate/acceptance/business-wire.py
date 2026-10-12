@@ -11,6 +11,7 @@ import http.server
 import json
 import os
 import pathlib
+import secrets
 import socket
 import subprocess
 import tempfile
@@ -165,12 +166,18 @@ def main():
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), RecordingModel)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     analyzer_port = free_port()
-    container = "dlp-business-accept-" + str(os.getpid())
+    run_id = str(os.getpid()) + "-" + secrets.token_hex(8)
+    container = "dlp-business-accept-" + run_id
+    container_id = None
     units = []
     rows = []
     image = os.environ.get("PRESIDIO_IMAGE", "sudo-presidio-zh:business-20261012")
     try:
-        subprocess.run(["docker", "run", "-d", "--name", container, "--memory=4g", "--cpus=2", "-p", f"127.0.0.1:{analyzer_port}:3000", "--mount", f"type=bind,src={HERE / 'business-policy.fixture.json'},dst=/app/conf-zh/business-policy.json,readonly", image], check=True, stdout=subprocess.DEVNULL)
+        created = subprocess.run(["docker", "run", "-d", "--name", container, "--memory=4g", "--cpus=2", "-p", f"127.0.0.1:{analyzer_port}:3000", "--mount", f"type=bind,src={HERE / 'business-policy.fixture.json'},dst=/app/conf-zh/business-policy.json,readonly", image], check=True, capture_output=True, text=True)
+        candidate_id = created.stdout.strip()
+        if len(candidate_id) != 64 or any(char not in "0123456789abcdef" for char in candidate_id):
+            raise RuntimeError("Docker did not return a confirmed container ID")
+        container_id = candidate_id
         for _ in range(90):
             try:
                 if opener.open(f"http://127.0.0.1:{analyzer_port}/health", timeout=2).status == 200:
@@ -186,13 +193,13 @@ def main():
             (work / "data").mkdir(parents=True)
             (work / "id").mkdir()
             (work / "node_modules").symlink_to(modules, target_is_directory=True)
-            (work / "drive.mjs").write_text(DRIVE)
+            (work / "drive.mjs").write_text(DRIVE, encoding="utf-8")
             port = free_port()
-            unit = "dlp-business-" + str(os.getpid()) + "-" + mode
-            units.append(unit)
+            unit = "dlp-business-" + run_id + "-" + mode
             analyzer = free_port() if mode == "outage" else analyzer_port
             args = ["systemd-run", "--user", "--quiet", "--unit=" + unit, "-p", "MemoryMax=4G", "-p", "StandardOutput=append:" + str(work / "daemon.log"), "-p", "StandardError=append:" + str(work / "daemon.log"), "--setenv=NEXUS_DATA_DIR=" + str(work / "data"), "--setenv=NEXUS_IDENTITY_DIR=" + str(work / "id"), "--setenv=NEXUS_EGRESS_GATE_MODEL_MOUNTS=/cloud-model", "--setenv=NEXUS_EGRESS_GATE_POLICY=" + ("deny" if mode == "deny" else "redact"), "--setenv=NEXUS_EGRESS_GATE_PRESIDIO_URL=http://127.0.0.1:" + str(analyzer), "--setenv=NEXUS_EGRESS_GATE_PRESIDIO_ENTITIES=PERSON,LOCATION,ORGANIZATION", "--setenv=NEXUS_EGRESS_GATE_PRESIDIO_TIMEOUT_MS=1000", str(binary), "--cluster-init", "business-" + mode, "--hostname", socket.gethostname(), "--bind-addr", "127.0.0.1:" + str(port), "--advertise-addr", "127.0.0.1:" + str(port)]
             subprocess.run(args, check=True)
+            units.append(unit)
             for _ in range(60):
                 if (work / "data/tls/node.pem").exists():
                     try:
@@ -245,8 +252,10 @@ def main():
         for unit in units:
             subprocess.run(["systemctl", "--user", "stop", unit], capture_output=True)
             subprocess.run(["systemctl", "--user", "reset-failed", unit], capture_output=True)
-        subprocess.run(["docker", "rm", "-f", container], capture_output=True)
+        if container_id:
+            subprocess.run(["docker", "rm", "-f", container_id], capture_output=True)
         server.shutdown()
+        server.server_close()
 
 
 if __name__ == "__main__":
