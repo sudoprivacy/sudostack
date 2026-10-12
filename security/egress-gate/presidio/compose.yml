@@ -1,0 +1,21 @@
+services:
+  analyzer:
+    image: ${PRESIDIO_IMAGE:-sudo-presidio-zh:local}
+    build:
+      context: .
+    ports:
+      - "127.0.0.1:${PRESIDIO_PORT:-59080}:3000"
+    volumes:
+      - type: bind
+        source: ${DLP_POLICY_FILE:-./conf/business-policy.json}
+        target: /app/conf-zh/business-policy.json
+        read_only: true
+        bind:
+          create_host_path: false
+    restart: unless-stopped
+    mem_limit: 4g
+    cpus: 2
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
