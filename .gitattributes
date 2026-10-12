@@ -15,3 +15,4 @@ package-lock.json text eol=lf
 contracts/generate.mjs text eol=lf
 tools/contracts/*.mjs text eol=lf
 README.md text eol=lf
+docs/sudo-cloud-plan.html text eol=lf
