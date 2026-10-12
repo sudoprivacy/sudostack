@@ -102,3 +102,8 @@ does not establish business-corpus precision/recall or artifact export coverage.
 adapters and analyzer quality reports. It evaluates recognition separately from
 masking policy and records excluded categories; runtime acceptance continues to
 assert on the actual exported bytes.
+
+[COMPOSITION.md](COMPOSITION.md) records the selected components, shared Compose
+deployment, configurable customer-list/public-company policy, runtime wire runner
+and admission gaps. The policy is installed after upstream recognition; an
+explicit protection cannot be removed by a caller's NER entity filter.

@@ -16,6 +16,7 @@ USER root
 RUN python -m spacy download zh_core_web_lg
 
 COPY conf/ /app/conf-zh/
+COPY business_policy.py sudo_analyzer.py /app/
 ENV NLP_CONF_FILE=/app/conf-zh/nlp.yaml \
     ANALYZER_CONF_FILE=/app/conf-zh/analyzer.yaml \
     RECOGNIZER_REGISTRY_CONF_FILE=/app/conf-zh/recognizers.yaml \
@@ -24,3 +25,4 @@ ENV NLP_CONF_FILE=/app/conf-zh/nlp.yaml \
 # control thread enabled: https://github.com/benoitc/gunicorn/issues/3529.
 # This analyzer uses HTTP health checks and container lifecycle management.
 USER 1001
+CMD ["gunicorn", "--workers", "1", "--bind", "0.0.0.0:3000", "--timeout", "60", "sudo_analyzer:create_app()"]
