@@ -1,6 +1,6 @@
 {
   "version": 1,
   "public_organizations": ["北京星河科技有限公司"],
-  "protected_terms": ["南京澄明数据有限公司", "Client-Aster-7400", "Dual-Company-7400"],
-  "protected_markers": ["客户名单：", "[CONFIDENTIAL]"]
+  "protected_terms": ["南京澄明数据有限公司", "Client-Aster-7400", "Dual-Company-7400", "Contact-Aster-7400", "Contract-Aster-7400", "InternalBuildPlan-7400"],
+  "protected_markers": ["客户名单：", "客户合同：", "内部技术文档：", "[INTERNAL_SOURCE]", "[CONFIDENTIAL]"]
 }

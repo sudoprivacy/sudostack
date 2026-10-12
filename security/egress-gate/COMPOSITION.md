@@ -8,7 +8,7 @@ does not leave and that normal local inference remains usable.
 |---|---|---|
 | Contextual text recognition | Microsoft's Presidio Analyzer + spaCy Chinese/English pipelines, pinned container base | Three fresh starts, synthetic recognition regressions, full pinned public-corpus reports |
 | Structured identifiers and secrets | Nexus `egress_gate` checksum/format and credential detectors | Owner tests; shared real Router wire acceptance |
-| Customer lists and public-company exceptions | Deployment-owned literal business policy in this repository | Policy unit tests, real analyzer tests, actual cohost/Nexus write and wire assertions |
+| Customer/contact/contract data and internal source/design records | Deployment-owned literal business policy in this repository | Two synthetic business families with positives and negatives; policy unit tests, real analyzer tests and actual cohost/Nexus wire assertions |
 | Redact, deny and provider failure | Nexus kernel write hook and gate policy | Zero downstream requests for rejected writes and analyzer outage; valid redacted JSON; local originals retained |
 | Model routing | `sudoprivacy/new-api`, separate local/external token groups | Both routing and restart acceptance in the deployment repository |
 | Public evaluation | TAB + PII Bench ZH pinned adapters here | Exact Unicode spans, full span/character coverage, unsupported categories and source licenses retained |
@@ -93,11 +93,20 @@ python3 acceptance/business-wire.py
 ```
 
 The token is inherited in memory and never printed or saved in captures.
+Each mount uses its own route's credential. The recording proxy verifies and
+forwards the received Authorization header without replacing it. With configured
+routes, `MOUNT_LOCAL_KEY_OVERRIDE` set to an incorrect key is a red control:
+acceptance must fail before any cloud call; it cannot pass through a proxy that
+silently repairs a misconfigured mount.
+Give a thinking local model enough output budget in the Router's channel settings:
+the local control requests 4096 tokens. A channel capped at 256 can finish its
+reasoning budget without producing an answer; that empty reply fails acceptance.
 The `LOCAL_*` settings keep the raw local control on the node-local Router when
 the protected mount targets a cloud model. If omitted, both routes use the same
 configured Router; that arrangement is useful for a synthetic or local-model run.
 The recording endpoint asserts on actual request bodies. It waits for terminal
-reply events instead of assuming a stream exists immediately after Write.
+reply events and requires visible reply text before the completion footer, rather
+than assuming a stream exists immediately after Write or accepting an empty reply.
 Redact covers ordinary and ASCII-escaped JSON writers; deny and outage assert
 request counts including clean allowed traffic. Both policies preserve original
 local-model input. `acceptance/run.sh` additionally exercises the native identity,
@@ -112,6 +121,13 @@ and marked-record fixtures are protected; denied writes and unavailable detector
 emit zero requests; redaction preserves JSON routing fields; public-company and
 clean fixtures stay usable; local prompts retain their originals; policy identity
 survives analyzer recreation; and latest CI passes. These must all pass.
+
+`acceptance/business-cases.fixture.json` contains both agreed business families:
+customer aliases, contacts, contracts and lists; and internal source/design records
+and aliases. It includes clean discussions and a public source example. These are
+explicit-label/literal-policy tests using synthetic data, not evidence that NER
+can understand an unlabelled confidential document. The wire runner also tests a
+synthetic native credential in source without a classification marker.
 
 Contextual NER needs a separate release decision on held-out target-domain data.
 The current public baseline has only 49.47% strict chat PERSON recall and 28.63%

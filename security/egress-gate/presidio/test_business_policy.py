@@ -40,6 +40,20 @@ class BusinessPolicyTests(unittest.TestCase):
         policy = BusinessPolicy(config(protected_terms=["甲公司"], protected_markers=["客户名单："]))
         self.assertEqual(policy.apply("讨论客户名单功能和甲公示", []), [])
 
+    def test_both_business_families_have_positive_and_negative_cases(self):
+        acceptance = Path(__file__).resolve().parents[1] / "acceptance"
+        policy = BusinessPolicy.load(acceptance / "business-policy.fixture.json")
+        cases = json.loads((acceptance / "business-cases.fixture.json").read_text(encoding="utf-8"))["cases"]
+        self.assertEqual({item["family"] for item in cases}, {"customer_contract", "source_technical"})
+        for family in {item["family"] for item in cases}:
+            self.assertEqual({item["protected"] for item in cases if item["family"] == family}, {True, False})
+        for case in cases:
+            with self.subTest(case=case["id"]):
+                findings = policy.apply(case["text"], [])
+                self.assertEqual(bool(findings), case["protected"])
+                if case["whole_record"]:
+                    self.assertTrue(any(item["start"] == 0 and item["end"] == len(case["text"]) for item in findings))
+
     def test_invalid_policies_abort_instead_of_dropping_rules(self):
         for data in [[], {}, config(version=True), config(version=2), config(unknown=[]), config(protected_terms=[""]), config(protected_terms=["a", "a"]), config(protected_terms="a"), config(public_organizations=[1])]:
             with self.subTest(data=data), self.assertRaises(ValueError):
