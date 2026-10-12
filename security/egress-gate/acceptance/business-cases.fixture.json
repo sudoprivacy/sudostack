@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "scope": "explicit_business_policy",
+  "cases": [
+    {"id": "customer-name", "family": "customer_contract", "text": "南京澄明数据有限公司", "protected": true, "whole_record": false},
+    {"id": "customer-alias", "family": "customer_contract", "text": "😀Client-Aster-7400 Client-Aster-7400", "protected": true, "whole_record": false},
+    {"id": "contact-alias", "family": "customer_contract", "text": "联系 Contact-Aster-7400 讨论进度。", "protected": true, "whole_record": false},
+    {"id": "contract-alias", "family": "customer_contract", "text": "签约编号 Contract-Aster-7400。", "protected": true, "whole_record": false},
+    {"id": "customer-list", "family": "customer_contract", "text": "客户名单：北京星河科技有限公司。", "protected": true, "whole_record": true},
+    {"id": "contract-record", "family": "customer_contract", "text": "客户合同：北京星河科技有限公司，合成报价为七万元。", "protected": true, "whole_record": true},
+    {"id": "internal-design-alias", "family": "source_technical", "text": "设计代号 InternalBuildPlan-7400。", "protected": true, "whole_record": false},
+    {"id": "internal-design-record", "family": "source_technical", "text": "内部技术文档：缓存采用合成实验中的三级目录。", "protected": true, "whole_record": true},
+    {"id": "internal-source-record", "family": "source_technical", "text": "[INTERNAL_SOURCE] const privateAlgorithm = 42;", "protected": true, "whole_record": true},
+    {"id": "classified-record", "family": "source_technical", "text": "[CONFIDENTIAL] 北京星河科技有限公司。", "protected": true, "whole_record": true},
+    {"id": "public-company", "family": "customer_contract", "text": "北京星河科技有限公司", "protected": false, "whole_record": false},
+    {"id": "customer-feature-discussion", "family": "customer_contract", "text": "讨论客户名单功能，部署本地推理服务。", "protected": false, "whole_record": false},
+    {"id": "public-source-example", "family": "source_technical", "text": "const count = 1;", "protected": false, "whole_record": false},
+    {"id": "technical-feature-discussion", "family": "source_technical", "text": "讨论内部技术文档功能。", "protected": false, "whole_record": false}
+  ]
+}

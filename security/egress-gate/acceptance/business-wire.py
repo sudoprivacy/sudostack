@@ -31,16 +31,21 @@ const tls=work+'/data/tls/';
 const client=new API(endpoint,grpc.credentials.createSsl(fs.readFileSync(tls+'ca.pem'),fs.readFileSync(tls+'node-key.pem'),fs.readFileSync(tls+'node.pem')),{'grpc.ssl_target_name_override':'nexus-node','grpc.default_authority':'nexus-node'});
 const rpc=(method,data)=>new Promise((resolve,reject)=>client[method](data,{deadline:Date.now()+120000},(error,result)=>error?reject(error):resolve(result)));
 const terms=['南京澄明数据有限公司','Client-Aster-7400'];
-const sensitive='😀客户档案：'+terms.join('，')+'。 /no_think 请仅回复OK。';
+const fakeKey='sk'+'-proj-AbCdEfGhIjKlMnOpQrStUvWxYz012345';
+const sensitive='😀客户档案：'+terms.join('，')+'，Contact-Aster-7400，'+fakeKey+'。 /no_think 请仅回复OK。';
 const publicText='北京星河科技有限公司。 /no_think 请仅回复OK。';
 const marked='客户名单：北京星河科技有限公司。 /no_think 请仅回复OK。';
+const contract='客户合同：北京星河科技有限公司，Contract-Aster-7400。 /no_think 请仅回复OK。';
+const technical='内部技术文档：[INTERNAL_SOURCE] InternalBuildPlan-7400; const token = "'+fakeKey+'"; /no_think 请仅回复OK。';
+const sourceSecret='const token = "'+fakeKey+'"; /no_think 请仅回复OK。';
 const clean='部署本地推理服务。 /no_think 请仅回复OK。';
 const BS=String.fromCharCode(92);
 const escaped=value=>value.replace(/[\u007f-\uffff]/g,ch=>BS+'u'+ch.charCodeAt(0).toString(16).padStart(4,'0'));
 async function write(mount,name,text,isDenied,isEscaped=false) {
  const path=mount+'/'+name+'.prompt';
  const selectedModel=mount==='/model'?(process.env.LOCAL_MODEL||model):model;
- const raw=JSON.stringify({model:selectedModel,max_tokens:128,messages:[{role:'user',content:text}]});
+ const maxTokens=mount==='/model'?4096:128;
+ const raw=JSON.stringify({model:selectedModel,max_tokens:maxTokens,messages:[{role:'user',content:text}]});
  const result=await rpc('Write',{path,content:Buffer.from(isEscaped?escaped(raw):raw)});
  if(Boolean(result.is_error)!==isDenied)throw new Error('Unexpected gate verdict for '+name);
  if(isDenied)return;
@@ -57,10 +62,13 @@ async function write(mount,name,text,isDenied,isEscaped=false) {
  }
  fs.writeFileSync(work+'/'+name+'.reply',textReply);
  if(!textReply.includes('"done"')||textReply.includes('"error"'))throw new Error('Model did not complete '+name);
+ const footer=textReply.indexOf('{"finish_reason"');
+ if(footer<0||!textReply.slice(0,footer).trim())throw new Error('Model returned no visible reply '+name);
 }
 try {
  for(const mount of ['/cloud-model','/model']) {
-  const result=await rpc('Setattr',{path:mount,entry_type:2,backend_type:'openai',backend_name:'business-acceptance',zone_id:'business-'+mode,backend_params:{base_url:upstream+mount+'/v1',api_key:process.env.ROUTER_KEY||'synthetic-only',blob_root:work+'/blob'+mount}});
+  const key=mount==='/model'?(process.env.MOUNT_LOCAL_KEY_OVERRIDE||process.env.LOCAL_ROUTER_KEY||process.env.ROUTER_KEY||'synthetic-only'):(process.env.ROUTER_KEY||'synthetic-only');
+  const result=await rpc('Setattr',{path:mount,entry_type:2,backend_type:'openai',backend_name:'business-acceptance',zone_id:'business-'+mode,backend_params:{base_url:upstream+mount+'/v1',api_key:key,blob_root:work+'/blob'+mount}});
   if(result.is_error)throw new Error('Model mount failed');
  }
  await write('/model','local',sensitive,false);
@@ -69,6 +77,9 @@ try {
   await write('/cloud-model','public',publicText,false);
   await write('/cloud-model','marked',marked,mode==='deny');
   await write('/cloud-model','escaped',sensitive,mode==='deny',true);
+  await write('/cloud-model','contract',contract,mode==='deny');
+  await write('/cloud-model','technical',technical,mode==='deny');
+  await write('/cloud-model','source-secret',sourceSecret,mode==='deny');
   await write('/cloud-model','clean',clean,false);
  }
  console.log(JSON.stringify({mode,passed:true}));
@@ -107,12 +118,20 @@ def main():
             captures.append({"mode": self.server.mode, "path": self.path, "body": body})
             is_local = self.path.startswith("/model/")
             target = os.environ.get("LOCAL_ROUTER_URL", upstream).rstrip("/") if is_local else upstream
-            token = os.environ.get("LOCAL_ROUTER_KEY", os.environ.get("ROUTER_KEY", "")) if is_local else os.environ.get("ROUTER_KEY", "")
+            token = os.environ.get("LOCAL_ROUTER_KEY", os.environ.get("ROUTER_KEY", "synthetic-only")) if is_local else os.environ.get("ROUTER_KEY", "synthetic-only")
+            authorization = self.headers.get("Authorization", "")
+            if authorization != "Bearer " + token:
+                failures.append("mounted_credential_mismatch")
+                self.send_response(502)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"error":{"message":"Mounted credential does not match its route"}}')
+                return
             if target:
                 try:
                     # curl is also used by deployment health checks. Supply the
                     # credential and exact body through stdin, never argv/files.
-                    config = "header = " + json.dumps("Authorization: Bearer " + token) + "\n"
+                    config = "header = " + json.dumps("Authorization: " + authorization) + "\n"
                     config += 'header = "Content-Type: application/json"\n'
                     config += "data-binary = " + json.dumps(raw.decode("utf-8"), ensure_ascii=False) + "\n"
                     forwarded = subprocess.run(["curl", "--noproxy", "*", "--http1.1", "--silent", "--show-error", "--max-time", "110", "--config", "-", "--write-out", "\n%{http_code}\n%{content_type}", target + "/v1/chat/completions"], input=config.encode(), capture_output=True, timeout=115)
@@ -124,8 +143,16 @@ def main():
                     failures.append("upstream_inference_failed")
                     status, content_type, result = 502, "application/json", b'{"error":{"message":"Acceptance upstream failed"}}'
             else:
-                result = json.dumps({"id": "synthetic", "object": "chat.completion", "created": int(time.time()), "model": body["model"], "choices": [{"index": 0, "message": {"role": "assistant", "content": "OK"}, "finish_reason": "stop"}], "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}}).encode()
-                status, content_type = 200, "application/json"
+                if body.get("stream"):
+                    chunk = {"id": "synthetic", "object": "chat.completion.chunk", "created": int(time.time()), "model": body["model"]}
+                    first = {**chunk, "choices": [{"index": 0, "delta": {"role": "assistant", "content": "OK"}, "finish_reason": None}]}
+                    last = {**chunk, "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
+                    result = ("data: " + json.dumps(first) + "\n\ndata: " + json.dumps(last) + "\n\ndata: [DONE]\n\n").encode()
+                    content_type = "text/event-stream"
+                else:
+                    result = json.dumps({"id": "synthetic", "object": "chat.completion", "created": int(time.time()), "model": body["model"], "choices": [{"index": 0, "message": {"role": "assistant", "content": "OK"}, "finish_reason": "stop"}], "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}}).encode()
+                    content_type = "application/json"
+                status = 200
             self.send_response(status)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(result)))
@@ -186,28 +213,31 @@ def main():
             cloud = [item for item in hits if item["path"].startswith("/cloud-model/")]
             assert len(local) == 1
             sent = local[0]["body"]["messages"][0]["content"]
-            assert "南京澄明数据有限公司" in sent and "Client-Aster-7400" in sent
-            assert len(cloud) == {"redact": 5, "deny": 2, "outage": 0}[mode]
+            fake_key = "sk" + "-proj-AbCdEfGhIjKlMnOpQrStUvWxYz012345"
+            protected_values = ["南京澄明数据有限公司", "Client-Aster-7400", "Contact-Aster-7400", "Contract-Aster-7400", "InternalBuildPlan-7400", fake_key]
+            assert all(value in sent for value in [*protected_values[:3], fake_key])
+            assert len(cloud) == {"redact": 8, "deny": 2, "outage": 0}[mode]
             for item in cloud:
                 body = item["body"]
                 assert body["model"] == model and body["messages"][0]["role"] == "user"
                 text = body["messages"][0]["content"]
-                assert "南京澄明数据有限公司" not in text and "Client-Aster-7400" not in text
+                assert all(value not in text for value in protected_values)
                 assert not ("客户名单：" in text and "北京星河科技有限公司" in text)
+                assert "客户合同：" not in text and "内部技术文档：" not in text
             if mode != "outage":
                 assert any("北京星河科技有限公司" in item["body"]["messages"][0]["content"] for item in cloud)
                 assert any("部署本地推理服务" in item["body"]["messages"][0]["content"] for item in cloud)
             for path in work.glob("*.stored.json"):
                 text = json.loads(path.read_text())["messages"][0]["content"]
                 if path.stem != "local.stored":
-                    assert "Client-Aster-7400" not in text and "南京澄明数据有限公司" not in text
+                    assert all(value not in text for value in protected_values)
             log = (work / "daemon.log").read_text()
-            assert "Client-Aster-7400" not in log and "南京澄明数据有限公司" not in log
+            assert all(value not in log for value in protected_values)
             assert not failures, "Upstream did not produce a real response"
             rows.append({"mode": mode, "egress_requests": len(cloud), "local_raw_retained": True, "passed": True})
             print(json.dumps(rows[-1]), flush=True)
             subprocess.run(["systemctl", "--user", "stop", unit], check=True)
-        report = {"passed": True, "scope": "model_write_business_policy", "upstream": "configured_router" if upstream else "synthetic_loopback", "model": model, "daemon_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(), "image_id": image_id, "fixture_sha256": hashlib.sha256((HERE / "business-policy.fixture.json").read_bytes()).hexdigest(), "cases": rows}
+        report = {"passed": True, "scope": "model_write_business_policy", "business_families": ["customer_contract", "source_technical"], "visible_model_replies": True, "mount_credentials_forwarded_unchanged": True, "upstream": "configured_router" if upstream else "synthetic_loopback", "model": model, "daemon_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(), "image_id": image_id, "fixture_sha256": hashlib.sha256((HERE / "business-policy.fixture.json").read_bytes()).hexdigest(), "business_cases_sha256": hashlib.sha256((HERE / "business-cases.fixture.json").read_bytes()).hexdigest(), "cases": rows}
         (root / "acceptance.json").write_text(json.dumps(report, indent=2))
         (root / "synthetic-wire.json").write_text(json.dumps(captures, ensure_ascii=False, indent=2))
         print(json.dumps({"evidence": str(root / "acceptance.json"), **report}), flush=True)
