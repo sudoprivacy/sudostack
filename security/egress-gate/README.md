@@ -28,6 +28,10 @@ named on a build without the model driver, or an analyzer named on a build
 without the provider **aborts boot** — a typo in the setting that decides
 what may leave never leaves the daemon running ungated.
 
+The current configuration surface is deployment environment variables and
+the analyzer YAML under `presidio/conf/`. It is not a DLP management API.
+The reviewed Moss system/platform settings expose no DLP policy controls.
+
 | Variable | Meaning | Default |
 |---|---|---|
 | `NEXUS_EGRESS_GATE_POLICY` | `redact`, `deny` or `observe` (log only) | `redact` |
@@ -93,3 +97,8 @@ a [worker startup deadlock](https://github.com/benoitc/gunicorn/issues/3529).
 HTTP health checks and container lifecycle management remain available.
 Organization scores are not multiplied down below the gate threshold. This small regression set
 does not establish business-corpus precision/recall or artifact export coverage.
+
+[evaluation/](evaluation/README.md) holds shared public-corpus source pins,
+adapters and analyzer quality reports. It evaluates recognition separately from
+masking policy and records excluded categories; runtime acceptance continues to
+assert on the actual exported bytes.

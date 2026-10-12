@@ -1,0 +1,111 @@
+{
+  "reviewed_on": "2026-10-12",
+  "downloadable": {
+    "tab-dev": {
+      "repository": "https://github.com/NorskRegnesentral/text-anonymization-benchmark",
+      "revision": "558e09e26d6b36f5f78440074e6a233946d98bd9",
+      "license": "MIT",
+      "format": "tab",
+      "split": "dev",
+      "assets": [
+        {
+          "filename": "TAB-LICENSE.txt",
+          "url": "https://raw.githubusercontent.com/NorskRegnesentral/text-anonymization-benchmark/558e09e26d6b36f5f78440074e6a233946d98bd9/LICENSE.txt",
+          "bytes": 1089,
+          "sha256": "9569b31acf50e1cb3f38f47220f2c3a42f533e07e72fe2d18c2871e89098a8c7"
+        },
+        {
+          "filename": "echr_dev.json",
+          "url": "https://raw.githubusercontent.com/NorskRegnesentral/text-anonymization-benchmark/558e09e26d6b36f5f78440074e6a233946d98bd9/echr_dev.json",
+          "bytes": 12643092,
+          "sha256": "8c3c7306f46b8d54debeb38ae11d8b0b8bcf4bdccbc3b6f13c12ad7be16893ec"
+        }
+      ]
+    },
+    "tab-test": {
+      "repository": "https://github.com/NorskRegnesentral/text-anonymization-benchmark",
+      "revision": "558e09e26d6b36f5f78440074e6a233946d98bd9",
+      "license": "MIT",
+      "format": "tab",
+      "split": "test",
+      "assets": [
+        {
+          "filename": "TAB-LICENSE.txt",
+          "url": "https://raw.githubusercontent.com/NorskRegnesentral/text-anonymization-benchmark/558e09e26d6b36f5f78440074e6a233946d98bd9/LICENSE.txt",
+          "bytes": 1089,
+          "sha256": "9569b31acf50e1cb3f38f47220f2c3a42f533e07e72fe2d18c2871e89098a8c7"
+        },
+        {
+          "filename": "echr_test.json",
+          "url": "https://raw.githubusercontent.com/NorskRegnesentral/text-anonymization-benchmark/558e09e26d6b36f5f78440074e6a233946d98bd9/echr_test.json",
+          "bytes": 13103290,
+          "sha256": "cd0f0f15f84a8739654c7cf30c6be8ce27b051ef73974d39d792a0cb8c846379"
+        }
+      ]
+    },
+    "pii-zh-formal": {
+      "repository": "https://huggingface.co/datasets/wan9yu/pii-bench-zh",
+      "revision": "c350b94897af668517ff5de237d89f2ce2eaa6f0",
+      "license": "Apache-2.0 (dataset card)",
+      "format": "pii-bench-zh",
+      "split": "formal, no author train/dev/test split",
+      "assets": [
+        {
+          "filename": "PII-Bench-ZH-README.md",
+          "url": "https://huggingface.co/datasets/wan9yu/pii-bench-zh/resolve/c350b94897af668517ff5de237d89f2ce2eaa6f0/README.md",
+          "bytes": 6747,
+          "sha256": "2b7904843902b221ee027a61b9b868c60e468f4ac0b8aafb2c2958d9ef788de5"
+        },
+        {
+          "filename": "pii_bench_zh.jsonl",
+          "url": "https://huggingface.co/datasets/wan9yu/pii-bench-zh/resolve/c350b94897af668517ff5de237d89f2ce2eaa6f0/data/pii_bench_zh.jsonl",
+          "bytes": 1834636,
+          "sha256": "bcaa54909fd69c6737b8e442c4d740ce1bf5b95b7d4af70b2f2692010e1ff7a5"
+        }
+      ]
+    },
+    "pii-zh-chat": {
+      "repository": "https://huggingface.co/datasets/wan9yu/pii-bench-zh",
+      "revision": "c350b94897af668517ff5de237d89f2ce2eaa6f0",
+      "license": "Apache-2.0 (dataset card)",
+      "format": "pii-bench-zh",
+      "split": "chat, no author train/dev/test split",
+      "assets": [
+        {
+          "filename": "PII-Bench-ZH-README.md",
+          "url": "https://huggingface.co/datasets/wan9yu/pii-bench-zh/resolve/c350b94897af668517ff5de237d89f2ce2eaa6f0/README.md",
+          "bytes": 6747,
+          "sha256": "2b7904843902b221ee027a61b9b868c60e468f4ac0b8aafb2c2958d9ef788de5"
+        },
+        {
+          "filename": "pii_bench_zh_chat.jsonl",
+          "url": "https://huggingface.co/datasets/wan9yu/pii-bench-zh/resolve/c350b94897af668517ff5de237d89f2ce2eaa6f0/data/pii_bench_zh_chat.jsonl",
+          "bytes": 853574,
+          "sha256": "4ddacd78dfac49b723032de5e1c29c432a44049245e03a8ea960c86bbf3b765c"
+        }
+      ]
+    }
+  },
+  "reference_only": {
+    "presidio_evaluator": {
+      "repository": "https://github.com/data-privacy-stack/presidio-research",
+      "revision": "0cb365021884d849c5bc21957de67c91943c1662",
+      "note": "MIT code; generated Fake Name Generator identities have separate attribution/share-alike terms. Use for model comparisons and template-disjoint synthetic generation."
+    },
+    "cluener": {
+      "repository": "https://github.com/CLUEbenchmark/CLUENER2020",
+      "revision": "2e8fccd1b8cde6b471fe440b9d766e920fb418ab",
+      "note": "Chinese NER, inclusive end offsets. No explicit corpus redistribution license found in this repository. Adapter accepts a separately acquired local corpus; automated downloader disabled."
+    },
+    "openpii_1_5m": {
+      "repository": "https://huggingface.co/datasets/ai4privacy/pii-masking-openpii-1.5m",
+      "revision": "a785eb528e28be2693c3718a27e066970de5dadb",
+      "license": "CC-BY-4.0 in dataset card; HF metadata says other",
+      "note": "Includes Chinese; synthetic, not an industry certification. Attribute Ai4Privacy / Ai Suisse SA. Adapter and pinned Chinese validation subset not implemented yet."
+    },
+    "query_aware_pii_bench": {
+      "paper": "https://aclanthology.org/2026.acl-long.227/",
+      "note": "ACL 2026 query relevance benchmark. Distinct from wan9yu PII Bench ZH and pritesh PIIBench; useful for future policy evaluation, not plugged into the span runner."
+    }
+  }
+}
