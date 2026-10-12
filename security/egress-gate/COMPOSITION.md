@@ -80,7 +80,11 @@ python3 acceptance/business-wire.py
 The runner boots isolated cohost/Nexus daemons with real TLS and real hooks.
 It refuses an existing `WORK` directory, retains evidence, and stops only the
 containers and transient units it created. It uses a synthetic loopback model by
-default and labels that scope. To additionally require real inference:
+default and labels that scope.
+Cleanup requires a successfully created container ID or unit. A failed creation
+cannot authorize removing a same-named resource; names also include a random run
+suffix so leftover resources do not collide when process IDs are reused.
+To additionally require real inference:
 
 ```bash
 export ROUTER_URL=https://your-router-origin
