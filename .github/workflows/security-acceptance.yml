@@ -9,6 +9,13 @@ permissions:
   contents: read
 
 jobs:
+  evaluation-adapters:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate public corpus adapters and disclosure scoring
+        run: python3 -m unittest discover -s security/egress-gate/evaluation -v
+
   workspace-safety:
     runs-on: ubuntu-latest
     steps:

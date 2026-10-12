@@ -1,0 +1,142 @@
+{
+  "scope": "analyzer_only",
+  "metric_definition": "strict_unicode_spans_and_full_character_mask_coverage_v1",
+  "input_sha256": "8c3c7306f46b8d54debeb38ae11d8b0b8bcf4bdccbc3b6f13c12ad7be16893ec",
+  "evaluator_sha256": "342fd561beb6722c5680fc8da540560c00d4115233b3801981b9b858ff2879f1",
+  "model_id": "sha256:41f2043a9610d7e75291a899a8fe47dc0e7c49ee13da888d8d0e6dc6ea4e3e31;nlp-config-sha256=806aa008b54e9ea52da0cefcd8f64c076ee4cec0a3b5f2e03676774a70f757e3",
+  "format": "tab",
+  "threshold": 0.5,
+  "entities": [
+    "LOCATION",
+    "ORGANIZATION",
+    "PERSON"
+  ],
+  "available_documents": 127,
+  "sampled": false,
+  "seed": 42,
+  "documents": 127,
+  "annotation_sets": 541,
+  "strict_spans": {
+    "tp": 3719,
+    "fp": 14947,
+    "fn": 9381,
+    "precision": 0.19923925854494803,
+    "recall": 0.28389312977099235,
+    "f1": 0.2341497198262293
+  },
+  "strict_spans_by_type": {
+    "LOCATION": {
+      "tp": 1441,
+      "fp": 2461,
+      "fn": 518,
+      "precision": 0.3692977960020502,
+      "recall": 0.7355793772332823,
+      "f1": 0.49172496161064666
+    },
+    "ORGANIZATION": {
+      "tp": 791,
+      "fp": 9602,
+      "fn": 5671,
+      "precision": 0.07610891946502453,
+      "recall": 0.12240792324357784,
+      "f1": 0.09385938890536932
+    },
+    "PERSON": {
+      "tp": 1487,
+      "fp": 2884,
+      "fn": 3192,
+      "precision": 0.34019675131548843,
+      "recall": 0.3178029493481513,
+      "f1": 0.32861878453038673
+    }
+  },
+  "prediction_types_without_gold_support": [],
+  "span_coverage_by_source_type": {
+    "CODE": {
+      "mentions": 2525,
+      "fully_covered": 0,
+      "characters": 20134,
+      "covered_characters": 119,
+      "full_span_recall": 0.0,
+      "character_recall": 0.005910400317870269
+    },
+    "DATETIME": {
+      "mentions": 9793,
+      "fully_covered": 2,
+      "characters": 123487,
+      "covered_characters": 8,
+      "full_span_recall": 0.0002042275094455223,
+      "character_recall": 6.4784147319151e-05
+    },
+    "DEM": {
+      "mentions": 1851,
+      "fully_covered": 144,
+      "characters": 21714,
+      "covered_characters": 2519,
+      "full_span_recall": 0.07779578606158834,
+      "character_recall": 0.1160081053698075
+    },
+    "LOC": {
+      "mentions": 1961,
+      "fully_covered": 1758,
+      "characters": 19168,
+      "covered_characters": 17244,
+      "full_span_recall": 0.8964813870474247,
+      "character_recall": 0.8996243739565943
+    },
+    "MISC": {
+      "mentions": 1416,
+      "fully_covered": 193,
+      "characters": 32809,
+      "covered_characters": 6236,
+      "full_span_recall": 0.1362994350282486,
+      "character_recall": 0.19006979792130207
+    },
+    "ORG": {
+      "mentions": 6462,
+      "fully_covered": 4788,
+      "characters": 136685,
+      "covered_characters": 118310,
+      "full_span_recall": 0.7409470752089137,
+      "character_recall": 0.8655668142078502
+    },
+    "PERSON": {
+      "mentions": 4679,
+      "fully_covered": 1815,
+      "characters": 58843,
+      "covered_characters": 46873,
+      "full_span_recall": 0.3879033981620004,
+      "character_recall": 0.7965773329028092
+    },
+    "QUANTITY": {
+      "mentions": 748,
+      "fully_covered": 10,
+      "characters": 11141,
+      "covered_characters": 260,
+      "full_span_recall": 0.013368983957219251,
+      "character_recall": 0.023337222870478413
+    }
+  },
+  "excluded_gold_mentions_by_source_type": {
+    "CODE": 2525,
+    "DATETIME": 9793,
+    "DEM": 1851,
+    "MISC": 1416,
+    "QUANTITY": 748
+  },
+  "masking_diagnostics": {
+    "protected_mentions": 20273,
+    "fully_covered_mentions": 3971,
+    "direct_mentions": 1450,
+    "direct_fully_covered": 306,
+    "no_mask_mentions": 9162,
+    "no_mask_mentions_touched": 5964,
+    "quasi_mentions": 18823,
+    "quasi_fully_covered": 3665,
+    "protected_entities": 17455,
+    "fully_covered_entities": 2500,
+    "fully_covered_mention_recall": 0.1958762886597938,
+    "fully_covered_entity_recall": 0.14322543683758235,
+    "no_mask_touch_rate": 0.6509495743287492
+  }
+}
