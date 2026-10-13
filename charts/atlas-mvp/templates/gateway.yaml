@@ -34,6 +34,9 @@ spec:
             - {name: http, containerPort: 80, hostPort: 80}
             - {name: webui, containerPort: {{ .Values.gateway.webuiPort }}, hostPort: {{ .Values.gateway.webuiPort }}}
             - {name: moss, containerPort: {{ .Values.gateway.mossPort }}, hostPort: {{ .Values.gateway.mossPort }}}
+            {{- if and .Values.router.enabled .Values.router.expose }}
+            - {name: router, containerPort: {{ .Values.gateway.routerPort }}, hostPort: {{ .Values.gateway.routerPort }}}
+            {{- end }}
           volumeMounts:
             - {name: config, mountPath: /etc/caddy, readOnly: true}
             - {name: tls, mountPath: /etc/atlas-tls, readOnly: true}

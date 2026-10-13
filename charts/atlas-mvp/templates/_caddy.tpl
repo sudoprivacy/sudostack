@@ -23,4 +23,10 @@
   tls /etc/atlas-tls/tls.crt /etc/atlas-tls/tls.key
   reverse_proxy moss-server:{{ .Values.moss.port }}
 }
+{{ if and .Values.router.enabled .Values.router.expose }}
+{{ .Values.gateway.routerOrigin }} {
+  tls /etc/atlas-tls/tls.crt /etc/atlas-tls/tls.key
+  reverse_proxy sudorouter:3000
+}
+{{ end }}
 {{- end -}}

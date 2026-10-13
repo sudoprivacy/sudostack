@@ -1,0 +1,71 @@
+{{- if .Values.router.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: atlas-router-data
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: {{ .Values.storageClass | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.router.dataSize }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sudorouter
+spec:
+  selector: {app: atlas-router}
+  ports:
+    - {name: http, port: 3000, targetPort: http}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sudorouter
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: atlas-router}
+  template:
+    metadata:
+      labels: {app: atlas-router}
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.nodeName | quote }}
+      containers:
+        - name: router
+          image: {{ required "images.router is required" .Values.images.router | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          envFrom:
+            - secretRef: {name: atlas-router-env}
+          env:
+            - {name: SQLITE_PATH, value: /data/sudorouter.db}
+            - {name: MEMORY_CACHE_ENABLED, value: "true"}
+            - {name: SESSION_COOKIE_SECURE, value: "true"}
+            - {name: SESSION_COOKIE_TRUSTED_URL, value: {{ .Values.gateway.routerOrigin | quote }}}
+            - {name: TZ, value: Asia/Shanghai}
+          ports:
+            - {name: http, containerPort: 3000}
+          volumeMounts:
+            - {name: data, mountPath: /data}
+          startupProbe:
+            httpGet: {path: /api/status, port: http}
+            failureThreshold: 90
+            periodSeconds: 2
+          readinessProbe:
+            httpGet: {path: /api/status, port: http}
+          livenessProbe:
+            httpGet: {path: /api/status, port: http}
+            periodSeconds: 15
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {memory: 1Gi}
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: atlas-router-data}
+{{- end }}

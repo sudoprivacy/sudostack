@@ -35,8 +35,14 @@ def api(path,body=None,method='GET'):
 
 token=api('/api/v1/auth/login',{'grant_type':'password','username':credentials['adminUsername'],'password':credentials['adminPassword']},'POST')['access_token']
 original=api('/api/v1/settings/system?scope=organization')
+uses_router='router' in values['images']
+router_client=None
+channel_created=False
 # This automatic qualification is for a fresh deployment, before customer model credentials are configured.
-if original.get('apiKey') or original.get('hasApiKey') or original.get('apiKeyConfigured'):
+if uses_router:
+    import router
+    router.assert_moss_configuration(root)
+elif original.get('apiKey') or original.get('hasApiKey') or original.get('apiKeyConfigured'):
     raise SystemExit('Refusing to replace existing model credentials; use the real-model acceptance procedure')
 key=secrets.token_urlsafe(24)
 ns=atlas.NAMESPACE
@@ -50,10 +56,22 @@ atlas.apply({'apiVersion':'v1','kind':'Pod','metadata':{'name':name,'namespace':
     'volumeMounts':[{'name':'script','mountPath':'/smoke','readOnly':True}],
     'readinessProbe':{'httpGet':{'path':'/healthz','port':18484}}}],
     'volumes':[{'name':'script','configMap':{'name':name}}]}})
-atlas.apply({'apiVersion':'networking.k8s.io/v1','kind':'NetworkPolicy','metadata':{'name':name,'namespace':ns},'spec':{'podSelector':{'matchLabels':{'app':name}},'policyTypes':['Ingress'],'ingress':[{'from':[{'namespaceSelector':{'matchLabels':{'kubernetes.io/metadata.name':'moss-sessions'}}}],'ports':[{'protocol':'TCP','port':18484}]}]}})
+mock_source={'podSelector':{'matchLabels':{'app':'atlas-router'}}} if uses_router else {'namespaceSelector':{'matchLabels':{'kubernetes.io/metadata.name':'moss-sessions'}}}
+atlas.apply({'apiVersion':'networking.k8s.io/v1','kind':'NetworkPolicy','metadata':{'name':name,'namespace':ns},'spec':{'podSelector':{'matchLabels':{'app':name}},'policyTypes':['Ingress'],'ingress':[{'from':[mock_source],'ports':[{'protocol':'TCP','port':18484}]}]}})
 try:
     atlas.kube('-n',ns,'wait','--for=condition=Ready','pod/'+name,'--timeout=120s')
-    api('/api/v1/settings/system?scope=organization',{'apiKey':key,'url':'http://'+name+'.'+ns+'.svc.cluster.local:18484/v1'},'PATCH')
+    if uses_router:
+        router_client=router.RouterClient(root)
+        router_client.__enter__()
+        router_client.login()
+        if router_client.request('/api/channel/?p=1&page_size=100')['data']['total']:
+            raise RuntimeError('Router already has upstream channels; use real-model acceptance instead of temporary channels')
+        router_client.request('/api/channel/',{'mode':'single','channel':{'name':name,'type':14,'status':1,
+            'key':key,'base_url':'http://'+name+'.'+ns+'.svc.cluster.local:18484',
+            'models':'claude-sonnet-4-6','group':'default'}})
+        channel_created=True
+    else:
+        api('/api/v1/settings/system?scope=organization',{'apiKey':key,'url':'http://'+name+'.'+ns+'.svc.cluster.local:18484/v1'},'PATCH')
     for _ in range(20):
         catalog=api('/api/v1/models/available')
         if any(m.get('modelId')=='claude-sonnet-4-6' for m in catalog.get('data',[])):
@@ -82,10 +100,24 @@ try:
     result=json.loads(next(line for line in reversed(lines) if line.startswith('{"passed"')))
     if not observed:raise RuntimeError('No running gVisor session was observed')
     result['sandboxes']=observed
+    result['router']=uses_router
     atlas.write(evidence/('webui-after.json' if args.resume else 'webui-before.json'),result)
-    print('WebUI HTTPS/login/WebSocket/gVisor/transcript'+('/resume' if args.resume else '')+' passed')
+    print('WebUI HTTPS/login/WebSocket/gVisor/'+('SudoRouter/' if uses_router else '')+'transcript'+('/resume' if args.resume else '')+' passed')
 finally:
     try:
-        api('/api/v1/settings/system?scope=organization',{'apiKey':'','url':original.get('url') or 'https://hk.sudorouter.ai/v1'},'PATCH')
+        if uses_router:
+            if channel_created:
+                channels=router_client.request('/api/channel/?p=1&page_size=100')['data']['items']
+                for channel in channels:
+                    if channel['name']==name:
+                        router_client.request('/api/channel/'+str(channel['id']),method='DELETE')
+                if any(channel['name']==name for channel in router_client.request('/api/channel/?p=1&page_size=100')['data']['items']):
+                    raise RuntimeError('Temporary SudoRouter channel was not removed')
+        else:
+            api('/api/v1/settings/system?scope=organization',{'apiKey':'','url':original.get('url') or 'https://hk.sudorouter.ai/v1'},'PATCH')
     finally:
-        atlas.kube('-n',ns,'delete','pod,service,configmap,secret,networkpolicy',name,'--ignore-not-found','--wait=true')
+        try:
+            if router_client:
+                router_client.__exit__(None,None,None)
+        finally:
+            atlas.kube('-n',ns,'delete','pod,service,configmap,secret,networkpolicy',name,'--ignore-not-found','--wait=true')

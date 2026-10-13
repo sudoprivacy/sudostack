@@ -58,6 +58,10 @@
         "caddy": {
           "type": "string",
           "pattern": "^.+@sha256:[a-f0-9]{64}$"
+        },
+        "router": {
+          "type": "string",
+          "pattern": "^.+@sha256:[a-f0-9]{64}$"
         }
       }
     },
@@ -77,6 +81,13 @@
         },
         "mossPort": {
           "const": 8443
+        },
+        "routerOrigin": {
+          "type": "string",
+          "pattern": "^https://[a-zA-Z0-9.-]+:9443$|^$"
+        },
+        "routerPort": {
+          "const": 9443
         }
       }
     },
@@ -84,5 +95,45 @@
       "type": "string",
       "minLength": 1
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "router": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            },
+            "required": [
+              "enabled"
+            ]
+          }
+        },
+        "required": [
+          "router"
+        ]
+      },
+      "then": {
+        "properties": {
+          "images": {
+            "required": [
+              "router"
+            ]
+          },
+          "gateway": {
+            "required": [
+              "routerOrigin"
+            ],
+            "properties": {
+              "routerOrigin": {
+                "pattern": "^https://[a-zA-Z0-9.-]+:9443$"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

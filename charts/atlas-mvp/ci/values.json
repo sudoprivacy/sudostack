@@ -6,10 +6,16 @@
     "runtime": "docker.io/library/runtime@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "webui": "docker.io/library/webui@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "postgres": "docker.io/library/postgres@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "caddy": "docker.io/library/caddy@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    "caddy": "docker.io/library/caddy@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "router": "docker.io/sudoprivacy/new-api@sha256:7777777777777777777777777777777777777777777777777777777777777777"
   },
   "gateway": {
     "webuiOrigin": "https://10.0.1.180",
-    "mossOrigin": "https://10.0.1.180:8443"
+    "mossOrigin": "https://10.0.1.180:8443",
+    "routerOrigin": "https://10.0.1.180:9443"
+  },
+  "router": {
+    "enabled": true,
+    "expose": true
   }
 }

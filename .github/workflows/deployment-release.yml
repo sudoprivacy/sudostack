@@ -78,9 +78,53 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
+  qualify:
+    needs: assemble
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sudostack-installation-candidate
+          path: candidate
+      - name: Verify and unpack the complete CI bundle
+        run: |
+          set -euo pipefail
+          cd candidate
+          sha256sum -c sudostack-candidate-amd64.tar.sha256
+          mkdir assets
+          tar -xf sudostack-candidate-amd64.tar -C assets
+          rm sudostack-candidate-amd64.tar
+      - name: Install on a clean runner and qualify the routed session
+        run: |
+          set -euo pipefail
+          mkdir evidence
+          NODE_ADDRESS="$(ip -4 route get 1.1.1.1 | awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}')"
+          test -n "$NODE_ADDRESS"
+          sudo bash candidate/assets/install-atlas.sh --host "$NODE_ADDRESS" --root /data/atlas --manage-k3s > evidence/install.log 2>&1
+          sudo k3s kubectl -n atlas-system get pods -o jsonpath='{.items[*].metadata.uid}' > evidence/pods-before.txt
+          sudo bash candidate/assets/install-atlas.sh --host "$NODE_ADDRESS" --root /data/atlas --manage-k3s > evidence/repeat.log 2>&1
+          sudo k3s kubectl -n atlas-system get pods -o jsonpath='{.items[*].metadata.uid}' > evidence/pods-repeat.txt
+          cmp evidence/pods-before.txt evidence/pods-repeat.txt
+          sudo /data/atlas/restart.sh > evidence/restart.log 2>&1
+          sudo python3 /data/atlas/smoke.py --root /data/atlas --resume >> evidence/restart.log 2>&1
+          sudo /data/atlas/verify.sh
+      - name: Collect sanitized qualification evidence
+        if: always()
+        run: |
+          mkdir -p evidence
+          sudo k3s kubectl get pods -A -o wide > evidence/pods.txt 2>&1 || true
+          sudo k3s kubectl -n atlas-system get events --sort-by=.lastTimestamp > evidence/events.txt 2>&1 || true
+          sudo test ! -f /data/atlas/deployment-report.json || sudo cat /data/atlas/deployment-report.json > evidence/deployment-report.json
+          sudo test ! -f /data/atlas/helm.log || sudo cat /data/atlas/helm.log > evidence/helm.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sudostack-installation-evidence
+          path: evidence/*
   publish:
     if: startsWith(github.ref, 'refs/tags/sudostack-v')
-    needs: assemble
+    needs: [assemble, qualify]
     runs-on: ubuntu-24.04
     permissions:
       contents: write

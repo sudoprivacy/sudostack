@@ -12,6 +12,10 @@ images:
   postgres: ""
   caddy: ""
 imagePullPolicy: IfNotPresent
+router:
+  enabled: false
+  expose: false
+  dataSize: 10Gi
 moss:
   enabled: true
   port: 43127
@@ -31,7 +35,9 @@ gateway:
   enabled: true
   webuiOrigin: ""
   mossOrigin: ""
+  routerOrigin: ""
   webuiPort: 443
   mossPort: 8443
+  routerPort: 9443
   tlsSecret: atlas-gateway-tls
   configMap: atlas-caddy

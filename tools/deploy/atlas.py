@@ -139,24 +139,28 @@ def install(args):
     if not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9.-]*', args.host):
         raise ValueError('host must be an IPv4 address or DNS name')
     manifest = json.loads((assets / 'atlas-release.json').read_text())
-    installed = root / 'release-manifest.json'
-    if installed.exists():
-        previous = json.loads(installed.read_text())
-        if previous['release'] != manifest['release'] or previous['archives'] != manifest['archives']:
-            raise ValueError('This installer only supports fresh installation and identical-release verification; back up before an upgrade')
-        installed_values = json.loads((root / 'values.json').read_text())
-        if installed_values['gateway']['webuiOrigin'] != 'https://' + args.host:
-            raise ValueError('Host differs from installed gateway; certificate/configuration change required')
-        report(root)
-        if not (root / 'acceptance/webui-before.json').exists():
-            run('python3', str(root / 'smoke.py'), '--root', str(root))
-            report(root)
-        return
     for name, expected in manifest['archives'].items():
         path = assets / name
         if not path.resolve().is_relative_to(assets) or checksum(path) != expected:
             raise ValueError('Missing or invalid release archive: ' + name)
     print('Release archives verified', flush=True)
+    installed = root / 'release-manifest.json'
+    if installed.exists():
+        previous = json.loads(installed.read_text())
+        if previous['release'] != manifest['release'] or previous['archives'] != manifest['archives']:
+            if args.add_router:
+                validate_router_addition(previous, manifest)
+                add_router(root, assets, chart, manifest, args.host)
+                return
+            raise ValueError('This installer only supports fresh installation and identical-release verification; back up before an upgrade')
+        installed_values = json.loads((root / 'values.json').read_text())
+        if installed_values['gateway']['webuiOrigin'] != 'https://' + args.host:
+            raise ValueError('Host differs from installed gateway; certificate/configuration change required')
+        report(root)
+        qualify(root)
+        return
+    if args.add_router:
+        raise ValueError('--add-router requires an existing installation of the pinned base release')
     if args.manage_k3s:
         dropin = Path('/etc/rancher/k3s/config.yaml.d/90-atlas.yaml')
         dropin.parent.mkdir(parents=True, exist_ok=True)
@@ -221,10 +225,20 @@ def install(args):
     values = {'nodeName': node, 'images': images, 'imagePullPolicy': 'Never',
         'configRevision': manifest['release'], 'gateway': {'webuiOrigin': webui_url, 'mossOrigin': moss_url},
         'webui': {'migrationRevision': images['webui'].split('sha256:')[1][:12]}}
+    if 'router' in images:
+        import router
+        router_credentials = router.credentials(root)
+        secret('atlas-router-env', {'SESSION_SECRET': router_credentials['sessionSecret']})
+        values['router'] = {'enabled': True, 'expose': False}
+        values['gateway']['routerOrigin'] = 'https://' + args.host + ':9443'
+        write(root / 'values.json', values)
     foundation = {**values, 'moss': {'enabled': False}, 'webui': {**values['webui'], 'enabled': False},
         'gateway': {**values['gateway'], 'enabled': False}}
     print('Installing Nexus mTLS broker and PostgreSQL with Helm', flush=True)
     helm(root, chart, foundation, 'foundation.json')
+    if 'router' in images:
+        router.provision(root, manifest['components']['router']['version'])
+        values['router']['expose'] = True
     data = volume_path('atlas-data')
     with (assets / manifest['mossBootstrap']).open('rb') as bootstrap:
         run('k3s', 'kubectl', '-n', NAMESPACE, 'exec', '-i', 'deployment/nexus-broker', '--',
@@ -269,6 +283,46 @@ def install(args):
     write(generated / 'server-env.json', environment)
     print('Installing Moss, WebUI migration and Caddy gateway', flush=True)
     helm(root, chart, values)
+    if 'router' in images:
+        router.configure_moss(root)
+    finalize_install(root, assets, chart, manifest, images)
+    qualify(root)
+
+
+def validate_router_addition(previous, manifest):
+    base = manifest.get('extends', {})
+    if (previous['release'] != base.get('release') or previous['archives'] != base.get('archives')
+        or 'router' in previous['images'] or set(manifest['images']) != set(previous['images']) | {'router'}
+        or previous['components'] != {k: v for k, v in manifest['components'].items() if k != 'router'}
+        or any(manifest['images'][k] != v for k, v in previous['images'].items())
+        or any(manifest['archives'].get(name) != previous['archives'][name] for name in previous['imageArchives'])):
+        raise ValueError('Router addition requires the exact pinned base release and unchanged component images')
+
+
+def add_router(root, assets, chart, manifest, host):
+    import router
+    values = json.loads((root / 'values.json').read_text())
+    if values['gateway']['webuiOrigin'] != 'https://' + host:
+        raise ValueError('Host differs from the existing installation')
+    claim_namespace(root)
+    router.assert_moss_configuration(root)
+    value = router.credentials(root)
+    secret('atlas-router-env', {'SESSION_SECRET': value['sessionSecret']})
+    import_archive(assets / manifest['routerArchive'])
+    values['images']['router'] = image_digest(manifest['images']['router'])
+    values['gateway']['routerOrigin'] = 'https://' + host + ':9443'
+    values['router'] = {'enabled': True, 'expose': False}
+    # Preserve the original application configuration revision and image digests.
+    helm(root, chart, values)
+    router.provision(root, manifest['components']['router']['version'])
+    values['router']['expose'] = True
+    helm(root, chart, values)
+    router.configure_moss(root)
+    finalize_install(root, assets, chart, manifest, values['images'])
+    qualify(root)
+
+
+def finalize_install(root, assets, chart, manifest, images):
     if chart != root / 'chart':
         shutil.copytree(chart, root / 'chart', dirs_exist_ok=True)
     if Path(__file__).resolve() != root / 'atlas.py':
@@ -279,9 +333,11 @@ def install(args):
         script = root / (action + '.sh')
         script.write_text('#!/usr/bin/env bash\nset -euo pipefail\nexec python3 ' + shlex.quote(str(root / 'atlas.py')) + ' ' + action + ' --root ' + shlex.quote(str(root)) + '\n')
         script.chmod(0o755)
-    (root / 'admin-credentials.txt').write_text('WebUI: ' + webui_url + '\nMoss Admin: ' + moss_url + '/admin/\nUsername: '
+    credentials = json.loads((root / 'credentials.json').read_text())
+    gateway = json.loads((root / 'values.json').read_text())['gateway']
+    (root / 'admin-credentials.txt').write_text('WebUI: ' + gateway['webuiOrigin'] + '\nMoss Admin: ' + gateway['mossOrigin'] + '/admin/\nUsername: '
         + credentials['adminUsername'] + '\nPassword: ' + credentials['adminPassword'] + '\n')
-    for filename in ('smoke.py', 'webui-smoke.cjs', 'mock-openai-server.mjs', 'snapshot.py'):
+    for filename in ('smoke.py', 'webui-smoke.cjs', 'mock-openai-server.mjs', 'snapshot.py', 'router.py'):
         if (assets / filename).resolve() != root / filename:
             shutil.copyfile(assets / filename, root / filename)
     for action in ('backup', 'restore'):
@@ -289,28 +345,46 @@ def install(args):
         script.write_text('#!/usr/bin/env bash\nset -euo pipefail\nexec python3 ' + shlex.quote(str(root / 'snapshot.py')) + ' ' + action + ' --root ' + shlex.quote(str(root)) + ' "$@"\n')
         script.chmod(0o755)
     report(root)
-    run('python3', str(root / 'smoke.py'), '--root', str(root))
-    report(root)
+
+
+def qualify(root):
+    before = root / 'acceptance/webui-before.json'
+    evidence = [json.loads(p.read_text()) for p in (before, root / 'acceptance/webui-after.json') if p.exists()]
+    has_router = 'router' in json.loads((root / 'values.json').read_text())['images']
+    if not before.exists() or (has_router and not any(item.get('router') for item in evidence)):
+        command = ['python3', str(root / 'smoke.py'), '--root', str(root)]
+        if before.exists():
+            command.append('--resume')
+        run(*command)
+        report(root)
 
 def report(root):
     values = json.loads((root / 'values.json').read_text())
     context = ssl.create_default_context(cafile=str(root / 'tls/ca.crt'))
-    for base, path in ((values['gateway']['mossOrigin'], '/readyz'), (values['gateway']['webuiOrigin'], '/health/live')):
+    endpoints = [(values['gateway']['mossOrigin'], '/readyz'), (values['gateway']['webuiOrigin'], '/health/live')]
+    expected = {'moss-server', 'nexus-broker', 'sudowork-webui', 'webui-postgres', 'atlas-gateway'}
+    router_status = None
+    if 'router' in values['images']:
+        import router
+        endpoints.append((values['gateway']['routerOrigin'], '/api/status'))
+        expected.add('sudorouter')
+        router_status = router.status(root)
+    for base, path in endpoints:
         with urllib.request.urlopen(base + path, context=context, timeout=15) as response:
             if response.status != 200:
                 raise RuntimeError('Gateway health check failed')
     deployments = json.loads(kube('-n', NAMESPACE, 'get', 'deployments', '-o', 'json'))['items']
     summary = {d['metadata']['name']: d.get('status', {}).get('readyReplicas', 0) for d in deployments}
-    if len(summary) != 5 or any(count != 1 for count in summary.values()):
-        raise RuntimeError('Not all five application Deployments are ready')
+    if set(summary) != expected or any(count != 1 for count in summary.values()):
+        raise RuntimeError('Not all application Deployments are ready')
     installed = json.loads((root / 'release-manifest.json').read_text())
     write(root / 'deployment-report.json', {'status': 'ready', 'release': installed['release'], 'namespace': NAMESPACE,
         'components': installed.get('components', {}),
-        'deployments': summary, 'images': values['images'], 'gateway': values['gateway'],
+        'deployments': summary, 'images': values['images'], 'gateway': values['gateway'], 'router': router_status,
         'gatewayCaSha256': checksum(root / 'tls/ca.crt'), 'runtimeClass': 'gvisor',
         'acceptance': {name: json.loads((root / 'acceptance' / name).read_text()) for name in ('webui-before.json', 'webui-after.json', 'restore.json') if (root / 'acceptance' / name).exists()},
         'productionCertification': 'pending: Ubuntu 24.04 clean-host qualification, signing/provenance and version-upgrade rollback qualification'})
-    print('Five Deployments ready; report: ' + str(root / 'deployment-report.json'), flush=True)
+    print(str(len(expected)) + ' Deployments ready; report: ' + str(root / 'deployment-report.json'), flush=True)
 
 def manage(args):
     root = args.root.resolve()
@@ -321,9 +395,12 @@ def manage(args):
         print(kube('-n', NAMESPACE, 'get', 'deployment,pods,pvc,job', '-o', 'wide'))
         return
     if args.action in ('stop', 'restart'):
-        for name in ('sudowork-webui', 'moss-server', 'nexus-broker', 'atlas-gateway'):
+        applications = ['sudowork-webui', 'moss-server', 'nexus-broker', 'atlas-gateway']
+        if 'router' in json.loads((root / 'values.json').read_text())['images']:
+            applications.append('sudorouter')
+        for name in applications:
             kube('-n', NAMESPACE, 'scale', 'deployment/' + name, '--replicas=0')
-        kube('-n', NAMESPACE, 'wait', '--for=delete', 'pods', '-l', 'app in (atlas-webui-server,atlas-moss,atlas-nexus,atlas-gateway)', '--timeout=180s')
+        kube('-n', NAMESPACE, 'wait', '--for=delete', 'pods', '-l', 'app in (atlas-webui-server,atlas-moss,atlas-nexus,atlas-gateway,atlas-router)', '--timeout=180s')
         kube('-n', NAMESPACE, 'scale', 'deployment/webui-postgres', '--replicas=0')
         kube('-n', NAMESPACE, 'wait', '--for=delete', 'pods', '-l', 'app=atlas-postgres', '--timeout=180s')
     if args.action in ('start', 'restart'):
@@ -339,6 +416,7 @@ def main():
     parser.add_argument('--chart', type=Path)
     parser.add_argument('--host')
     parser.add_argument('--manage-k3s', action='store_true')
+    parser.add_argument('--add-router', action='store_true', help='Add SudoRouter to the exact pinned base release without changing existing components')
     parser.add_argument('--tls-cert', type=Path)
     parser.add_argument('--tls-key', type=Path)
     parser.add_argument('--tls-ca', type=Path)

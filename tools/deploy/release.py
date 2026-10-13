@@ -21,17 +21,19 @@ COMPONENTS = {'moss', 'webui', 'nexus', 'vault', 'sudocode', 'k3s', 'gvisor', 'h
 
 def read_lock(path):
     lock = json.loads(path.read_text())
-    if lock.get('schemaVersion') != 1 or lock.get('architecture') != 'amd64':
-        raise ValueError('Only deployment lock schema 1 / amd64 is supported')
+    if lock.get('schemaVersion') not in (1, 2) or lock.get('architecture') != 'amd64':
+        raise ValueError('Only deployment lock schemas 1 and 2 / amd64 are supported')
     if lock.get('repository') != 'sudoprivacy/sudostack':
         raise ValueError('This installer is published by sudoprivacy/sudostack')
     if not re.fullmatch(r'\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?', lock['version']):
         raise ValueError('Invalid sudostack version')
-    if set(lock['components']) != COMPONENTS:
+    required = COMPONENTS | ({'router'} if lock['schemaVersion'] == 2 else set())
+    if set(lock['components']) != required:
         raise ValueError('The deployment lock must specify every component')
     expected_owners = {'moss': 'sudoprivacy/moss', 'webui': 'sudoprivacy/sudowork',
-                       'nexus': 'nexi-lab/nexus-vfs', 'vault': 'nexi-lab/nexus', 'sudocode': 'sudoprivacy/sudocode'}
-    prefixes = {'moss': 'server-v', 'webui': 'v', 'nexus': 'v', 'vault': 'vault-v', 'sudocode': 'v'}
+                       'nexus': 'nexi-lab/nexus-vfs', 'vault': 'nexi-lab/nexus', 'sudocode': 'sudoprivacy/sudocode',
+                       'router': 'sudoprivacy/new-api'}
+    prefixes = {'moss': 'server-v', 'webui': 'v', 'nexus': 'v', 'vault': 'vault-v', 'sudocode': 'v', 'router': 'sudorouter-v'}
     for name, component in lock['components'].items():
         version = component['version']
         if not re.fullmatch(r'(?:v|release-)?\d[0-9A-Za-z.+-]*', version):
@@ -43,6 +45,12 @@ def read_lock(path):
             raise ValueError('Official images need explicit version tags: ' + name)
         if 'image' in component and not component['image'].split(':')[-1].split('-')[0] == version:
             raise ValueError('Image tag differs from its component version: ' + name)
+    if 'baseRelease' in lock:
+        base = lock['baseRelease']
+        if (lock['schemaVersion'] != 2 or base.get('repository') != lock['repository']
+            or not re.fullmatch(r'sudostack-v\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?', base.get('tag', ''))
+            or not re.fullmatch(r'[a-f0-9]{64}', base.get('manifestSha256', ''))):
+            raise ValueError('A fixed, checksummed sudostack base release is required')
     return lock
 
 
@@ -83,6 +91,8 @@ def resolve(lock):
         'k3s': ['k3s', 'k3s-airgap-images-amd64.tar.zst', 'sha256sum-amd64.txt'],
         'gvisor': ['gvisor-x86_64.tar.bz2'],
     }
+    if 'router' in c:
+        requests['router'] = [f'sudorouter-{c["router"]["version"]}-linux-amd64.tar.gz']
     resolved, errors = {}, []
     for name, names in requests.items():
         repository = c[name].get('repository', {'k3s': 'k3s-io/k3s', 'gvisor': 'google/gvisor'}.get(name))
@@ -95,6 +105,18 @@ def resolve(lock):
         raise ValueError('Upstream release preflight failed:\n' + '\n'.join(errors))
     if resolved['sudocode']['scode-linux-x64-bundle.tar.gz']['sha256'] != c['sudocode']['sha256']:
         raise ValueError('Sudocode release checksum differs from the deployment lock')
+    if 'baseRelease' in lock:
+        base = lock['baseRelease']
+        source = release_assets(base['repository'], base['tag'], ['atlas-release.json'])['atlas-release.json']
+        if source['sha256'] != base['manifestSha256']:
+            raise ValueError('Base release manifest checksum differs from the lock')
+        with tempfile.TemporaryDirectory(prefix='atlas-base-') as tmp:
+            path = Path(tmp) / 'atlas-release.json'
+            download(source['url'], path, source['sha256'])
+            manifest = json.loads(path.read_text())
+        if manifest['release'] != base['tag'] or manifest['components'] != {k: v for k, v in c.items() if k != 'router'}:
+            raise ValueError('Adding SudoRouter must preserve every base component version')
+        resolved['baseRelease'] = {'source': source, 'manifest': manifest}
     return resolved
 
 
@@ -121,7 +143,8 @@ def verify_image_archive(path, expected_refs):
     def canonical(ref):
         if '/' not in ref:
             return 'docker.io/library/' + ref
-        return 'docker.io/' + ref if ref.startswith('library/') else ref
+        first = ref.split('/')[0]
+        return ref if '.' in first or ':' in first or first == 'localhost' else 'docker.io/' + ref
 
     with tarfile.open(path) as archive:
         try:
@@ -148,7 +171,46 @@ def extract_file(archive_path, member_name, destination, executable=False):
     destination.chmod(0o755 if executable else 0o644)
 
 
+def add_router_archive(metadata, resolved, assets):
+    component = metadata['components'].get('router')
+    if not component:
+        return
+    name = f'sudorouter-{component["version"]}-linux-amd64.tar.gz'
+    source = resolved['router'][name]
+    download(source['url'], assets / name, source['sha256'])
+    ref = f'docker.io/sudoprivacy/new-api:{component["version"]}-amd64'
+    verify_image_archive(assets / name, [ref])
+    metadata['sources'][name] = source
+    metadata['imageArchives'].append(name)
+    metadata['images']['router'] = ref
+    metadata['routerArchive'] = name
+
+
+def assemble_from_base(lock, resolved, assets):
+    base = resolved['baseRelease']['manifest']
+    metadata = json.loads(json.dumps(base))
+    names = set(base['imageArchives']) | {base['mossBootstrap'], base['mossDeploymentBundle'],
+        'install.sh', 'SHA256SUMS', base['helm']['archive']}
+    names.update(name for name in base['sources'] if name.startswith('offline/'))
+    metadata['sources'] = {name: base['sources'][name] for name in sorted(names)}
+    assets.mkdir(parents=True, exist_ok=True)
+    from artifacts import asset_path
+    for name, source in metadata['sources'].items():
+        download(source['url'], asset_path(assets, name), base['archives'][name])
+    for key in ('archives', 'chart', 'chartVersion', 'installerVersion', 'qualification'):
+        metadata.pop(key, None)
+    metadata.update(release='sudostack-v' + lock['version'], version=lock['version'], components=lock['components'],
+        sourceLock=lock, extends={'release': base['release'], 'archives': base['archives']})
+    metadata['buildInputs']['router'] = resolved['router']
+    metadata['buildInputs']['baseRelease'] = resolved['baseRelease']['source']
+    add_router_archive(metadata, resolved, assets)
+    (assets / 'build-input.json').write_text(json.dumps(metadata, indent=2) + '\n')
+
+
 def assemble(lock, resolved, assets):
+    if 'baseRelease' in resolved:
+        assemble_from_base(lock, resolved, assets)
+        return
     c = lock['components']
     version, moss_version, webui_version = lock['version'], c['moss']['version'], c['webui']['version']
     sources = {}
@@ -245,6 +307,7 @@ def assemble(lock, resolved, assets):
     for name, components in zip(metadata['imageArchives'], [('moss',), ('runtime',), ('nexus',), ('webui', 'postgres'), ('caddy',)]):
         verify_image_archive(assets / name, [metadata['images'][component] for component in components])
         print('Verified locked image tags and architecture: ' + name, flush=True)
+    add_router_archive(metadata, resolved, assets)
     (assets / 'build-input.json').write_text(json.dumps(metadata, indent=2) + '\n')
 
 

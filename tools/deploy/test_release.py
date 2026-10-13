@@ -14,6 +14,7 @@ import artifacts
 import atlas
 import package
 import release
+import router
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -34,12 +35,71 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(self.read_lock(self.lock)['version'], '0.0.1')
         for name, field, value in [('moss', 'version', 'latest'), ('webui', 'tag', 'v9.9.9'),
                                    ('nexus', 'repository', 'sudoprivacy/moss'), ('caddy', 'image', 'caddy:latest'),
-                                   ('caddy', 'image', 'docker.io/library/caddy:2.10.3-alpine')]:
+                                   ('caddy', 'image', 'docker.io/library/caddy:2.10.3-alpine'),
+                                   ('router', 'repository', 'calciumion/new-api'), ('router', 'tag', 'latest')]:
             with self.subTest(component=name, field=field):
                 lock = copy.deepcopy(self.lock)
                 lock['components'][name][field] = value
                 with self.assertRaises(ValueError):
                     self.read_lock(lock)
+
+    def test_router_release_requires_all_components_and_an_immutable_base(self):
+        for mutate in (lambda lock: lock['components'].pop('router'),
+                       lambda lock: lock['baseRelease'].update(manifestSha256=''),
+                       lambda lock: lock['baseRelease'].update(tag='main')):
+            lock = copy.deepcopy(self.lock)
+            mutate(lock)
+            with self.assertRaises(ValueError):
+                self.read_lock(lock)
+
+    def test_router_addition_rejects_any_change_to_existing_components(self):
+        previous = {'release': 'sudostack-v0.0.1-rc.2', 'archives': {'moss.tar.gz': 'a' * 64},
+            'imageArchives': ['moss.tar.gz'], 'images': {'moss': 'moss:1'}, 'components': {'moss': {'version': '1'}}}
+        candidate = {**copy.deepcopy(previous), 'release': 'sudostack-v0.0.1-rc.3',
+            'extends': {'release': previous['release'], 'archives': copy.deepcopy(previous['archives'])}}
+        candidate['images']['router'] = 'sudoprivacy/new-api:1'
+        candidate['components']['router'] = {'version': '1'}
+        atlas.validate_router_addition(previous, candidate)
+        for mutate in (lambda m: m['extends'].update(release='another-release'),
+                       lambda m: m['archives'].update({'moss.tar.gz': 'b' * 64}),
+                       lambda m: m['images'].update(moss='moss:2'),
+                       lambda m: m['components']['moss'].update(version='2')):
+            changed = copy.deepcopy(candidate)
+            mutate(changed)
+            with self.assertRaises(ValueError):
+                atlas.validate_router_addition(previous, changed)
+
+    def test_router_will_not_replace_customer_model_credentials(self):
+        with patch.object(router, 'moss_settings', return_value={'url': 'https://customer.example/v1', 'apiKeyConfigured': True}):
+            with self.assertRaises(ValueError):
+                router.assert_moss_configuration(self.root)
+        with patch.object(router, 'moss_settings', return_value={'url': '', 'apiKeyConfigured': False}):
+            router.assert_moss_configuration(self.root)
+        (self.root / 'router-credentials.json').write_text('{}')
+        with patch.object(router, 'moss_settings', return_value={'url': router.MODEL_URL, 'apiKeyConfigured': True}):
+            router.assert_moss_configuration(self.root)
+
+    def test_base_assembly_retains_owner_bytes_and_replaces_deployment_files(self):
+        names = ['moss.tar.gz', 'bootstrap.mjs', 'deploy.tar.gz', 'install.sh', 'SHA256SUMS', 'helm.tar.gz', 'offline/k3s']
+        sources = {name: {'url': 'https://github.com/owner/release/' + name,
+            'sha256': hashlib.sha256(name.encode()).hexdigest()} for name in names + ['atlas.py', 'old-chart.tgz']}
+        base = {'release': 'sudostack-v0.0.1-rc.2', 'version': '0.0.1-rc.2', 'sources': sources,
+            'imageArchives': ['moss.tar.gz'], 'images': {'moss': 'moss:1'}, 'mossBootstrap': 'bootstrap.mjs',
+            'mossDeploymentBundle': 'deploy.tar.gz', 'helm': {'archive': 'helm.tar.gz'}, 'buildInputs': {},
+            'chart': 'old-chart.tgz', 'archives': {k: v['sha256'] for k, v in sources.items()}}
+        resolved = {'baseRelease': {'manifest': base, 'source': {}}, 'router': {}}
+        def download(url, target, digest):
+            name = url.removeprefix('https://github.com/owner/release/')
+            self.assertEqual(hashlib.sha256(name.encode()).hexdigest(), digest)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(name.encode())
+        with patch.object(release, 'download', side_effect=download), patch.object(release, 'add_router_archive'):
+            release.assemble_from_base(self.lock, resolved, self.root / 'assets')
+        result = json.loads((self.root / 'assets/build-input.json').read_text())
+        self.assertEqual(set(result['sources']), set(names))
+        self.assertEqual(result['images'], base['images'])
+        self.assertEqual(result['extends']['archives'], base['archives'])
+        self.assertNotIn('chart', result)
 
     def test_release_preflight_rejects_missing_assets_before_assembly(self):
         metadata = {'tag_name': 'v1.0.0', 'assets': []}

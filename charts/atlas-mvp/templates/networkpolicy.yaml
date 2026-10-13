@@ -15,6 +15,9 @@ spec:
       ports:
         - {protocol: TCP, port: 12013}
         - {protocol: TCP, port: {{ .Values.moss.port }}}
+        {{- if .Values.router.enabled }}
+        - {protocol: TCP, port: 3000}
+        {{- end }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -29,3 +32,6 @@ spec:
         - {protocol: TCP, port: 80}
         - {protocol: TCP, port: {{ .Values.gateway.webuiPort }}}
         - {protocol: TCP, port: {{ .Values.gateway.mossPort }}}
+        {{- if and .Values.router.enabled .Values.router.expose }}
+        - {protocol: TCP, port: {{ .Values.gateway.routerPort }}}
+        {{- end }}
