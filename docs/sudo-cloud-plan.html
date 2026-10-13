@@ -93,7 +93,7 @@ body.is-diagram-expanded { overflow: hidden; }
   </div>
   <div id="viewport"><div id="diagram"><pre class="mermaid">---
 config:
-  layout: dagre
+  layout: elk
   flowchart:
     curve: linear
     nodeSpacing: 50
@@ -178,6 +178,8 @@ flowchart TB
 <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js"></script>
 <script type="module">
 import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.12.1/dist/mermaid.esm.min.mjs';
+import elkLayouts from 'https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.0/dist/mermaid-layout-elk.esm.min.mjs';
+mermaid.registerLayoutLoaders(elkLayouts);
 
 function decode(id) {
   const raw = atob(document.getElementById(id).textContent);
