@@ -1,5 +1,6 @@
 import copy
 import hashlib
+import io
 import json
 from pathlib import Path
 import subprocess
@@ -79,6 +80,27 @@ class ReleaseTests(unittest.TestCase):
         with patch.object(artifacts.subprocess, 'run') as transfer:
             artifacts.download('https://github.com/owner/repo/image.tar.gz', target, expected)
             transfer.assert_not_called()
+
+    def test_image_archive_must_contain_every_locked_image_and_architecture(self):
+        path = self.root / 'webui.tar.gz'
+        def bundle(architecture):
+            files = {'manifest.json': [{'Config': 'config.json', 'RepoTags': ['sudowork-webui:0.2.28']}],
+                     'config.json': {'architecture': architecture, 'os': 'linux'}}
+            with tarfile.open(path, 'w:gz') as archive:
+                for name, value in files.items():
+                    raw = json.dumps(value).encode()
+                    member = tarfile.TarInfo(name)
+                    member.size = len(raw)
+                    archive.addfile(member, io.BytesIO(raw))
+        bundle('amd64')
+        release.verify_image_archive(path, ['docker.io/library/sudowork-webui:0.2.28'])
+        with self.assertRaisesRegex(ValueError, 'locked image'):
+            release.verify_image_archive(path, ['sudowork-webui:0.2.29'])
+        with self.assertRaisesRegex(ValueError, 'locked image'):
+            release.verify_image_archive(path, ['sudowork-webui:0.2.28', 'postgres:16-alpine'])
+        bundle('arm64')
+        with self.assertRaisesRegex(ValueError, 'linux/amd64'):
+            release.verify_image_archive(path, ['sudowork-webui:0.2.28'])
 
     def test_fetch_rejects_paths_before_network_access(self):
         for name in ('../outside', '/absolute', 'offline/../../outside', './file'):

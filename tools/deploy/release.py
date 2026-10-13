@@ -117,6 +117,26 @@ def pull_image(ref):
     return details['RepoDigests'][0]
 
 
+def verify_image_archive(path, expected_refs):
+    def canonical(ref):
+        if '/' not in ref:
+            return 'docker.io/library/' + ref
+        return 'docker.io/' + ref if ref.startswith('library/') else ref
+
+    with tarfile.open(path) as archive:
+        try:
+            entries = json.load(archive.extractfile('manifest.json'))
+            tagged = {canonical(tag): entry for entry in entries for tag in entry.get('RepoTags', [])}
+            for ref in expected_refs:
+                if canonical(ref) not in tagged:
+                    raise ValueError(f'{path.name} does not contain the locked image {ref}')
+                config = json.load(archive.extractfile(tagged[canonical(ref)]['Config']))
+                if config.get('architecture') != 'amd64' or config.get('os') != 'linux':
+                    raise ValueError(f'{path.name}: {ref} must be a linux/amd64 image')
+        except (KeyError, TypeError, json.JSONDecodeError) as error:
+            raise ValueError('Invalid Docker image archive: ' + path.name) from error
+
+
 def extract_file(archive_path, member_name, destination, executable=False):
     with tarfile.open(archive_path) as archive:
         member = archive.getmember(member_name)
@@ -222,6 +242,9 @@ def assemble(lock, resolved, assets):
         'k3s': c['k3s']['version'], 'gvisor': c['gvisor']['version'], 'nexus': c['nexus'],
         'sudocode': c['sudocode'], 'runtimeClass': 'gvisor',
     }
+    for name, components in zip(metadata['imageArchives'], [('moss',), ('runtime',), ('nexus',), ('webui', 'postgres'), ('caddy',)]):
+        verify_image_archive(assets / name, [metadata['images'][component] for component in components])
+        print('Verified locked image tags and architecture: ' + name, flush=True)
     (assets / 'build-input.json').write_text(json.dumps(metadata, indent=2) + '\n')
 
 
