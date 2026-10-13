@@ -52,7 +52,8 @@ async function api(path, body, method = body === undefined ? 'GET' : 'POST') {
           text += typeof content === 'string' ? content : (content || []).map(c => c.text || '').join('');
         }
         if (event.type === 'result') {
-          assert.equal(event.status, 'success'); assert(text.includes(nonce), 'response nonce missing'); finish();
+          assert.equal(event.status, 'success', 'Model result: ' + JSON.stringify(event.errors || event.status));
+          assert(text.includes(nonce), 'response nonce missing'); finish();
         }
       } catch (error) {finish(error);}
     });

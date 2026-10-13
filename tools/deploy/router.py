@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import secrets
+import re
 import socket
 import ssl
 import subprocess
@@ -36,7 +37,7 @@ class RouterClient:
             try:
                 self.request('/api/status')
                 return self
-            except (OSError, ValueError):
+            except (OSError, ValueError, RuntimeError):
                 time.sleep(.5)
         self.__exit__(None, None, None)
         raise RuntimeError('SudoRouter API tunnel did not become ready')
@@ -64,7 +65,15 @@ class RouterClient:
             with opener.open(request, timeout=30) as response:
                 value = json.load(response)
         except urllib.error.HTTPError as error:
-            raise RuntimeError('SudoRouter ' + path + ': HTTP ' + str(error.code)) from None
+            code = ''
+            try:
+                body = json.loads(error.read(65536))
+                candidate = body.get('error', {}).get('code', '')
+                if isinstance(candidate, str) and re.fullmatch(r'[a-zA-Z0-9_.-]{1,80}', candidate):
+                    code = ' (' + candidate + ')'
+            except (ValueError, AttributeError):
+                pass
+            raise RuntimeError('SudoRouter ' + path + ': HTTP ' + str(error.code) + code) from None
         if value.get('success') is False:
             raise RuntimeError('SudoRouter API rejected ' + path)
         return value

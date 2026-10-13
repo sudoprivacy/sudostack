@@ -45,7 +45,9 @@ spec:
             - secretRef: {name: atlas-router-env}
           env:
             - {name: SQLITE_PATH, value: /data/sudorouter.db}
-            - {name: MEMORY_CACHE_ENABLED, value: "true"}
+            # rc24 does not invalidate the channel cache on creation. Query
+            # SQLite directly so newly configured channels are usable at once.
+            - {name: MEMORY_CACHE_ENABLED, value: "false"}
             - {name: SESSION_COOKIE_SECURE, value: "true"}
             - {name: SESSION_COOKIE_TRUSTED_URL, value: {{ .Values.gateway.routerOrigin | quote }}}
             - {name: TZ, value: Asia/Shanghai}

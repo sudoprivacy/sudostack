@@ -70,6 +70,11 @@ try:
             'key':key,'base_url':'http://'+name+'.'+ns+'.svc.cluster.local:18484',
             'models':'claude-sonnet-4-6','group':'default'}})
         channel_created=True
+        relay_key=router.credentials(root)['relayKey']
+        probe=router_client.request('/v1/messages',{'model':'claude-sonnet-4-6','max_tokens':32,
+            'messages':[{'role':'user','content':'Reply MOSS_E2E_TOKEN_router_probe'}]},bearer=relay_key)
+        if not any('MOSS_E2E_TOKEN_router_probe' in item.get('text','') for item in probe.get('content',[])):
+            raise RuntimeError('SudoRouter did not relay the model probe to the temporary upstream')
     else:
         api('/api/v1/settings/system?scope=organization',{'apiKey':key,'url':'http://'+name+'.'+ns+'.svc.cluster.local:18484/v1'},'PATCH')
     for _ in range(20):
