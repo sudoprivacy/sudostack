@@ -1,0 +1,21 @@
+{
+  "component": "SudoRouter",
+  "version": "0.0.1-rc.1",
+  "sourceBranch": "sudo/rc24",
+  "host": "10.0.1.180",
+  "scope": "isolated temporary Router namespace; existing Moss used with temporary model settings",
+  "memoryCacheEnabled": {
+    "modelsListed": true,
+    "relayHttpStatus": 400,
+    "relayErrorCode": "model_not_found",
+    "webuiSessionPassed": false
+  },
+  "memoryCacheDisabled": {
+    "relayHttpStatus": 200,
+    "anthropicStreamPassed": true,
+    "webuiSessionPassed": true
+  },
+  "temporaryNamespaceRemoved": true,
+  "mossConfigurationRestored": true,
+  "deploymentDecision": "Single-node SQLite deployment uses MEMORY_CACHE_ENABLED=false; new channels are immediately visible."
+}

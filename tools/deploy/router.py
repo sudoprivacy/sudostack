@@ -15,6 +15,20 @@ import atlas
 MODEL_URL = 'http://sudorouter.atlas-system.svc.cluster.local:3000/v1'
 
 
+def wait_upstream(url):
+    """Pod readiness precedes Service forwarding; check from the actual caller."""
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        result = subprocess.run(['k3s', 'kubectl', '-n', atlas.NAMESPACE, 'exec',
+            'deployment/sudorouter', '--', 'wget', '--no-proxy', '-q', '-O', '/dev/null',
+            '--timeout=3', '--tries=1', url + '/healthz'],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+        if result.returncode == 0:
+            return
+        time.sleep(1)
+    raise RuntimeError('Temporary upstream is not reachable from SudoRouter through its Service')
+
+
 class RouterClient:
     """Use a loopback-only Kubernetes tunnel before exposing the admin gateway."""
     def __init__(self, root):
@@ -65,15 +79,17 @@ class RouterClient:
             with opener.open(request, timeout=30) as response:
                 value = json.load(response)
         except urllib.error.HTTPError as error:
-            code = ''
+            details = []
             try:
                 body = json.loads(error.read(65536))
-                candidate = body.get('error', {}).get('code', '')
-                if isinstance(candidate, str) and re.fullmatch(r'[a-zA-Z0-9_.-]{1,80}', candidate):
-                    code = ' (' + candidate + ')'
+                for field in ('code', 'type'):
+                    candidate = body.get('error', {}).get(field, '')
+                    if isinstance(candidate, str) and re.fullmatch(r'[a-zA-Z0-9_.-]{1,80}', candidate):
+                        details.append(field + '=' + candidate)
             except (ValueError, AttributeError):
                 pass
-            raise RuntimeError('SudoRouter ' + path + ': HTTP ' + str(error.code) + code) from None
+            suffix = ' (' + ', '.join(details) + ')' if details else ''
+            raise RuntimeError('SudoRouter ' + path + ': HTTP ' + str(error.code) + suffix) from None
         if value.get('success') is False:
             raise RuntimeError('SudoRouter API rejected ' + path)
         return value

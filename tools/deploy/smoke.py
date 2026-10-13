@@ -66,8 +66,10 @@ try:
         router_client.login()
         if router_client.request('/api/channel/?p=1&page_size=100')['data']['total']:
             raise RuntimeError('Router already has upstream channels; use real-model acceptance instead of temporary channels')
+        upstream='http://'+name+'.'+ns+'.svc.cluster.local:18484'
+        router.wait_upstream(upstream)
         router_client.request('/api/channel/',{'mode':'single','channel':{'name':name,'type':14,'status':1,
-            'key':key,'base_url':'http://'+name+'.'+ns+'.svc.cluster.local:18484',
+            'key':key,'base_url':upstream,
             'models':'claude-sonnet-4-6','group':'default'}})
         channel_created=True
         relay_key=router.credentials(root)['relayKey']

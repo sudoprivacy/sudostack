@@ -1,0 +1,18 @@
+{
+  "component": "SudoRouter",
+  "version": "0.0.1-rc.1",
+  "host": "10.0.1.180",
+  "scope": "temporary isolated Router with persistent SQLite volume",
+  "withoutServiceReadiness": {
+    "relayHttpStatus": 500,
+    "cause": "new Service forwarding not ready: connect: connection refused"
+  },
+  "withServiceReadiness": {
+    "healthProbeOrigin": "Router Pod",
+    "initialRelayHttpStatus": 200,
+    "webuiSessionPassed": true,
+    "restartCyclesPassed": 2,
+    "newServiceCreatedPerCycle": true
+  },
+  "deploymentDecision": "Wait for temporary upstream /healthz from Router before sending a single model probe."
+}

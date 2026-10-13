@@ -1,6 +1,6 @@
 # SudoRouter 随 sudostack 交付
 
-SudoRouter 来自 `sudoprivacy/new-api`，本次按 `sudo/rc24` 的业务提交 `5dc757ffb0d67ecbb06491a513afc524fdbea2ed` 构建。独立发布版本为 [`sudorouter-v0.0.1-rc.1`](https://github.com/sudoprivacy/new-api/releases/tag/sudorouter-v0.0.1-rc.1)，发布提交 `7d7964b939f3c91917ab046453a1ed9718f7a7c6` 仅增加镜像包 CI。sudostack 的 `0.0.1-rc.4` 清单固定引用此版本。
+SudoRouter 来自 `sudoprivacy/new-api`，本次按 `sudo/rc24` 的业务提交 `5dc757ffb0d67ecbb06491a513afc524fdbea2ed` 构建。独立发布版本为 [`sudorouter-v0.0.1-rc.1`](https://github.com/sudoprivacy/new-api/releases/tag/sudorouter-v0.0.1-rc.1)，发布提交 `7d7964b939f3c91917ab046453a1ed9718f7a7c6` 仅增加镜像包 CI。sudostack 的 `0.0.1-rc.5` 清单固定引用此版本。
 
 模型请求路径为 SudoWork → Moss / Sudocode 会话 → SudoRouter → 客户配置的上游渠道。SudoRouter 不提供模型本身，上游渠道及其 API Key 需要管理员配置。
 
@@ -30,13 +30,13 @@ SudoRouter 来自 `sudoprivacy/new-api`，本次按 `sudo/rc24` 的业务提交 
 sudo bash install-atlas.sh --host <host> --root /data/atlas --add-router
 ```
 
-增补路径只接受清单 `baseRelease` 固定的原版本，验证原 manifest 校验和、每个既有组件版本及镜像包字节都没有改变。rc.4 复用 rc.2 已发布的镜像和基础设施制品，只增加 Router 及相应部署文件。不会删除原数据、重新生成 Moss 管理员凭据或 Vault 主密钥。此功能不代表支持一般的跨版本升级。
+增补路径只接受清单 `baseRelease` 固定的原版本，验证原 manifest 校验和、每个既有组件版本及镜像包字节都没有改变。rc.5 复用 rc.2 已发布的镜像和基础设施制品，只增加 Router 及相应部署文件。不会删除原数据、重新生成 Moss 管理员凭据或 Vault 主密钥。此功能不代表支持一般的跨版本升级。
 
 已有自定义模型 Key 时，安装器在增补前拒绝覆盖。需要由管理员确定如何迁移现有模型配置。相同版本重复安装只验证现有实例。
 
 ## 模型连通性验收
 
-安装自动创建临时 Anthropic 模拟渠道，并通过真实 SudoRouter 完成 WebUI 登录、WebSocket、gVisor 会话和历史保存。模拟上游只允许 Router Pod 访问，不能由会话 Pod 直接调用。测试结束删除临时渠道、上游 Pod 和 Key，保留正式的 Moss → SudoRouter 调用令牌。
+安装自动创建临时 Anthropic 模拟渠道，并通过真实 SudoRouter 完成 WebUI 登录、WebSocket、gVisor 会话和历史保存。模型验收前先从 Router Pod 检查模拟上游的 Service 健康地址，等待转发规则生效。网络策略禁止会话 Pod 直接连接模拟上游。测试结束删除临时渠道、上游 Pod 和 Key，保留正式的 Moss → SudoRouter 调用令牌。
 
 尚未配置真实渠道时，可以重跑并验证同一会话的历史恢复：
 

@@ -117,6 +117,9 @@ jobs:
           sudo k3s kubectl -n atlas-system get events --sort-by=.lastTimestamp > evidence/events.txt 2>&1 || true
           sudo test ! -f /data/atlas/deployment-report.json || sudo cat /data/atlas/deployment-report.json > evidence/deployment-report.json
           sudo test ! -f /data/atlas/helm.log || sudo cat /data/atlas/helm.log > evidence/helm.log
+          for STAGE in before after; do
+            sudo test ! -f "/data/atlas/acceptance/webui-$STAGE.json" || sudo cat "/data/atlas/acceptance/webui-$STAGE.json" > "evidence/webui-$STAGE.json"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
