@@ -1,0 +1,38 @@
+name: private-k3s chart
+on:
+  pull_request:
+    paths: ['charts/**', 'tools/deploy/**', 'manifests/deployment/**', '.github/workflows/*release*.yml', '.github/workflows/private-k3s.yml']
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.19.0
+      - name: Validate installer and chart
+        run: |
+          python3 -m py_compile tools/deploy/*.py
+          bash -n tools/deploy/install-atlas.sh
+          node --check tools/deploy/webui-smoke.cjs
+          node --check tools/deploy/mock-openai-server.mjs
+          python3 -m unittest discover -s tools/deploy -p 'test_*.py'
+          for lock in manifests/deployment/*.json; do
+            python3 tools/deploy/release.py --lock "$lock" --validate
+          done
+          helm lint charts/atlas-mvp -f charts/atlas-mvp/ci/values.json
+          helm template atlas-mvp charts/atlas-mvp -n atlas-system -f charts/atlas-mvp/ci/values.json > /tmp/atlas.yaml
+      - name: Validate Kubernetes resources
+        run: |
+          curl -fsSL https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz -o /tmp/kubeconform.tar.gz
+          curl -fsSL https://github.com/yannh/kubeconform/releases/download/v0.7.0/CHECKSUMS -o /tmp/CHECKSUMS
+          python3 - <<'PY'
+          import hashlib
+          from pathlib import Path
+          lines=Path('/tmp/CHECKSUMS').read_text().splitlines()
+          expected=next(line.split()[0] for line in lines if line.split()[-1]=='kubeconform-linux-amd64.tar.gz')
+          assert hashlib.sha256(Path('/tmp/kubeconform.tar.gz').read_bytes()).hexdigest()==expected
+          PY
+          tar -xzf /tmp/kubeconform.tar.gz -C /tmp kubeconform
+          /tmp/kubeconform -strict -summary -kubernetes-version 1.34.1 /tmp/atlas.yaml

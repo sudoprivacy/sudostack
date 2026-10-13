@@ -1,0 +1,102 @@
+name: sudostack deployment release
+on:
+  push:
+    tags: ['sudostack-v*']
+  pull_request:
+    paths:
+      - '.github/workflows/deployment-release.yml'
+      - 'manifests/deployment/**'
+      - 'tools/deploy/**'
+      - 'charts/atlas-mvp/**'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version with a committed manifests/deployment/VERSION.json lock'
+        required: true
+        default: '0.0.1'
+permissions:
+  contents: read
+concurrency:
+  group: deployment-release-${{ github.ref }}-${{ inputs.version }}
+  cancel-in-progress: false
+jobs:
+  assemble:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Select the suite's committed version lock
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/tags/sudostack-v* ]]; then
+            VERSION="${GITHUB_REF_NAME#sudostack-v}"
+          else
+            VERSION="${REQUESTED_VERSION:-0.0.1}"
+          fi
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]
+          LOCK="manifests/deployment/$VERSION.json"
+          test -f "$LOCK"
+          test "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$LOCK")" = "$VERSION"
+          echo "ATLAS_LOCK=$LOCK" >> "$GITHUB_ENV"
+      - name: Validate deployment files
+        run: |
+          python3 -m unittest discover -s tools/deploy -p 'test_*.py'
+          bash -n tools/deploy/install-atlas.sh
+      - name: Fetch pinned owner releases and build the Nexus broker image
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/deploy/release.py --lock "$ATLAS_LOCK" --assets dist/assets
+      - name: Freeze the release manifest and deployment files
+        run: python3 tools/deploy/package.py --assets dist/assets --publish dist/publish
+      - name: Bundle all verified resources for clean installation qualification
+        run: python3 tools/deploy/bundle.py --assets dist/assets --output dist/sudostack-candidate-amd64.tar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sudostack-installation-candidate
+          path: |
+            dist/sudostack-candidate-amd64.tar
+            dist/sudostack-candidate-amd64.tar.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.19.0
+      - name: Validate the packaged Chart
+        run: |
+          set -euo pipefail
+          CHART="$(python3 -c 'import json; print(json.load(open("dist/publish/atlas-release.json"))["chart"])')"
+          helm lint "dist/publish/$CHART" -f charts/atlas-mvp/ci/values.json
+          helm template atlas-mvp "dist/publish/$CHART" -n atlas-system -f charts/atlas-mvp/ci/values.json > dist/rendered.yaml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sudostack-deployment-release
+          path: dist/publish/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+  publish:
+    if: startsWith(github.ref, 'refs/tags/sudostack-v')
+    needs: assemble
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sudostack-deployment-release
+          path: release
+      - name: Create the versioned Release without overwriting an existing one
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum -c SHA256SUMS
+          # gh release create refuses to overwrite an existing Release.
+          gh release create "$GITHUB_REF_NAME" ./* --verify-tag --prerelease \
+            --title "$GITHUB_REF_NAME" --notes 'Pinned component releases and deployment files. See atlas-release.json and components.lock.json. Deployment qualification is required before production use.'

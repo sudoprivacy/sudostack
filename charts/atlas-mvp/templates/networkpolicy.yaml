@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: atlas-control-ingress
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.sessionsNamespace }}
+      ports:
+        - {protocol: TCP, port: 12013}
+        - {protocol: TCP, port: {{ .Values.moss.port }}}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: atlas-gateway-ingress
+spec:
+  podSelector:
+    matchLabels: {app: atlas-gateway}
+  policyTypes: [Ingress]
+  ingress:
+    - ports:
+        - {protocol: TCP, port: 80}
+        - {protocol: TCP, port: {{ .Values.gateway.webuiPort }}}
+        - {protocol: TCP, port: {{ .Values.gateway.mossPort }}}

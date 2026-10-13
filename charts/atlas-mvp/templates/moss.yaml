@@ -1,0 +1,63 @@
+{{- if .Values.moss.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: moss-server
+spec:
+  selector: {app: atlas-moss}
+  ports:
+    - {name: http, port: {{ .Values.moss.port }}, targetPort: http}
+    - {name: auth-proxy, port: 12013, targetPort: auth-proxy}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: moss-server
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: atlas-moss}
+  template:
+    metadata:
+      labels: {app: atlas-moss}
+      annotations:
+        atlas/config-revision: {{ .Values.configRevision | quote }}
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.nodeName | quote }}
+      serviceAccountName: atlas-controller
+      terminationGracePeriodSeconds: 45
+      containers:
+        - name: server
+          image: {{ required "images.moss is required" .Values.images.moss | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          envFrom:
+            - secretRef: {name: {{ .Values.moss.envSecret }}}
+          ports:
+            - {name: http, containerPort: {{ .Values.moss.port }}}
+            - {name: auth-proxy, containerPort: 12013}
+          volumeMounts:
+            - {name: data, mountPath: {{ .Values.dataMountPath }}}
+            - {name: config, mountPath: /etc/moss, readOnly: true}
+            - {name: nexus-tls, mountPath: /etc/nexus-client, readOnly: true}
+          startupProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 2
+            failureThreshold: 90
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 15
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {memory: 4Gi}
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: atlas-data}
+        - name: config
+          secret: {secretName: {{ .Values.moss.configSecret }}}
+        - name: nexus-tls
+          secret: {secretName: {{ .Values.nexus.tlsSecret }}}
+{{- end }}

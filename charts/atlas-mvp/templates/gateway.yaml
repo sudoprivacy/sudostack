@@ -1,0 +1,57 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.gateway.configMap }}
+data:
+  Caddyfile: |
+{{ include "atlas.caddy" . | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: atlas-gateway
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: atlas-gateway}
+  template:
+    metadata:
+      labels: {app: atlas-gateway}
+      annotations:
+        checksum/config: {{ include "atlas.caddy" . | sha256sum }}
+        atlas/config-revision: {{ .Values.configRevision | quote }}
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.nodeName | quote }}
+      containers:
+        - name: caddy
+          image: {{ required "images.caddy is required" .Values.images.caddy | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          ports:
+            - {name: http, containerPort: 80, hostPort: 80}
+            - {name: webui, containerPort: {{ .Values.gateway.webuiPort }}, hostPort: {{ .Values.gateway.webuiPort }}}
+            - {name: moss, containerPort: {{ .Values.gateway.mossPort }}, hostPort: {{ .Values.gateway.mossPort }}}
+          volumeMounts:
+            - {name: config, mountPath: /etc/caddy, readOnly: true}
+            - {name: tls, mountPath: /etc/atlas-tls, readOnly: true}
+          startupProbe:
+            httpGet: {path: /caddy-health, port: http}
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet: {path: /caddy-health, port: http}
+          livenessProbe:
+            httpGet: {path: /caddy-health, port: http}
+            periodSeconds: 15
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {memory: 256Mi}
+      volumes:
+        - name: config
+          configMap: {name: {{ .Values.gateway.configMap }}}
+        - name: tls
+          secret: {secretName: {{ .Values.gateway.tlsSecret }}}
+{{- end }}

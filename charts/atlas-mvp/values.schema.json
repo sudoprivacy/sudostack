@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "nodeName",
+    "images",
+    "gateway"
+  ],
+  "properties": {
+    "nodeName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dataMountPath": {
+      "const": "/var/lib/atlas"
+    },
+    "sessionsNamespace": {
+      "const": "moss-sessions"
+    },
+    "imagePullPolicy": {
+      "enum": [
+        "Never",
+        "IfNotPresent"
+      ]
+    },
+    "images": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "moss",
+        "nexus",
+        "runtime",
+        "webui",
+        "postgres",
+        "caddy"
+      ],
+      "properties": {
+        "moss": {
+          "type": "string",
+          "pattern": "^.+@sha256:[a-f0-9]{64}$"
+        },
+        "nexus": {
+          "type": "string",
+          "pattern": "^.+@sha256:[a-f0-9]{64}$"
+        },
+        "runtime": {
+          "type": "string",
+          "pattern": "^.+@sha256:[a-f0-9]{64}$"
+        },
+        "webui": {
+          "type": "string",
+          "pattern": "^.+@sha256:[a-f0-9]{64}$"
+        },
+        "postgres": {
+          "type": "string",
+          "pattern": "^.+@sha256:[a-f0-9]{64}$"
+        },
+        "caddy": {
+          "type": "string",
+          "pattern": "^.+@sha256:[a-f0-9]{64}$"
+        }
+      }
+    },
+    "gateway": {
+      "type": "object",
+      "properties": {
+        "webuiOrigin": {
+          "type": "string",
+          "pattern": "^https://[a-zA-Z0-9.-]+$"
+        },
+        "mossOrigin": {
+          "type": "string",
+          "pattern": "^https://[a-zA-Z0-9.-]+:8443$"
+        },
+        "webuiPort": {
+          "const": 443
+        },
+        "mossPort": {
+          "const": 8443
+        }
+      }
+    },
+    "storageClass": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

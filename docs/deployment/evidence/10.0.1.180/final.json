@@ -1,0 +1,7 @@
+{
+  "passed": true,
+  "repeatInstallPreservedPods": true,
+  "testModelCredentialsRemoved": true,
+  "modelEndpoint": "https://hk.sudorouter.ai/v1",
+  "applicationSystemd": false
+}

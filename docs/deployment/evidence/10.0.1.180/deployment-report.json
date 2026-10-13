@@ -1,0 +1,71 @@
+{
+  "status": "ready",
+  "release": "atlas-mvp",
+  "namespace": "atlas-system",
+  "deployments": {
+    "atlas-gateway": 1,
+    "moss-server": 1,
+    "nexus-broker": 1,
+    "sudowork-webui": 1,
+    "webui-postgres": 1
+  },
+  "images": {
+    "moss": "docker.io/library/moss-server@sha256:a028d064f91d3b7d8de782c1012a240be1ef0e6e2612e3968444d7b83673d849",
+    "nexus": "docker.io/library/moss-nexus@sha256:1d0ec7a4aee82d6b4da0bc846b43de79dba22f26aa12a7abd6cc3a592f2131e7",
+    "runtime": "docker.io/library/my-moss-runtime@sha256:0c9deaeba7c090c596cb0a6675d4ec769a7a7a9440e71c575541a65525fb84bc",
+    "webui": "docker.io/library/sudowork-webui@sha256:ce00cbe54734491ab3ecd0750482bf63d047d144d3751ac8bec82a1afd1cdeb2",
+    "postgres": "docker.io/library/postgres@sha256:e07f16afdedf8d1dcf69465f3ffcfd1066ba8a48efbb8233a2822e9808ff2305",
+    "caddy": "docker.io/library/caddy@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d"
+  },
+  "gateway": {
+    "webuiOrigin": "https://10.0.1.180",
+    "mossOrigin": "https://10.0.1.180:8443"
+  },
+  "gatewayCaSha256": "5df7a0bfeb71f9660c0dd7f237e68a813f0b02d6075b5f222f627460f09ce2ae",
+  "runtimeClass": "gvisor",
+  "acceptance": {
+    "webui-before.json": {
+      "passed": true,
+      "sessionId": "32f7a3bd-b50e-456e-b9a4-dff8ec350d53",
+      "nonce": "MOSS_E2E_TOKEN_atlas_e3a86d3428174f1a97e6ad775c94dd6e",
+      "https": true,
+      "webuiLogin": true,
+      "websocket": true,
+      "transcript": true,
+      "resumed": false,
+      "sandboxes": {
+        "scode-32f7a3bd-b50": {
+          "uid": "67f4c100-a004-4478-895b-ae3fbcf281bc",
+          "runtimeClass": "gvisor",
+          "image": "docker.io/library/my-moss-runtime@sha256:0c9deaeba7c090c596cb0a6675d4ec769a7a7a9440e71c575541a65525fb84bc"
+        }
+      }
+    },
+    "webui-after.json": {
+      "passed": true,
+      "sessionId": "32f7a3bd-b50e-456e-b9a4-dff8ec350d53",
+      "nonce": "MOSS_E2E_TOKEN_atlas_bbfffd087d9e4c4d8e6211aae27b609e",
+      "https": true,
+      "webuiLogin": true,
+      "websocket": true,
+      "transcript": true,
+      "resumed": true,
+      "sandboxes": {
+        "scode-32f7a3bd-b50": {
+          "uid": "be21fae0-8a05-4701-9376-8ae5c19de6f6",
+          "runtimeClass": "gvisor",
+          "image": "docker.io/library/my-moss-runtime@sha256:0c9deaeba7c090c596cb0a6675d4ec769a7a7a9440e71c575541a65525fb84bc"
+        }
+      }
+    },
+    "restore.json": {
+      "passed": true,
+      "backup": "/var/backups/atlas/20261012-qualification",
+      "mossDataRestored": true,
+      "postgresDataRestored": true,
+      "vaultKeyPreserved": true,
+      "sameSessionResumedAfterRestore": true
+    }
+  },
+  "productionCertification": "pending: Ubuntu 24.04 clean-host qualification, signing/provenance and version-upgrade rollback qualification"
+}
