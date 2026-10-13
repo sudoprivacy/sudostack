@@ -1,0 +1,58 @@
+{
+  "release": "sudostack-v0.0.1-rc.2",
+  "podUids": {
+    "atlas-gateway-78ddd9764b-44m2s": "6f69513d-f46a-403e-836f-049076e8b619",
+    "moss-server-6d9c6c5967-ql5zv": "b34bf022-dea4-4a94-819a-106cc824cf39",
+    "nexus-broker-7f8dfd5bdb-jjwq2": "68fbd052-949f-492c-a0fc-0d49c526a8f5",
+    "sudowork-webui-7ff944cb5f-4dnt8": "bf487703-82b6-4fa1-a564-46c730f81dfd",
+    "webui-postgres-6b79597ddb-5ktc5": "33610591-4702-422d-8a3d-8ea4bc4b9c40"
+  },
+  "vaultKeySha256": "5d3e5b27a1022cd857f33a096285bd5002c4eb7d2948dc83af811b2077ff4947",
+  "credentialsSha256": "1040a5f26a20bf0960b55b3f8788bad1a38194afd58927d7ade31ccdc4bc51ed",
+  "credentialsFileMode": "0o600",
+  "testModelCredentialsRemoved": true,
+  "modelEndpoint": "https://hk.sudorouter.ai/v1",
+  "temporaryTestResources": [],
+  "services": {
+    "k3s": true,
+    "docker": false,
+    "containerd": false,
+    "moss": false
+  },
+  "acceptance": {
+    "webui-before.json": {
+      "passed": true,
+      "sessionId": "78e1648a-2136-4f66-b4e7-7c2536a0269c",
+      "nonce": "MOSS_E2E_TOKEN_atlas_9a507d9f94cf48ffabc2cad6562f91de",
+      "https": true,
+      "webuiLogin": true,
+      "websocket": true,
+      "transcript": true,
+      "resumed": false,
+      "sandboxes": {
+        "scode-78e1648a-213": {
+          "uid": "99990a9a-c4b0-4540-9dad-3242be34e2fd",
+          "runtimeClass": "gvisor",
+          "image": "docker.io/library/my-moss-runtime@sha256:99c266a9ceb9c4f9590c7ef343512c1c2eefa1acc89f772d20b6184d5e8ca9ff"
+        }
+      }
+    },
+    "webui-after.json": {
+      "passed": true,
+      "sessionId": "78e1648a-2136-4f66-b4e7-7c2536a0269c",
+      "nonce": "MOSS_E2E_TOKEN_atlas_6b7bea41b35c42ccb15993624491f321",
+      "https": true,
+      "webuiLogin": true,
+      "websocket": true,
+      "transcript": true,
+      "resumed": true,
+      "sandboxes": {
+        "scode-78e1648a-213": {
+          "uid": "b956ceb2-5aab-418d-b3b9-d319f97644f4",
+          "runtimeClass": "gvisor",
+          "image": "docker.io/library/my-moss-runtime@sha256:99c266a9ceb9c4f9590c7ef343512c1c2eefa1acc89f772d20b6184d5e8ca9ff"
+        }
+      }
+    }
+  }
+}

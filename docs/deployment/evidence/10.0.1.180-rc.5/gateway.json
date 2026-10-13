@@ -1,0 +1,9 @@
+{
+  "routerOrigin": "https://10.0.1.180:9443",
+  "trustedCA": true,
+  "httpsStatus": 200,
+  "setupComplete": true,
+  "adminLogin": true,
+  "modelToken": true,
+  "webPage": true
+}
