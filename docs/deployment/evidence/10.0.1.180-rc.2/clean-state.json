@@ -1,0 +1,13 @@
+{
+  "host": "10.0.1.180",
+  "stage": "clean-before-install",
+  "os": "Ubuntu 22.04.4 LTS",
+  "dataEntries": [
+    "lost+found"
+  ],
+  "sshActive": true,
+  "k3sBinaryAbsent": true,
+  "gvisorBinaryAbsent": true,
+  "dockerInactive": true,
+  "rebooted": true
+}

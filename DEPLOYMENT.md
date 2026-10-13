@@ -6,15 +6,15 @@ CI 从各组件仓库的固定 Release 获取资源，校验后发布 `sudostack
 该 Release 同时包含安装器、Helm Chart、运维脚本、组件清单和逐文件 SHA256。
 安装器按清单直接下载组件镜像包，不依赖内网验收服务器，也不追随子组件的 `latest`。
 
-**当前 `0.0.1` 是待发布的版本组合，尚未完成 CI 交付与集成验收。**
-当前锁定 Moss 集成候选 `server-v0.1.53-atlas.1`，由 Moss CI 发布拆分 Server 镜像、部署助手和 Nexus 引导脚本。
-CI 会明确拒绝缺少产物或 Runtime 内 Sudocode 版本不符的组合。
-旧环境的验证记录仅见 [历史验收记录](docs/deployment/10.0.1.180-acceptance.md)，不代表新版本已经通过验收。
+**已发布并完成干净安装测试的候选为 [`sudostack-v0.0.1-rc.2`](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.2)；正式 `0.0.1` 尚未发布。**
+该候选锁定 Moss `server-v0.1.53-atlas.1`，由 Moss CI 发布拆分 Server 镜像、部署助手和 Nexus 引导脚本。
+CI 会明确拒绝缺少产物或 Runtime 内 Sudocode 版本不符的组合。候选在清空后的 Ubuntu 22.04 测试机完成安装、登录/会话、重复安装和重启恢复测试。
+测试机访问 GitHub CDN 不稳定，在线组件下载中断后，使用同一 CI 的完整包运行原安装器；全程没有内网资源服务器。详见 [本次验收记录](docs/deployment/10.0.1.180-rc.2-acceptance.md)。
 
-Release 发布后，在 Linux amd64 服务器执行：
+测试当前候选，在 Linux amd64 服务器执行：
 
 ```bash
-curl --http1.1 --retry 3 --retry-all-errors -fLO https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1/install-atlas.sh
+curl --http1.1 --retry 3 --retry-all-errors -fLO https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.2/install-atlas.sh
 sudo bash install-atlas.sh --host atlas.customer.example --root /data/atlas --manage-k3s
 ```
 
@@ -45,4 +45,3 @@ sudo k3s kubectl -n atlas-system logs deployment/moss-server
 
 相同版本重复安装会验证已有实例；跨版本原地升级仍不支持。
 版本发布、组件归属、离线包和备份恢复见 [安装与运维说明](docs/deployment/private-k3s.md)。
-

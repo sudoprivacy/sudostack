@@ -4,7 +4,7 @@
 
 CI 生成的 `atlas-release.json` 进一步记录各资源的来源 URL、组件版本、Release asset ID、SHA256，以及构建 Nexus/Caddy 时取得的 registry digest。客户安装时只读取该 Release 的清单，不解析任何子组件的 `latest`。构建输入清单随同发布为 `components.lock.json`。
 
-当前 `0.0.1` 是尚未发布、尚未完成集成验收的组合，锁定 Moss 集成候选 `server-v0.1.53-atlas.1`。该候选由 Moss CI 生成拆分 Server 镜像、部署助手和 Nexus 引导脚本。CI 在下载大文件前检查上游 Release 附件，并检查 Runtime 内实际 Sudocode 版本；不能用开发机手工打包文件填补发布缺口。
+当前已发布并完成干净安装测试的候选是 [`sudostack-v0.0.1-rc.2`](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.2)，其冻结清单为 `manifests/deployment/0.0.1-rc.2.json`；正式 `0.0.1` 尚未发布。下列组件组合也用于 rc.2，锁定 Moss 集成候选 `server-v0.1.53-atlas.1`。该候选由 Moss CI 生成拆分 Server 镜像、部署助手和 Nexus 引导脚本。CI 在下载大文件前检查上游 Release 附件，并检查 Runtime 内实际 Sudocode 版本；不能用开发机手工打包文件填补发布缺口。
 
 | 组件 | `0.0.1` 的版本组合 | 资源归属 |
 | --- | --- | --- |
@@ -21,14 +21,14 @@ Nexus Broker 的部署镜像由 sudostack CI 组装上述固定 daemon、Vault �
 
 本入口装配 Moss Server、Nexus Broker、SudoWork WebUI、PostgreSQL、Caddy；Sudocode 随 Runtime 镜像运行在按需创建的 gVisor Pod 中。业务服务使用 Helm/k3s 管理。宿主机 systemd 只管理 k3s 基础设施。
 
-适用范围：单节点 Linux amd64、本地 local-path 存储、独立命名空间 `atlas-system` 和 `moss-sessions`。历史环境使用 Ubuntu 22.04.4；新版干净安装验收、Ubuntu 24.04 验收及正式供应链签名尚未完成。
+适用范围：单节点 Linux amd64、本地 local-path 存储、独立命名空间 `atlas-system` 和 `moss-sessions`。rc.2 已在清空后的 Ubuntu 22.04.4 测试机通过安装、登录/会话、重复安装和重启恢复；记录见 [本次验收](10.0.1.180-rc.2-acceptance.md)。Ubuntu 24.04 验收及正式供应链签名尚未完成。
 
 ## 一键安装
 
-在对应 Release 发布后，直接下载该版本的安装入口：
+直接下载已发布候选的安装入口：
 
 ```bash
-curl --http1.1 --retry 3 --retry-all-errors -fLO https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1/install-atlas.sh
+curl --http1.1 --retry 3 --retry-all-errors -fLO https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.2/install-atlas.sh
 sudo bash install-atlas.sh --host atlas.customer.example --root /data/atlas --manage-k3s
 ```
 
@@ -101,6 +101,8 @@ python3 tools/deploy/package.py --assets dist/assets --publish dist/publish
 python3 tools/deploy/bundle.py --assets dist/assets --output sudostack-0.0.1-amd64.tar
 ```
 
-最后一条命令生成离线包及 `.sha256`，只收录 manifest 指定的文件并保留 `offline/` 子目录。CI 同时上传完整包到 `sudostack-installation-candidate` artifact，用于干净安装测试。完整包可能超过 GitHub Release 单文件大小限制，因此客户在线安装使用分文件下载。离线机核对 SHA256、解包后运行包内 `install-atlas.sh`，无需联网。不要打包客户安装目录。
+最后一条命令生成离线包及 `.sha256`，只收录 manifest 指定的文件并保留 `offline/` 子目录。CI 同时上传完整包到 `sudostack-installation-candidate` artifact，用于干净安装测试（保留 7 天；长期公开交付使用 Release 分文件资产）。完整包可能超过 GitHub Release 单文件大小限制，因此客户在线安装使用分文件下载。离线机核对 SHA256、解包后运行包内 `install-atlas.sh`，无需联网。不要打包客户安装目录。
+
+180 的 rc.2 验收中，公开 Release 安装入口下载及校验成功，后续大文件下载因 GitHub CDN 超时中断。测试改为由目标机从同一次 GitHub CI 下载完整包，核对 artifact 和包的 SHA256 后执行原安装器。该次验证覆盖 CI 完整包安装路径，尚未证明该网络环境下分文件在线下载可稳定完成；没有使用内网镜像服务或旧服务器产物。
 
 PR CI 对资源下载、版本锁定、打包分发做回归检查，并对 Chart 执行 lint/template 和 Kubernetes schema 校验。SHA256 校验不等同于供应链签名；新版本还需完整安装、重启和恢复验收。运行环境报告位于 `/data/atlas/deployment-report.json`，记录套件及组件版本，不含密码、私钥和 API Key。

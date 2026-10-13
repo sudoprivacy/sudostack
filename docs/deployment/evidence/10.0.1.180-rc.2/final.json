@@ -1,0 +1,43 @@
+{
+  "host": "10.0.1.180",
+  "os": "Ubuntu 22.04.4 LTS",
+  "release": "sudostack-v0.0.1-rc.2",
+  "passed": true,
+  "sourceCommit": "615a70d198b9361611f7a9efc611d451aef06498",
+  "ciUrl": "https://github.com/sudoprivacy/sudostack/actions/runs/38342121745",
+  "releaseUrl": "https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.2",
+  "artifactId": 11787820764,
+  "artifactSha256": "062b0318fff24aae66a6df08bb0455077384e06c9b7c11990066c6b687a2074a",
+  "installationMode": "CI complete bundle, unchanged installer; online component download stalled on GitHub CDN",
+  "sourceHosts": [
+    "get.helm.sh",
+    "github.com"
+  ],
+  "sourceCount": 33,
+  "cleanHost": true,
+  "oldBusinessDataAndBackupsRemoved": true,
+  "operatingSystemAndSshPreserved": true,
+  "fiveDeploymentsReady": true,
+  "externalHttpsHealth": {
+    "webui": 200,
+    "moss": 200
+  },
+  "repeatInstallPreservedPods": true,
+  "restartRecreatedAllApplicationPods": true,
+  "sameSessionResumed": true,
+  "previousTranscriptPreserved": true,
+  "vaultKeyPreserved": true,
+  "adminCredentialsPreserved": true,
+  "testModelCredentialsRemoved": true,
+  "temporaryTestResourcesRemoved": true,
+  "services": {
+    "k3s": true,
+    "docker": false,
+    "containerd": false,
+    "moss": false
+  },
+  "credentialsFileMode": "0o600",
+  "realModelTested": false,
+  "backupRestoreQualified": false,
+  "crossVersionUpgradeQualified": false
+}

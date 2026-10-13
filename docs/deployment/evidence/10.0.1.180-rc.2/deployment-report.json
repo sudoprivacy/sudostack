@@ -1,0 +1,114 @@
+{
+  "status": "ready",
+  "release": "sudostack-v0.0.1-rc.2",
+  "namespace": "atlas-system",
+  "components": {
+    "moss": {
+      "repository": "sudoprivacy/moss",
+      "tag": "server-v0.1.53-atlas.1",
+      "version": "0.1.53-atlas.1"
+    },
+    "webui": {
+      "repository": "sudoprivacy/sudowork",
+      "tag": "v0.2.28",
+      "version": "0.2.28"
+    },
+    "nexus": {
+      "repository": "nexi-lab/nexus-vfs",
+      "tag": "v0.8.4",
+      "version": "0.8.4",
+      "pluginABI": 7
+    },
+    "vault": {
+      "repository": "nexi-lab/nexus",
+      "tag": "vault-v0.5.68",
+      "version": "0.5.68"
+    },
+    "sudocode": {
+      "repository": "sudoprivacy/sudocode",
+      "tag": "v0.2.23",
+      "version": "0.2.23",
+      "sha256": "1a7bc195abd66d0c582cfea8caac71dfefc16f7aef25b04d68500fa55d7e8abc"
+    },
+    "k3s": {
+      "version": "v1.34.1+k3s1"
+    },
+    "gvisor": {
+      "version": "release-20261005.0"
+    },
+    "helm": {
+      "version": "v3.19.0"
+    },
+    "caddy": {
+      "version": "2.10.2",
+      "image": "docker.io/library/caddy:2.10.2-alpine"
+    },
+    "postgres": {
+      "version": "16",
+      "image": "docker.io/library/postgres:16-alpine",
+      "bundledWith": "webui"
+    },
+    "nexusBase": {
+      "version": "22.22.1",
+      "image": "docker.io/library/node:22.22.1-trixie-slim"
+    }
+  },
+  "deployments": {
+    "atlas-gateway": 1,
+    "moss-server": 1,
+    "nexus-broker": 1,
+    "sudowork-webui": 1,
+    "webui-postgres": 1
+  },
+  "images": {
+    "moss": "docker.io/library/moss-server@sha256:d06450c137ec51472c81f2c88d9d4439e0f6203e96952e72ef73aee80d07c159",
+    "nexus": "docker.io/library/atlas-nexus@sha256:7d7d671437c38242a80d1c04bed0b71555094a4157c0d05aec301ee709fe2bfc",
+    "runtime": "docker.io/library/my-moss-runtime@sha256:99c266a9ceb9c4f9590c7ef343512c1c2eefa1acc89f772d20b6184d5e8ca9ff",
+    "webui": "docker.io/library/sudowork-webui@sha256:ce00cbe54734491ab3ecd0750482bf63d047d144d3751ac8bec82a1afd1cdeb2",
+    "postgres": "docker.io/library/postgres@sha256:e07f16afdedf8d1dcf69465f3ffcfd1066ba8a48efbb8233a2822e9808ff2305",
+    "caddy": "docker.io/library/caddy@sha256:5bf74fd0ea8316ea9934240b594242392bcc0e4f2678d4e06d5c5d3fb9f5932d"
+  },
+  "gateway": {
+    "webuiOrigin": "https://10.0.1.180",
+    "mossOrigin": "https://10.0.1.180:8443"
+  },
+  "gatewayCaSha256": "90296e818acf4c04453a8ee5b83569f52a5359e6828ba5496ad4db118d5f066f",
+  "runtimeClass": "gvisor",
+  "acceptance": {
+    "webui-before.json": {
+      "passed": true,
+      "sessionId": "78e1648a-2136-4f66-b4e7-7c2536a0269c",
+      "nonce": "MOSS_E2E_TOKEN_atlas_9a507d9f94cf48ffabc2cad6562f91de",
+      "https": true,
+      "webuiLogin": true,
+      "websocket": true,
+      "transcript": true,
+      "resumed": false,
+      "sandboxes": {
+        "scode-78e1648a-213": {
+          "uid": "99990a9a-c4b0-4540-9dad-3242be34e2fd",
+          "runtimeClass": "gvisor",
+          "image": "docker.io/library/my-moss-runtime@sha256:99c266a9ceb9c4f9590c7ef343512c1c2eefa1acc89f772d20b6184d5e8ca9ff"
+        }
+      }
+    },
+    "webui-after.json": {
+      "passed": true,
+      "sessionId": "78e1648a-2136-4f66-b4e7-7c2536a0269c",
+      "nonce": "MOSS_E2E_TOKEN_atlas_6b7bea41b35c42ccb15993624491f321",
+      "https": true,
+      "webuiLogin": true,
+      "websocket": true,
+      "transcript": true,
+      "resumed": true,
+      "sandboxes": {
+        "scode-78e1648a-213": {
+          "uid": "b956ceb2-5aab-418d-b3b9-d319f97644f4",
+          "runtimeClass": "gvisor",
+          "image": "docker.io/library/my-moss-runtime@sha256:99c266a9ceb9c4f9590c7ef343512c1c2eefa1acc89f772d20b6184d5e8ca9ff"
+        }
+      }
+    }
+  },
+  "productionCertification": "pending: Ubuntu 24.04 clean-host qualification, signing/provenance and version-upgrade rollback qualification"
+}
