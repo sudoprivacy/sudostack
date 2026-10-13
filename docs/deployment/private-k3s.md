@@ -28,7 +28,7 @@ Nexus Broker 的部署镜像由 sudostack CI 组装上述固定 daemon、Vault �
 在对应 Release 发布后，直接下载该版本的安装入口：
 
 ```bash
-curl -fLO https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1/install-atlas.sh
+curl --http1.1 --retry 3 --retry-all-errors -fLO https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1/install-atlas.sh
 sudo bash install-atlas.sh --host atlas.customer.example --root /data/atlas --manage-k3s
 ```
 

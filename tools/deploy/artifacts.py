@@ -50,8 +50,9 @@ def download(url, path, expected):
     with tempfile.NamedTemporaryFile(dir=path.parent, prefix=path.name + '.', suffix='.part', delete=False) as stream:
         temporary = Path(stream.name)
     try:
-        subprocess.run(['curl', '--fail', '--location', '--silent', '--show-error',
+        subprocess.run(['curl', '--http1.1', '--fail', '--location', '--silent', '--show-error',
                         '--proto', '=https', '--proto-redir', '=https', '--retry', '3',
+                        '--retry-all-errors',
                         '--connect-timeout', '20', '--max-time', '1800',
                         url, '--output', str(temporary)], check=True)
         if checksum(temporary) != expected:

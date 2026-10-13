@@ -14,7 +14,7 @@ CI 会明确拒绝缺少产物或 Runtime 内 Sudocode 版本不符的组合。
 Release 发布后，在 Linux amd64 服务器执行：
 
 ```bash
-curl -fLO https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1/install-atlas.sh
+curl --http1.1 --retry 3 --retry-all-errors -fLO https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1/install-atlas.sh
 sudo bash install-atlas.sh --host atlas.customer.example --root /data/atlas --manage-k3s
 ```
 

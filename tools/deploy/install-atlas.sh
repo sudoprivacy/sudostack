@@ -30,8 +30,8 @@ def fetch(name):
     with tempfile.NamedTemporaryFile(dir=assets,delete=False) as output:
         temporary=Path(output.name)
     try:
-        subprocess.run(['curl','-fsSL','--proto','=https','--proto-redir','=https',
-            '--connect-timeout','20','--max-time','120','--retry','3',base+name,'-o',str(temporary)],check=True)
+        subprocess.run(['curl','--http1.1','-fsSL','--proto','=https','--proto-redir','=https',
+            '--connect-timeout','20','--max-time','120','--retry','3','--retry-all-errors',base+name,'-o',str(temporary)],check=True)
         return temporary.read_bytes()
     finally:
         temporary.unlink(missing_ok=True)
