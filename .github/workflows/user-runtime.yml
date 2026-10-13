@@ -1,0 +1,80 @@
+name: user-runtime
+
+on:
+  pull_request:
+    paths:
+      - 'packages/user-runtime/**'
+      - '.github/workflows/user-runtime.yml'
+  push:
+    branches: [main]
+    tags: ['user-runtime-v*']
+    paths:
+      - 'packages/user-runtime/**'
+      - '.github/workflows/user-runtime.yml'
+
+jobs:
+  package-checks:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: packages/user-runtime
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.21.0'
+          cache: npm
+          cache-dependency-path: packages/user-runtime/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm test
+      - name: Immutable historical contracts retain their exact bytes
+        env:
+          GIT_CONFIG_COUNT: '1'
+          GIT_CONFIG_KEY_0: core.autocrlf
+          GIT_CONFIG_VALUE_0: 'false'
+        run: node --test ../../tools/contracts/activation.test.mjs ../../tools/contracts/support.test.mjs
+      - run: npm pack
+      - name: Record package checksum
+        shell: bash
+        run: sha256sum sudo-user-runtime-*.tgz > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: user-runtime-package-${{ matrix.os }}
+          path: |
+            packages/user-runtime/sudo-user-runtime-*.tgz
+            packages/user-runtime/SHA256SUMS.txt
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/user-runtime-v')
+    needs: package-checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify release tag matches the package
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          VERSION=$(node -p 'require("./packages/user-runtime/package.json").version')
+          test "$RELEASE_TAG" = "user-runtime-v$VERSION"
+      - uses: actions/download-artifact@v4
+        with:
+          name: user-runtime-package-ubuntu-latest
+          path: release
+      - name: Publish verified package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          cd release
+          sha256sum -c SHA256SUMS.txt
+          gh release create "$RELEASE_TAG" sudo-user-runtime-*.tgz SHA256SUMS.txt \
+            --verify-tag --title "$RELEASE_TAG" \
+            --notes 'Shared user runtime package. The archive and checksum come from the passing Linux package checks.'

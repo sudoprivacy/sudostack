@@ -1,0 +1,36 @@
+{
+  "name": "@sudo/user-runtime",
+  "version": "0.1.0",
+  "description": "Shared owner Pod lifecycle, Kubernetes resource operations and verified runtime releases.",
+  "type": "module",
+  "engines": { "node": ">=22.21.0" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sudoprivacy/sudostack.git",
+    "directory": "packages/user-runtime"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./kubernetes": { "types": "./dist/k8sResources.d.ts", "import": "./dist/k8sResources.js" },
+    "./release": { "types": "./dist/runtimeRelease.d.ts", "import": "./dist/runtimeRelease.js" }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test test/*.test.ts",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@nexus-ai-fs/vfs-client": "https://sudowork-runtime-1309794936.cos.accelerate.myqcloud.com/nexus-vfs/clients/node/0.7.1/nexus-ai-fs-vfs-client-0.7.1.tgz",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.3",
+    "node-forge": "1.3.1",
+    "tsx": "4.23.13",
+    "typescript": "5.9.3"
+  }
+}
