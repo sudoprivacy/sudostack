@@ -1,6 +1,7 @@
 import { execFile, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
 import { z } from 'zod'
+import { randomUUID } from 'node:crypto'
 
 const execFileAsync = promisify(execFile)
 const ResourceSchema = z.object({
@@ -44,6 +45,22 @@ export async function deleteK8sResource(base: string[], namespace: string, kind:
   if (!uid || !/^[a-z0-9-]+$/.test(namespace) || !/^[a-z0-9-]+$/.test(name)) throw new Error('Invalid owned Kubernetes resource')
   return kubectlJsonRequest(base, ['delete', '--raw', `/api/v1/namespaces/${namespace}/${kind}/${name}`, '-f', '-'],
     { apiVersion: 'v1', kind: 'DeleteOptions', preconditions: { uid }, gracePeriodSeconds: 30 }, 'delete')
+}
+
+/** Ask kubelet to refresh projected credentials without replacing a busy Pod. */
+export async function refreshK8sPodProjection(base: string[], name: string, uid: string, ownerId: string): Promise<void> {
+  if (!uid || !/^[a-z0-9-]+$/.test(name) || !ownerId) throw new Error('Invalid owned Kubernetes Pod')
+  const patch = [
+    { op: 'test', path: '/metadata/uid', value: uid },
+    { op: 'test', path: '/metadata/annotations/moss.sudo.dev~1runtime-owner', value: ownerId },
+    { op: 'add', path: '/metadata/annotations/moss.sudo.dev~1credential-projection', value: randomUUID() },
+  ]
+  try {
+    await execFileAsync('kubectl', [...base, 'patch', 'pod', name, '--type=json', '--patch', JSON.stringify(patch)],
+      { windowsHide: true, timeout: 30_000, maxBuffer: 32_768 })
+  } catch (error) {
+    throw formatKubectlApplyError(null, String((error as { stderr?: unknown }).stderr ?? ''), 'patch')
+  }
 }
 
 async function kubectlJsonRequest(base: string[], args: string[], manifest: Record<string, unknown>, verb: string): Promise<void> {

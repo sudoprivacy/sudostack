@@ -21,11 +21,12 @@ function platform() {
       const kind = manifest.kind === 'PersistentVolumeClaim' ? 'pvc' : String(manifest.kind).toLowerCase()
       writes.push({ kind, manifest })
       const metadata = manifest.metadata as K8sResource['metadata']
+      const previousData = manifest.data as Record<string, string> | undefined
       objects.set(metadata.name.endsWith('-upgrade') ? 'upgrade-secret' : kind,
         { metadata: { ...metadata, uid: randomUUID() },
         ...(manifest.spec ? { spec: manifest.spec as Record<string, unknown> } : {}),
-        ...(kind === 'secret' ? { data: Object.fromEntries(Object.entries(manifest.stringData as Record<string, string>)
-          .map(([key, value]) => [key, Buffer.from(value).toString('base64')])) } : {}),
+        ...(kind === 'secret' ? { data: { ...previousData, ...Object.fromEntries(Object.entries(manifest.stringData as Record<string, string>)
+          .map(([key, value]) => [key, Buffer.from(value).toString('base64')])) } } : {}),
         ...(kind === 'service' ? { spec: { ...manifest.spec as object,
           ports: [{ name: 'nexus', port: 8443, targetPort: 8443, nodePort: 31443 }] } } : {}),
         ...(kind === 'pod' ? { status: { phase: 'Running', conditions: [{ type: 'Ready', status: 'True' }] } } : {}) })
@@ -101,6 +102,31 @@ void test('controller closure joins credential delivery before a replacement can
   assert.equal(isClosed, true)
   const delivered = Buffer.from(kube.objects.get('secret')!.data!['sudocode.json']!, 'base64').toString()
   assert.equal(delivered, '{"model":"next"}')
+})
+
+void test('upgrade refuses a foreign identity and a Pod replaced during authenticated readiness', async t => {
+  const kube = platform()
+  let issued = 0
+  t.mock.method(NexusZoneApiClient, 'withMtls', () => ({ mintUserRuntime: async () => { issued++; return runtimeCredential('alice') }, close() {} }))
+  const old = new UserPodService(options, kube.resources, async () => {})
+  await old.resolve('alice')
+  await old.close()
+  const ownedSecret = kube.objects.get('secret')!
+  kube.objects.set('secret', { ...ownedSecret, metadata: { ...ownedSecret.metadata,
+    annotations: { 'moss.sudo.dev/runtime-owner': 'bob' } } })
+  const next = new UserPodService({ ...options, image: 'runtime:next' }, kube.resources, async () => {
+    const pod = kube.objects.get('pod')!
+    kube.objects.set('pod', { ...pod, metadata: { ...pod.metadata, uid: randomUUID() } })
+  })
+  t.after(() => next.close())
+  const drain = () => { throw new Error('Unchecked runtime must never drain') }
+  await assert.rejects(next.upgrade('alice', drain), /Secret belongs to another owner/)
+  assert.equal(issued, 1, 'foreign identity is refused before issuing credentials')
+  assert.equal(kube.objects.has('upgrade-secret'), false)
+  kube.objects.set('secret', ownedSecret)
+  await assert.rejects(next.upgrade('alice', drain), /identity changed/)
+  assert.equal(kube.objects.has('pod'), true, 'a concurrent Pod replacement remains intact')
+  assert.equal(kube.objects.has('upgrade-secret'), false)
 })
 
 void test('a failed replacement restores the prior owner image and model configuration on the retained volume', async t => {

@@ -23,13 +23,13 @@ authority.setExtensions([{ name: 'basicConstraints', cA: true }, { name: 'keyUsa
 authority.sign(authorityKeys.privateKey, forge.md.sha256.create())
 
 /** Real signed owner capabilities keep the SDK's production validation active in lifecycle tests. */
-export function runtimeCredential(ownerId: string): SessionCredential {
+export function runtimeCredential(ownerId: string, isExpired = false): SessionCredential {
   const subjectId = `session-${randomUUID()}`
   const certificate = forge.pki.createCertificate()
   certificate.publicKey = leafKeys.publicKey
   certificate.serialNumber = randomUUID().replaceAll('-', '')
-  certificate.validity.notBefore = new Date(Date.now() - 1000)
-  certificate.validity.notAfter = new Date(Date.now() + 299_000)
+  certificate.validity.notBefore = new Date(Date.now() - (isExpired ? 600_000 : 1000))
+  certificate.validity.notAfter = new Date(Date.now() + (isExpired ? -300_000 : 299_000))
   certificate.setSubject([{ name: 'commonName', value: subjectId }])
   certificate.setIssuer(authority.subject.attributes)
   certificate.setExtensions([
