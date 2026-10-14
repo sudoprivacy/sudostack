@@ -1,0 +1,65 @@
+{
+  "release": "sudostack-v0.0.1-rc.5",
+  "podUids": {
+    "atlas-gateway-9455bb767-s4tj2": "97805ef0-3b69-42c3-92f5-189aa146c5b0",
+    "moss-server-6d9c6c5967-ql5zv": "b34bf022-dea4-4a94-819a-106cc824cf39",
+    "nexus-broker-7f8dfd5bdb-jjwq2": "68fbd052-949f-492c-a0fc-0d49c526a8f5",
+    "sudorouter-74f4d554d5-gqcf6": "b3dc2602-6969-43dd-b92c-af1359107570",
+    "sudowork-webui-7ff944cb5f-4dnt8": "bf487703-82b6-4fa1-a564-46c730f81dfd",
+    "webui-postgres-6b79597ddb-5ktc5": "33610591-4702-422d-8a3d-8ea4bc4b9c40"
+  },
+  "vaultKeySha256": "5d3e5b27a1022cd857f33a096285bd5002c4eb7d2948dc83af811b2077ff4947",
+  "credentialsSha256": "1040a5f26a20bf0960b55b3f8788bad1a38194afd58927d7ade31ccdc4bc51ed",
+  "credentialsFileMode": "0o600",
+  "permanentMossRouterCredentialConfigured": true,
+  "routerCredentialsSha256": "fe0d4605710974f5ad006ca85cdb47cd5c51aeb39ece2bb1d927320caa975ba7",
+  "modelEndpoint": "http://sudorouter.atlas-system.svc.cluster.local:3000/v1",
+  "temporaryTestResources": [],
+  "services": {
+    "k3s": true,
+    "docker": false,
+    "containerd": false,
+    "moss": false
+  },
+  "acceptance": {
+    "webui-before.json": {
+      "passed": true,
+      "sessionId": "78e1648a-2136-4f66-b4e7-7c2536a0269c",
+      "nonce": "MOSS_E2E_TOKEN_atlas_9a507d9f94cf48ffabc2cad6562f91de",
+      "https": true,
+      "webuiLogin": true,
+      "websocket": true,
+      "transcript": true,
+      "resumed": false,
+      "sandboxes": {
+        "scode-78e1648a-213": {
+          "uid": "99990a9a-c4b0-4540-9dad-3242be34e2fd",
+          "runtimeClass": "gvisor",
+          "image": "docker.io/library/my-moss-runtime@sha256:99c266a9ceb9c4f9590c7ef343512c1c2eefa1acc89f772d20b6184d5e8ca9ff"
+        }
+      }
+    },
+    "webui-after.json": {
+      "passed": true,
+      "sessionId": "78e1648a-2136-4f66-b4e7-7c2536a0269c",
+      "nonce": "MOSS_E2E_TOKEN_atlas_4f300aa06daa481392d72a57de7b70f2",
+      "https": true,
+      "webuiLogin": true,
+      "websocket": true,
+      "transcript": true,
+      "resumed": true,
+      "sandboxes": {
+        "scode-78e1648a-213": {
+          "uid": "e65708b1-b6ce-424f-bb48-0e194610e8ad",
+          "runtimeClass": "gvisor",
+          "image": "docker.io/library/my-moss-runtime@sha256:99c266a9ceb9c4f9590c7ef343512c1c2eefa1acc89f772d20b6184d5e8ca9ff"
+        }
+      },
+      "router": true
+    }
+  },
+  "remainingUpstreamChannels": 0,
+  "routerVersion": "0.0.1-rc.1",
+  "mossRelayTokenAccepted": true,
+  "mossRelayTokenHasNoAdminAccess": true
+}

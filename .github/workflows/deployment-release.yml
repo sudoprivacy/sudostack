@@ -1,0 +1,191 @@
+name: sudostack deployment release
+on:
+  push:
+    tags: ['sudostack-v*']
+  pull_request:
+    paths:
+      - '.github/workflows/deployment-release.yml'
+      - 'manifests/deployment/**'
+      - 'tools/deploy/**'
+      - 'charts/atlas-mvp/**'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version with a committed manifests/deployment/VERSION.json lock'
+        required: true
+        default: '0.0.1'
+permissions:
+  contents: read
+concurrency:
+  group: deployment-release-${{ github.ref }}-${{ inputs.version }}
+  cancel-in-progress: false
+jobs:
+  assemble:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Select the suite's committed version lock
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/tags/sudostack-v* ]]; then
+            VERSION="${GITHUB_REF_NAME#sudostack-v}"
+          else
+            VERSION="${REQUESTED_VERSION:-0.0.1}"
+          fi
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]
+          LOCK="manifests/deployment/$VERSION.json"
+          test -f "$LOCK"
+          test "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$LOCK")" = "$VERSION"
+          echo "ATLAS_LOCK=$LOCK" >> "$GITHUB_ENV"
+      - name: Validate deployment files
+        run: |
+          python3 -m unittest discover -s tools/deploy -p 'test_*.py'
+          bash -n tools/deploy/install-atlas.sh
+          bash -n tools/deploy/install-cos.sh
+          bash -n tools/deploy/cleanup-atlas.sh
+      - name: Fetch pinned owner releases and build the Nexus broker image
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/deploy/release.py --lock "$ATLAS_LOCK" --assets dist/assets
+      - name: Freeze the release manifest and deployment files
+        run: python3 tools/deploy/package.py --assets dist/assets --publish dist/publish
+      - name: Build the complete COS delivery once for qualification and publication
+        run: python3 tools/deploy/cos_bundle.py create --assets dist/assets --output dist/cos-release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sudostack-installation-candidate
+          path: dist/cos-release/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.19.0
+      - name: Validate the packaged Chart
+        run: |
+          set -euo pipefail
+          CHART="$(python3 -c 'import json; print(json.load(open("dist/publish/atlas-release.json"))["chart"])')"
+          helm lint "dist/publish/$CHART" -f charts/atlas-mvp/ci/values.json
+          helm template atlas-mvp "dist/publish/$CHART" -n atlas-system -f charts/atlas-mvp/ci/values.json > dist/rendered.yaml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sudostack-deployment-release
+          path: dist/publish/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+  qualify:
+    needs: assemble
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sudostack-installation-candidate
+          path: candidate
+      - name: Verify and unpack the complete CI bundle
+        run: |
+          set -euo pipefail
+          mkdir evidence
+          cd candidate
+          sha256sum -c SHA256SUMS
+          BUNDLE="$(python3 -c 'import json; print(json.load(open("bundle.json"))["bundle"])')"
+          python3 cos_bundle.py unpack --descriptor bundle.json --archive "$BUNDLE" --destination assets
+          cp bundle.json SHA256SUMS ../evidence/
+          rm "$BUNDLE"
+      - name: Install on a clean runner and qualify the routed session
+        run: |
+          set -euo pipefail
+          NODE_ADDRESS="$(ip -4 route get 1.1.1.1 | awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}')"
+          test -n "$NODE_ADDRESS"
+          sudo bash candidate/assets/install-atlas.sh --host "$NODE_ADDRESS" --root /data/atlas --manage-k3s > evidence/install.log 2>&1
+          sudo k3s kubectl -n atlas-system get pods -o jsonpath='{.items[*].metadata.uid}' > evidence/pods-before.txt
+          sudo bash candidate/assets/install-atlas.sh --host "$NODE_ADDRESS" --root /data/atlas --manage-k3s > evidence/repeat.log 2>&1
+          sudo k3s kubectl -n atlas-system get pods -o jsonpath='{.items[*].metadata.uid}' > evidence/pods-repeat.txt
+          cmp evidence/pods-before.txt evidence/pods-repeat.txt
+          sudo /data/atlas/restart.sh > evidence/restart.log 2>&1
+          sudo python3 /data/atlas/smoke.py --root /data/atlas --resume >> evidence/restart.log 2>&1
+          sudo /data/atlas/verify.sh
+      - name: Collect sanitized qualification evidence
+        if: always()
+        run: |
+          mkdir -p evidence
+          sudo k3s kubectl get pods -A -o wide > evidence/pods.txt 2>&1 || true
+          sudo k3s kubectl -n atlas-system get events --sort-by=.lastTimestamp > evidence/events.txt 2>&1 || true
+          sudo test ! -f /data/atlas/deployment-report.json || sudo cat /data/atlas/deployment-report.json > evidence/deployment-report.json
+          sudo test ! -f /data/atlas/helm.log || sudo cat /data/atlas/helm.log > evidence/helm.log
+          for STAGE in before after; do
+            sudo test ! -f "/data/atlas/acceptance/webui-$STAGE.json" || sudo cat "/data/atlas/acceptance/webui-$STAGE.json" > "evidence/webui-$STAGE.json"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sudostack-installation-evidence
+          path: evidence/*
+  publish:
+    if: startsWith(github.ref, 'refs/tags/sudostack-v')
+    needs: [assemble, qualify]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sudostack-deployment-release
+          path: release
+      - name: Create the versioned Release without overwriting an existing one
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum -c SHA256SUMS
+          # gh release create refuses to overwrite an existing Release.
+          gh release create "$GITHUB_REF_NAME" ./* --verify-tag --prerelease \
+            --title "$GITHUB_REF_NAME" --notes 'Pinned component releases and deployment files. See atlas-release.json and components.lock.json. Deployment qualification is required before production use.'
+  publish-cos:
+    if: startsWith(github.ref, 'refs/tags/sudostack-v')
+    needs: [publish, qualify]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    concurrency:
+      group: sudostack-cos-publication
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: sudostack-installation-candidate
+          path: cos-release
+      - name: Verify the exact delivery that passed installation qualification
+        run: |
+          set -euo pipefail
+          cd cos-release
+          sha256sum -c SHA256SUMS
+      - name: Publish immutable COS release and update installer entrypoints
+        env:
+          TENCENT_SECRET_ID: ${{ secrets.TENCENT_SECRET_ID }}
+          TENCENT_SECRET_KEY: ${{ secrets.TENCENT_SECRET_KEY }}
+        run: |
+          set -euo pipefail
+          [ -n "$TENCENT_SECRET_ID" ] || { echo 'TENCENT_SECRET_ID is not configured'; exit 1; }
+          [ -n "$TENCENT_SECRET_KEY" ] || { echo 'TENCENT_SECRET_KEY is not configured'; exit 1; }
+          pip install coscmd==1.9.0.6
+          coscmd config -a "$TENCENT_SECRET_ID" -s "$TENCENT_SECRET_KEY" \
+            -b sudowork-release-1309794936 -e cos.accelerate.myqcloud.com -m 8 -p 16
+          python3 tools/deploy/publish_cos.py --directory cos-release
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          data = json.loads(Path('cos-release/bundle.json').read_text())
+          base = 'https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/' + data['release']
+          print('Published the same complete archive used by clean installation qualification.\n')
+          print(f'Installer: {base}/install-cos.sh\n')
+          print(f'Bundle: {base}/{data["bundle"]}\n')
+          print('SHA256: `' + data['files'][data['bundle']]['sha256'] + '`')
+          PY

@@ -1,0 +1,15 @@
+{
+  "runId": "38353239849",
+  "artifactId": 11792295005,
+  "artifactSha256": "5c6b2cd9e1c15bc969ede9eac9e64853c6a55a960287f586a9535bee29aae960",
+  "sourceCommit": "84723c5cf52f5e625fd9d4d8ab36923a5e373a09",
+  "ciUrl": "https://github.com/sudoprivacy/sudostack/actions/runs/38353239849",
+  "release": "sudostack-v0.0.1-rc.5",
+  "manifestSha256": "6df6b1562f2d29c8659712ebb63288cdd83894e89fab5c5306a19a23135c7bee",
+  "verifiedArchives": 35,
+  "reusedCIAssets": [
+    "38342121745",
+    "38349643222",
+    "38351693432"
+  ]
+}

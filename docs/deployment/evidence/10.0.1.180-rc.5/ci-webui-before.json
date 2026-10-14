@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "sessionId": "48c584e5-4fe0-4200-b382-47885960d93a",
+  "nonce": "MOSS_E2E_TOKEN_atlas_91cef73e72e24f52848fa1cda24ab721",
+  "https": true,
+  "webuiLogin": true,
+  "websocket": true,
+  "transcript": true,
+  "resumed": false,
+  "sandboxes": {
+    "scode-48c584e5-4fe": {
+      "uid": "b1e764bf-eebd-4aea-b766-7b7389b9453f",
+      "runtimeClass": "gvisor",
+      "image": "docker.io/library/my-moss-runtime@sha256:99c266a9ceb9c4f9590c7ef343512c1c2eefa1acc89f772d20b6184d5e8ca9ff"
+    }
+  },
+  "router": true
+}
