@@ -85,11 +85,12 @@ void test('a restarted controller renews an expired runtime over real mTLS befor
         return
       }
       assert.equal(manifest.kind, 'Secret', 'busy runtime must not receive a new Pod or volume')
+      assert.equal(verb, 'patch', 'credential history must not enter the apply annotation')
       const previous = objects.get('secret')!
       assert.equal(metadata.uid, previous.metadata.uid)
       assert.equal(metadata.resourceVersion, previous.metadata.resourceVersion)
       const data = { ...manifest.data as Record<string, string>,
-        ...Object.fromEntries(Object.entries(manifest.stringData as Record<string, string>)
+        ...Object.fromEntries(Object.entries((manifest.stringData ?? {}) as Record<string, string>)
           .map(([key, value]) => [key, Buffer.from(value).toString('base64')])) }
       objects.set('secret', { metadata, data })
       const selection = JSON.parse(Buffer.from(data[bundle.manifestName]!, 'base64').toString()) as { cert: string; key: string }

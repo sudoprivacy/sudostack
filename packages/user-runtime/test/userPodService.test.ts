@@ -23,9 +23,9 @@ function platform() {
       const metadata = manifest.metadata as K8sResource['metadata']
       const previousData = manifest.data as Record<string, string> | undefined
       objects.set(metadata.name.endsWith('-upgrade') ? 'upgrade-secret' : kind,
-        { metadata: { ...metadata, uid: randomUUID() },
+        { metadata: { ...metadata, uid: metadata.uid ?? randomUUID(), resourceVersion: String(Number(metadata.resourceVersion ?? 0) + 1) },
         ...(manifest.spec ? { spec: manifest.spec as Record<string, unknown> } : {}),
-        ...(kind === 'secret' ? { data: { ...previousData, ...Object.fromEntries(Object.entries(manifest.stringData as Record<string, string>)
+        ...(kind === 'secret' ? { data: { ...previousData, ...Object.fromEntries(Object.entries((manifest.stringData ?? {}) as Record<string, string>)
           .map(([key, value]) => [key, Buffer.from(value).toString('base64')])) } } : {}),
         ...(kind === 'service' ? { spec: { ...manifest.spec as object,
           ports: [{ name: 'nexus', port: 8443, targetPort: 8443, nodePort: 31443 }] } } : {}),
@@ -187,8 +187,7 @@ void test('concurrent sessions share one user Pod without delivering cluster aut
   assert.equal(issued, 2)
   assert.equal(kube.writes.filter(write => write.kind === 'service').length, 1)
   assert.equal(kube.writes.filter(write => write.kind === 'pod').length, 1)
-  const configured = kube.writes.filter(write => write.kind === 'secret').at(-1)!.manifest.stringData as Record<string, string>
-  assert.equal(configured['sudocode.json'], updated['sudocode.json'])
+  assert.equal(Buffer.from(kube.objects.get('secret')!.data!['sudocode.json']!, 'base64').toString(), updated['sudocode.json'])
   await service.resolve('alice', updated)
   assert.equal(issued, 2, 'an unchanged owner configuration keeps its existing service')
   const write = kube.resources.write
@@ -279,9 +278,9 @@ void test('controller restart preserves projected configuration and refuses a li
   const restarted = new UserPodService(options, kube.resources, async () => {})
   t.after(() => restarted.close())
   await restarted.resolve('alice')
-  const delivered = kube.writes.filter(write => write.kind === 'secret').at(-1)!.manifest.stringData as Record<string, string>
-  assert.equal(delivered['sudocode.json'], configuration['sudocode.json'])
-  assert.equal(delivered['backend-config.json'], configuration['backend-config.json'])
+  const delivered = kube.objects.get('secret')!.data!
+  assert.equal(Buffer.from(delivered['sudocode.json']!, 'base64').toString(), configuration['sudocode.json'])
+  assert.equal(Buffer.from(delivered['backend-config.json']!, 'base64').toString(), configuration['backend-config.json'])
   await restarted.close()
   const changed = new UserPodService(options, kube.resources, async () => {})
   t.after(() => changed.close())

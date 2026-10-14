@@ -1,6 +1,6 @@
 {
   "name": "@sudo/user-runtime",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Shared owner Pod lifecycle, Kubernetes resource operations and verified runtime releases.",
   "type": "module",
   "engines": {
