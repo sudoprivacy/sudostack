@@ -43,6 +43,8 @@ rc.5 镜像、Chart 和包内安装器保持原有 CI 制品字节不变。COS �
 
 ## 全新机器一键安装
 
+rc.6 安装地址由 [tag CI](https://github.com/sudoprivacy/sudostack/actions/runs/38504630542) 的 `publish-cos` 成功后提供。
+
 在 Ubuntu 22.04 / x86_64 服务器以 root 执行，替换第一行 IP：
 
 ```bash
@@ -115,3 +117,9 @@ sudo bash cleanup-atlas.sh
 ```
 
 清理脚本针对专用测试机，会删除整个 k3s 集群、默认 `/data/atlas` 安装和默认 `/var/cache/sudostack` 下载缓存。自定义缓存、另存的离线压缩包或备份需要在对应位置处理。
+
+## 已完成的下载验证
+
+2026-10-14 在 Linux 测试机运行 COS 入口的 `--download-only`，拒绝所有非 COS 的 curl 请求。rc.5 的 3,228,327,210 字节完整包下载、整体 SHA256、解包及包内全部 35 项 SHA256 校验通过；未执行安装，也未改动运行中的服务。记录见 [下载校验结果](evidence/cos/rc.5-download.json)。
+
+rc.6 的构建、安装验收及 COS 发布状态以对应 tag CI 为准。新版加入包内清理脚本，共 36 项资源；正常发版由 CI 构建并上传同一份通过验收的完整包。

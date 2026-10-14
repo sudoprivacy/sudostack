@@ -1,0 +1,22 @@
+{
+  "verifiedAt": "2026-10-14T03:31:50.165033+00:00",
+  "release": "sudostack-v0.0.1-rc.5",
+  "bundle": "sudostack-0.0.1-rc.5-linux-amd64.tar.gz",
+  "bundleMetadata": {
+    "sha256": "096369b3deb0ba3aeccc07779235b690716f8ef912cd51bb96cc0c2d4887fff2",
+    "size": 3228327210
+  },
+  "manifestSha256": "6df6b1562f2d29c8659712ebb63288cdd83894e89fab5c5306a19a23135c7bee",
+  "verifiedAssetCount": 35,
+  "cosDownloadAndExtractionPassed": true,
+  "nonCosCurlRequestsRejected": true,
+  "requests": [
+    "https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.5/install-cos.sh",
+    "https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.5/bundle.json",
+    "https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.5/cos_bundle.py",
+    "https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.5/sudostack-0.0.1-rc.5-linux-amd64.tar.gz"
+  ],
+  "installationExecuted": false,
+  "verificationHost": "10.0.1.180",
+  "temporaryDirectory": "/data/sudostack-cos-verify.cRtbx2"
+}

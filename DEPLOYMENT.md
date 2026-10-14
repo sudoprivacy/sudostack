@@ -11,7 +11,7 @@ COS 安装入口下载一份包含全部组件镜像与离线工具的压缩包�
 SudoRouter 固定为 `sudorouter-v0.0.1-rc.1`，由 `sudoprivacy/new-api` 的 `sudo/rc24` 代码及该仓库 CI 发布。其余组件复用 rc.2 的固定制品。
 CI 在全新 Ubuntu 22.04 上完成安装、经 Router 的会话、重复安装和重启恢复后才发布候选。180 的 rc.2 干净安装及本次 Router 增补使用校验过的 GitHub CI 制品；全程没有内网资源服务器。详见 [本次验收记录](docs/deployment/10.0.1.180-rc.5-acceptance.md)。
 
-测试当前候选，在 Linux amd64 服务器执行：
+rc.6 由 [tag CI](https://github.com/sudoprivacy/sudostack/actions/runs/38504630542) 发布；请在 `publish-cos` 成功后使用下面的安装地址。测试当前候选，在 Linux amd64 服务器执行：
 
 ```bash
 curl --http1.1 --retry 3 --retry-all-errors -fLO https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.6/install-cos.sh
