@@ -212,6 +212,52 @@ void test('concurrent sessions share one user Pod without delivering cluster aut
   assert.ok(kube.objects.has('pvc'), 'controller closure retains user storage')
 })
 
+void test('concurrent requests recreate a lost owner Pod on the same PVC and configuration', async t => {
+  const kube = platform()
+  let issued = 0
+  let verified = 0
+  t.mock.method(NexusZoneApiClient, 'withMtls', () => ({ mintUserRuntime: async () => {
+    issued++
+    return runtimeCredential('alice')
+  }, close() {} }))
+  const service = new UserPodService(options, kube.resources, async () => { verified++ })
+  t.after(() => service.close())
+  const configuration = { 'sudocode.json': '{"model":"owner-model"}', 'backend-config.json': '{"mounts":[{"owner":"alice"}]}' }
+  await service.resolve('alice', configuration)
+  const originalPod = kube.objects.get('pod')!.metadata.uid
+  const originalPvc = kube.objects.get('pvc')
+  const originalService = kube.objects.get('service')
+  kube.objects.delete('pod')
+  const [first, second] = await Promise.all([service.resolve('alice'), service.resolve('alice')])
+  assert.equal(first, second)
+  assert.notEqual(kube.objects.get('pod')!.metadata.uid, originalPod)
+  assert.equal(kube.objects.get('pvc'), originalPvc)
+  assert.equal(kube.objects.get('service'), originalService)
+  assert.equal(kube.writes.filter(write => write.kind === 'pod').length, 2)
+  assert.equal(issued, 2)
+  assert.equal(verified, 2, 'the replacement needs authenticated readiness')
+  for (const [key, value] of Object.entries(configuration)) {
+    assert.equal(Buffer.from(kube.objects.get('secret')!.data![key]!, 'base64').toString(), value)
+  }
+})
+
+void test('an externally replaced Pod invalidates cached readiness without creating another Pod', async t => {
+  const kube = platform()
+  let verified = 0
+  t.mock.method(NexusZoneApiClient, 'withMtls', () => ({ mintUserRuntime: async () => runtimeCredential('alice'), close() {} }))
+  const service = new UserPodService(options, kube.resources, async () => { verified++ })
+  t.after(() => service.close())
+  await service.resolve('alice')
+  kube.objects.get('pod')!.metadata.uid = randomUUID()
+  await service.resolve('alice')
+  assert.equal(verified, 2)
+  assert.equal(kube.writes.filter(write => write.kind === 'pod').length, 1)
+  const writes = kube.writes.length
+  kube.objects.get('pod')!.metadata.annotations!['moss.sudo.dev/runtime-owner'] = 'bob'
+  await assert.rejects(service.resolve('alice'), /another owner/)
+  assert.equal(kube.writes.length, writes, 'a cached connection cannot authorize a foreign replacement')
+})
+
 void test('a restarted controller reuses the owned Pod, Service and retained volume', async t => {
   const kube = platform()
   t.mock.method(NexusZoneApiClient, 'withMtls', () => ({ mintUserRuntime: async () => runtimeCredential('alice'), close() {} }))
