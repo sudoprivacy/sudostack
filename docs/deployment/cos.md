@@ -6,12 +6,12 @@
 
 ```text
 https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/
-  releases/sudostack-v0.0.1-rc.6/
+  releases/sudostack-v0.0.1-rc.7/
     install-cos.sh
     cos_bundle.py
     bundle.json
-    sudostack-0.0.1-rc.6-linux-amd64.tar.gz
-    sudostack-0.0.1-rc.6-linux-amd64.tar.gz.sha256
+    sudostack-0.0.1-rc.7-linux-amd64.tar.gz
+    sudostack-0.0.1-rc.7-linux-amd64.tar.gz.sha256
     atlas-release.json
     components.lock.json
     cleanup-atlas.sh
@@ -24,7 +24,7 @@ https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/
 
 ## 包内资源
 
-rc.6 的完整包包含发布清单及其声明的全部 36 个文件，包含安装后的清理脚本。Moss Runtime、SudoWork 镜像包和基础设施资源都已收录。
+rc.7 的完整包包含发布清单及其声明的全部 36 个文件，包含安装后的清理脚本。Moss Runtime、SudoWork 镜像包和基础设施资源都已收录。
 
 | 用途 | 包内内容 |
 | --- | --- |
@@ -43,7 +43,7 @@ rc.5 镜像、Chart 和包内安装器保持原有 CI 制品字节不变。COS �
 
 ## 全新机器一键安装
 
-rc.6 安装地址由 [tag CI](https://github.com/sudoprivacy/sudostack/actions/runs/38504630542) 的 `publish-cos` 成功后提供。
+rc.7 安装地址由 [tag CI](https://github.com/sudoprivacy/sudostack/actions/workflows/deployment-release.yml) 的 `publish-cos` 成功后提供。
 
 在 Ubuntu 22.04 / x86_64 服务器以 root 执行，替换第一行 IP：
 
@@ -52,13 +52,13 @@ ATLAS_HOST="你的服务器IP"
 apt-get update \
 && apt-get install -y ca-certificates curl python3 tar gzip util-linux openssl coreutils \
 && curl --http1.1 --retry 3 --retry-all-errors -fLO \
-  https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.6/install-cos.sh \
+  https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.7/install-cos.sh \
 && bash install-cos.sh --host "$ATLAS_HOST" --root /data/atlas --manage-k3s
 ```
 
 入口从同一个 COS 版本目录获取 `bundle.json`、经过 SHA256 校验的下载助手及完整包，然后执行缓存里的 `assets/install-atlas.sh`。下载中断后重复执行可续传；压缩包整体及包内每个文件都会校验。已有完整缓存时仅重新校验，不重新下载大文件。缓存文件损坏时会报出具体路径，不会拿损坏文件继续安装。
 
-默认缓存为 `/var/cache/sudostack/sudostack-v0.0.1-rc.6/`，可以用 `ATLAS_CACHE_DIR` 指定父目录。下载包与解压文件同时占用空间，导入镜像和业务数据还需要额外磁盘空间。
+默认缓存为 `/var/cache/sudostack/sudostack-v0.0.1-rc.7/`，可以用 `ATLAS_CACHE_DIR` 指定父目录。下载包与解压文件同时占用空间，导入镜像和业务数据还需要额外磁盘空间。
 
 安装后 SudoWork、Moss、Router 分别位于 `https://<host>`、`https://<host>:8443/admin/`、`https://<host>:9443`。账号文件见 [部署入口](../../DEPLOYMENT.md)。真实模型调用仍需在 Router 配置上游渠道。
 
@@ -68,21 +68,21 @@ apt-get update \
 sudo bash install-cos.sh --download-only
 
 # 此步骤仅使用已经解压的本地资源。
-sudo bash /var/cache/sudostack/sudostack-v0.0.1-rc.6/assets/install-atlas.sh \
+sudo bash /var/cache/sudostack/sudostack-v0.0.1-rc.7/assets/install-atlas.sh \
   --host 你的服务器IP --root /data/atlas --manage-k3s
 ```
 
 也可以手工下载压缩包后搬运到另一台机器：
 
 ```bash
-ATLAS_COS_RELEASE="https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.6"
-curl --http1.1 -fLO "$ATLAS_COS_RELEASE/sudostack-0.0.1-rc.6-linux-amd64.tar.gz.sha256"
+ATLAS_COS_RELEASE="https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.7"
+curl --http1.1 -fLO "$ATLAS_COS_RELEASE/sudostack-0.0.1-rc.7-linux-amd64.tar.gz.sha256"
 curl --http1.1 -fL -C - --retry 3 --retry-all-errors \
-  "$ATLAS_COS_RELEASE/sudostack-0.0.1-rc.6-linux-amd64.tar.gz" \
-  -o sudostack-0.0.1-rc.6-linux-amd64.tar.gz
-sha256sum -c sudostack-0.0.1-rc.6-linux-amd64.tar.gz.sha256 \
+  "$ATLAS_COS_RELEASE/sudostack-0.0.1-rc.7-linux-amd64.tar.gz" \
+  -o sudostack-0.0.1-rc.7-linux-amd64.tar.gz
+sha256sum -c sudostack-0.0.1-rc.7-linux-amd64.tar.gz.sha256 \
 && mkdir -p atlas-offline \
-&& tar -xzf sudostack-0.0.1-rc.6-linux-amd64.tar.gz -C atlas-offline \
+&& tar -xzf sudostack-0.0.1-rc.7-linux-amd64.tar.gz -C atlas-offline \
 && sudo bash atlas-offline/install-atlas.sh --host 你的服务器IP --root /data/atlas --manage-k3s
 ```
 
@@ -111,7 +111,7 @@ python3 tools/deploy/publish_cos.py --directory dist/cos-release
 ## 清理
 
 ```bash
-curl -fLO https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.6/cleanup-atlas.sh
+curl -fLO https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.7/cleanup-atlas.sh
 bash cleanup-atlas.sh --dry-run
 sudo bash cleanup-atlas.sh
 ```

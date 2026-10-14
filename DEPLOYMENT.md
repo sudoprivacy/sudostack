@@ -6,15 +6,15 @@ CI 从各组件仓库的固定 Release 获取资源，校验后发布 `sudostack
 该 Release 同时包含安装器、Helm Chart、运维脚本、组件清单和逐文件 SHA256。
 COS 安装入口下载一份包含全部组件镜像与离线工具的压缩包，校验后调用包内安装器；目标机无需访问 GitHub 或镜像仓库。组件的原始 Release 来源和校验和保留在清单中。
 
-**当前候选为 [`sudostack-v0.0.1-rc.6`](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.6)；正式 `0.0.1` 尚未发布。**
+**当前候选为 [`sudostack-v0.0.1-rc.7`](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.7)；正式 `0.0.1` 尚未发布。**
 该候选锁定 Moss `server-v0.1.53-atlas.1`，由 Moss CI 发布拆分 Server 镜像、部署助手和 Nexus 引导脚本。
 SudoRouter 固定为 `sudorouter-v0.0.1-rc.1`，由 `sudoprivacy/new-api` 的 `sudo/rc24` 代码及该仓库 CI 发布。其余组件复用 rc.2 的固定制品。
 CI 构建完整离线包，在全新 Ubuntu 22.04 上完成安装、经 Router 的会话、重复安装和重启恢复后，将同一份安装包及入口脚本发布到 COS。构建、验收和发布状态见 [部署发布 CI](https://github.com/sudoprivacy/sudostack/actions/workflows/deployment-release.yml)。
 
-rc.6 由 [tag CI](https://github.com/sudoprivacy/sudostack/actions/runs/38504630542) 发布；请在 `publish-cos` 成功后使用下面的安装地址。测试当前候选，在 Linux amd64 服务器执行：
+rc.7 由 [tag CI](https://github.com/sudoprivacy/sudostack/actions/workflows/deployment-release.yml) 发布；请在 `publish-cos` 成功后使用下面的安装地址。测试当前候选，在 Linux amd64 服务器执行：
 
 ```bash
-curl --http1.1 --retry 3 --retry-all-errors -fLO https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.6/install-cos.sh
+curl --http1.1 --retry 3 --retry-all-errors -fLO https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.7/install-cos.sh
 sudo bash install-cos.sh --host atlas.customer.example --root /data/atlas --manage-k3s
 ```
 
@@ -51,7 +51,7 @@ sudo k3s kubectl -n atlas-system logs deployment/moss-server
 专用测试机完成测试后，可将仓库中的 [cleanup-atlas.sh](tools/deploy/cleanup-atlas.sh) 复制到目标机使用。该脚本针对默认 `/data/atlas` 安装目录，会永久删除整个 k3s 集群及本地数据卷、数据库、会话、Router 配置和凭据，同时清理下载缓存、gVisor、Helm 及相关本机防火墙规则。请在目标机执行：
 
 ```bash
-curl -fLO https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.6/cleanup-atlas.sh
+curl -fLO https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.7/cleanup-atlas.sh
 bash cleanup-atlas.sh --dry-run
 sudo bash cleanup-atlas.sh
 ```

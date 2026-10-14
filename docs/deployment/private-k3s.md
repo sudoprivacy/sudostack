@@ -4,7 +4,7 @@
 
 CI 生成的 `atlas-release.json` 进一步记录各资源的来源 URL、组件版本、Release asset ID、SHA256，以及构建 Nexus/Caddy 时取得的 registry digest。客户安装时只读取该 Release 的清单，不解析任何子组件的 `latest`。构建输入清单随同发布为 `components.lock.json`。
 
-当前候选是 [`sudostack-v0.0.1-rc.6`](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.6)，其冻结清单为 `manifests/deployment/0.0.1-rc.6.json`；正式 `0.0.1` 尚未发布。rc.6 包含 SudoRouter，增加 CI 构建并验收的 COS 完整离线包，复用 rc.2 的既有制品，锁定 Moss 集成候选 `server-v0.1.53-atlas.1`。该候选由 Moss CI 生成拆分 Server 镜像、部署助手和 Nexus 引导脚本。CI 在下载大文件前检查上游 Release 附件，并检查 Runtime 内实际 Sudocode 版本；不能用开发机手工打包文件填补发布缺口。
+当前候选是 [`sudostack-v0.0.1-rc.7`](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.7)，其冻结清单为 `manifests/deployment/0.0.1-rc.7.json`；正式 `0.0.1` 尚未发布。rc.7 包含 SudoRouter，提供 CI 构建并验收的 COS 完整离线包，复用 rc.2 的既有制品，锁定 Moss 集成候选 `server-v0.1.53-atlas.1`。该候选由 Moss CI 生成拆分 Server 镜像、部署助手和 Nexus 引导脚本。CI 在下载大文件前检查上游 Release 附件，并检查 Runtime 内实际 Sudocode 版本；不能用开发机手工打包文件填补发布缺口。
 
 | 组件 | `0.0.1` 的版本组合 | 资源归属 |
 | --- | --- | --- |
@@ -29,7 +29,7 @@ Nexus Broker 的部署镜像由 sudostack CI 组装上述固定 daemon、Vault �
 通过 COS 获取包含全部资源的离线安装入口，目标机无需访问 GitHub：
 
 ```bash
-curl --http1.1 --retry 3 --retry-all-errors -fLO https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.6/install-cos.sh
+curl --http1.1 --retry 3 --retry-all-errors -fLO https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.7/install-cos.sh
 sudo bash install-cos.sh --host atlas.customer.example --root /data/atlas --manage-k3s
 ```
 
