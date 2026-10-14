@@ -1,4 +1,4 @@
-// Derived from Moss 211ed0fb26eea047b56ec1dab2d1527024165438:contracts/agent-federation/v1alpha1/contract.ts. DO NOT EDIT.
+// Derived from Moss dd0b29f36d574ad07e288870034f9ba18ba95cba:contracts/agent-federation/v1alpha1/contract.ts. DO NOT EDIT.
 /** Moss-owned federation boundary. Experimental; ADR-003/004 remain Proposed. */
 export const AGENT_FEDERATION_API = 'agent-federation.sudo.dev/v1alpha1' as const
 export const AGENT_HTTP_API = 'agent-http.sudo.dev/v1alpha1' as const
@@ -42,7 +42,9 @@ export interface ExternalRunBinding extends TaskCorrelation {
   kind: 'ExternalRunBinding'
   binding_id: string
   provider_kind: 'dify' | 'custom_http'
+  /** Claimed provider identity; missing evidence on legacy rows is not verification. */
   external_agent_id: string
+  source_identity_evidence?: 'unverified'
   source_digest: string
   provider_run_id: string
   provider_session_id?: string

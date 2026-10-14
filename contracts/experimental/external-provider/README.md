@@ -1,6 +1,6 @@
 # External provider pilot contract
 
-This is an experimental distribution of the Moss-owned external-provider.sudo.dev/v1alpha4 contract. It does not declare ADR-003/004/005 Accepted, change the stable @sudo/contracts exports, or claim production Task/Attempt compatibility.
+This is an experimental distribution of the Moss-owned external-provider.sudo.dev/v1alpha5 contract. It does not declare ADR-003/004/005 Accepted, change the stable @sudo/contracts exports, or claim production Task/Attempt compatibility.
 
 The only editable semantic definition is the pinned Moss source in source.lock.json. Generate or verify using:
 
@@ -29,3 +29,5 @@ Keep exact source/artifact pins even when changing only additive fields. An inco
 Reference registration now requires a durable `request_id` and complete `source_definition` matching `source_digest`. Full query-only definition profile v1 rejects unknown execution fields, tools, knowledge sources, attachments and graph-only snapshots. Old bindings need definition re-upload and review; history and identity are retained.
 
 Coordinate the Moss and SudoWork upgrade. Event delta semantics from alpha3 remain unchanged; old stored events resync via a snapshot. Alpha3 complete raw answers stay `current`, while alpha2 incomplete raw history remains `legacy_checkpoint`. The source digest attests only submitted review evidence, never a remotely pinned Dify execution revision.
+
+The pilot marks source identity as unverified; caller-supplied App/Workspace IDs do not prove credential ownership. Task submission requires the versioned SubmitTask admission contract; legacy CreateExternalTask is rejected. Historical tasks may lack the new session creation sequence and identity-evidence fields.
