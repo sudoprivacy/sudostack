@@ -1,0 +1,17 @@
+{
+  "repository": "https://github.com/sudoprivacy/moss",
+  "revision": "bc9e896271c28064b7afee55509a22bee07a5c7e",
+  "semanticOwner": "moss",
+  "maturity": "experimental-adapter-baseline",
+  "apiVersion": "agent-federation.sudo.dev/v1alpha1",
+  "files": {
+    "contracts/agent-federation/v1alpha1/contract.ts": {
+      "output": "contract.gen.ts",
+      "digest": "sha256:bbadcca1397ec4761b477fcb2d6784b94b42fa773fde6cf083f227c6a315c1f0"
+    },
+    "contracts/agent-federation/v1alpha1/schema.json": {
+      "output": "schema.gen.json",
+      "digest": "sha256:1513127cd576fbd002abc73f850c249e0e30443b2fd53e1edb4a3bbb37a9fb2f"
+    }
+  }
+}

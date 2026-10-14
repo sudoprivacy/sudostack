@@ -1,0 +1,31 @@
+name: agent-federation-contract
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  agent-federation-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.21.0'
+      - name: Read the exact experimental semantic source revision
+        id: federation-source
+        run: node -e "const fs = require('node:fs'); const lock = JSON.parse(fs.readFileSync('contracts/experimental/agent-federation/source.lock.json')); if (!/^[a-f0-9]{40}$/.test(lock.revision)) process.exit(1); fs.appendFileSync(process.env.GITHUB_OUTPUT, 'revision=' + lock.revision + '\n')"
+      - uses: actions/checkout@v4
+        with:
+          repository: sudoprivacy/moss
+          ref: ${{ steps.federation-source.outputs.revision }}
+          path: .federation-owner/moss
+          persist-credentials: false
+      - name: Reproduce the experimental schema and type artifacts
+        run: node contracts/experimental/agent-federation/generate.mjs --owner .federation-owner/moss --check
+      - name: Reject source identity, revision and byte drift
+        run: node --test contracts/experimental/agent-federation/generate.test.mjs
+      - run: npm ci --ignore-scripts
+      - name: Check experimental TypeScript without changing stable exports
+        run: npx tsc --noEmit --module esnext --moduleResolution bundler --target es2022 --types node contracts/experimental/agent-federation/contract.gen.ts
