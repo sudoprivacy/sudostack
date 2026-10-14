@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import { z } from 'zod'
 import { NexusZoneApiClient, userRuntimeServerName, createUserRuntimeCredentialBundle, type SessionCredential, type NexusVfsTlsConfig } from '@nexus-ai-fs/vfs-client'
-import { buildKubectlBaseArgs, kubectlApply, readK8sResource, deleteK8sResource, observeK8sRuntime, type K8sResource } from './k8sResources.js'
+import { buildKubectlBaseArgs, kubectlApply, readK8sResource, deleteK8sResource, observeK8sRuntime, refreshK8sPodProjection, type K8sResource } from './k8sResources.js'
 import { parseCohostBuild, type RuntimeRelease } from './runtimeRelease.js'
 export interface UserRuntimeConnectionConfig {
   endpoint: string
@@ -48,6 +48,7 @@ export interface UserPodResources {
   write: (manifest: Record<string, unknown>, verb?: 'create' | 'apply') => Promise<void>
   remove?: (kind: 'pods' | 'secrets', name: string, uid: string) => Promise<void>
   observe?: (name: string) => Promise<{ version: string; binaryDigest: string }>
+  refreshProjection?: (name: string, uid: string, ownerId: string) => Promise<void>
 }
 
 function kubernetesResources(options: UserPodOptions): UserPodResources {
@@ -57,6 +58,7 @@ function kubernetesResources(options: UserPodOptions): UserPodResources {
     write: (manifest, verb) => kubectlApply(base, manifest, verb),
     remove: (kind, name, uid) => deleteK8sResource(base, options.namespace, kind, name, uid),
     observe: name => observeK8sRuntime(base, name),
+    refreshProjection: (name, uid, ownerId) => refreshK8sPodProjection(base, name, uid, ownerId),
   }
 }
 
@@ -192,7 +194,18 @@ export class UserPodService {
       if (pending) await pending
       const pod = await this.resources.read('pod', name)
       if (pod && (pod.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId || !pod.metadata.uid)) throw new Error('User Pod belongs to another owner or lacks an identity')
-      await drain(pod ? await this.runtimeConnection(ownerId) : undefined)
+      // A restarted controller may discover an older image whose short-lived
+      // server identity has expired. Restore authenticated access to that same
+      // Pod before checking whether its agents can safely drain.
+      let previous: UserRuntimeConnectionConfig | undefined
+      if (pod) {
+        previous = await this.runtimeConnection(ownerId)
+        await this.refreshUpgradeIdentity(ownerId, pod)
+        await this.ready(previous, ownerId, this.lifecycle.signal)
+        await this.assertUpgradePod(ownerId, pod)
+      }
+      await drain(previous)
+      if (pod) await this.assertUpgradePod(ownerId, pod)
       const connection = this.connections.get(ownerId)
       if (connection) await (await connection).close()
       this.connections.delete(ownerId)
@@ -246,6 +259,33 @@ export class UserPodService {
       if (Date.now() >= deadline) throw new Error('User runtime did not finish draining within 90 seconds')
       await delay(1000)
     }
+  }
+
+  private async assertUpgradePod(ownerId: string, observed: K8sResource): Promise<void> {
+    const current = await this.resources.read('pod', userPodName(ownerId))
+    if (!current || current.metadata.uid !== observed.metadata.uid || current.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) {
+      throw new Error('User Pod identity changed during runtime upgrade')
+    }
+  }
+
+  private async refreshUpgradeIdentity(ownerId: string, pod: K8sResource): Promise<void> {
+    const name = userPodName(ownerId)
+    const secret = await this.resources.read('secret', name)
+    if (!secret?.metadata.uid || secret.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) {
+      throw new Error('User Pod Secret belongs to another owner or lacks an identity')
+    }
+    await this.assertUpgradePod(ownerId, pod)
+    const issuer = NexusZoneApiClient.withMtls(this.options.issuer.endpoint, this.options.issuer.tls)
+    try {
+      const credential = await issuer.mintUserRuntime(ownerId, { validitySecs: CREDENTIAL_VALIDITY_SECS })
+      await this.assertUpgradePod(ownerId, pod)
+      // Keep projected model configuration and use the observed Secret version
+      // so a concurrent replacement cannot receive another Pod's update.
+      await this.resources.write({ apiVersion: 'v1', kind: 'Secret', type: 'Opaque',
+        metadata: { ...secret.metadata, namespace: this.options.namespace },
+        data: secret.data, stringData: userRuntimeCredentialData(ownerId, credential) })
+      await this.resources.refreshProjection?.(name, pod.metadata.uid!, ownerId)
+    } finally { issuer.close() }
   }
 
   private async runtimeConnection(ownerId: string): Promise<UserRuntimeConnectionConfig> {
