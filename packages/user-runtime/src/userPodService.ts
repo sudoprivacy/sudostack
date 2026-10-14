@@ -40,6 +40,7 @@ export interface UserPodOptions {
 
 interface UserPodConnection {
   config: UserRuntimeConnectionConfig
+  podUid: string
   close: () => Promise<void>
   configure: (configuration: Record<string, string>) => Promise<void>
 }
@@ -138,6 +139,7 @@ function userPodManifests(ownerId: string, options: UserPodOptions) {
 /** Coordinates user boxes without storing addresses, credentials or PID presence in SQL. */
 export class UserPodService {
   private readonly connections = new Map<string, Promise<UserPodConnection>>()
+  private readonly pendingResolutions = new Map<string, Promise<UserPodConnection>>()
   private readonly lifecycle = new AbortController()
   private readonly runtimeHost: string
 
@@ -191,6 +193,7 @@ export class UserPodService {
     const lock = await this.resources.read('secret', lockName)
     if (!lock?.metadata.uid || lock.metadata.annotations?.['moss.sudo.dev/upgrade-operation'] !== operation) throw new Error('Runtime upgrade lock was not acquired')
     try {
+      await this.pendingResolutions.get(ownerId)
       const pending = this.connections.get(ownerId)
       if (pending) await pending
       const pod = await this.resources.read('pod', name)
@@ -322,16 +325,40 @@ export class UserPodService {
   async resolve(ownerId: string, configuration?: Record<string, string>): Promise<UserRuntimeConnectionConfig> {
     if (this.lifecycle.signal.aborted) throw new Error('User Pod service is closed')
     userPodName(ownerId)
-    if (await this.resources.read('secret', `${userPodName(ownerId)}-upgrade`)) throw new Error('User runtime is draining for an upgrade')
+    let resolution = this.pendingResolutions.get(ownerId)
+    if (!resolution) {
+      resolution = this.resolveConnection(ownerId, configuration)
+      this.pendingResolutions.set(ownerId, resolution)
+    }
+    try {
+      const connection = await resolution
+      if (configuration) await connection.configure(configuration)
+      return connection.config
+    } finally {
+      if (this.pendingResolutions.get(ownerId) === resolution) this.pendingResolutions.delete(ownerId)
+    }
+  }
+
+  private async resolveConnection(ownerId: string, configuration?: Record<string, string>): Promise<UserPodConnection> {
+    const name = userPodName(ownerId)
+    const [lock, pod] = await Promise.all([
+      this.resources.read('secret', `${name}-upgrade`),
+      this.resources.read('pod', name),
+    ])
+    if (lock) throw new Error('User runtime is draining for an upgrade')
+    if (pod && pod.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) throw new Error('User Pod belongs to another owner')
     let connection = this.connections.get(ownerId)
     if (connection) {
       const existing = await connection
-      if (configuration) await existing.configure(configuration)
-      return existing.config
+      if (pod?.metadata.uid === existing.podUid && pod.status?.conditions?.some(condition => condition.type === 'Ready' && condition.status === 'True')) {
+        return existing
+      }
+      await existing.close()
+      this.connections.delete(ownerId)
     }
     connection = this.open(ownerId, configuration)
     this.connections.set(ownerId, connection)
-    try { return (await connection).config } catch (error) {
+    try { return await connection } catch (error) {
       if (this.connections.get(ownerId) === connection) this.connections.delete(ownerId)
       throw error
     }
@@ -404,10 +431,14 @@ export class UserPodService {
       throw new Error('User Pod image or configuration requires an explicit runtime upgrade')
     }
     const deadline = Date.now() + 90_000
+    let readyPod: K8sResource
     while (true) {
       if (this.lifecycle.signal.aborted) throw new Error('User Pod service is closed')
       const current = await assertOwner('pod')
-      if (current?.status?.conditions?.some(condition => condition.type === 'Ready' && condition.status === 'True')) break
+      if (current?.metadata.uid && current.status?.conditions?.some(condition => condition.type === 'Ready' && condition.status === 'True')) {
+        readyPod = current
+        break
+      }
       if (current?.status?.phase === 'Failed' || current?.status?.phase === 'Succeeded') {
         throw new Error('User Pod exited before its service became ready')
       }
@@ -442,6 +473,7 @@ export class UserPodService {
     timer = setTimeout(() => { void renew() }, 90_000)
     timer.unref()
     return {
+      podUid: readyPod.metadata.uid!,
       configure: async (next) => {
         if (!isActive || this.lifecycle.signal.aborted) throw new Error('User Pod connection is closed')
         const replacement = { ...defaults, ...next }
@@ -463,6 +495,7 @@ export class UserPodService {
   /** Disconnect controller transports while retaining owned Pods and user volumes. */
   async close(): Promise<void> {
     this.lifecycle.abort()
+    await Promise.allSettled(this.pendingResolutions.values())
     await Promise.allSettled([...this.connections.values()].map(async connection => (await connection).close()))
     this.connections.clear()
   }
