@@ -15,6 +15,8 @@ jobs:
         run: |
           python3 -m py_compile tools/deploy/*.py
           bash -n tools/deploy/install-atlas.sh
+          bash -n tools/deploy/install-cos.sh
+          bash -n tools/deploy/cleanup-atlas.sh
           node --check tools/deploy/webui-smoke.cjs
           node --check tools/deploy/mock-openai-server.mjs
           python3 -m unittest discover -s tools/deploy -p 'test_*.py'

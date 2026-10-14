@@ -4,7 +4,7 @@
 
 CI 生成的 `atlas-release.json` 进一步记录各资源的来源 URL、组件版本、Release asset ID、SHA256，以及构建 Nexus/Caddy 时取得的 registry digest。客户安装时只读取该 Release 的清单，不解析任何子组件的 `latest`。构建输入清单随同发布为 `components.lock.json`。
 
-当前候选是 [`sudostack-v0.0.1-rc.5`](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.5)，其冻结清单为 `manifests/deployment/0.0.1-rc.5.json`；正式 `0.0.1` 尚未发布。rc.5 增加 SudoRouter，并复用 rc.2 的既有制品，锁定 Moss 集成候选 `server-v0.1.53-atlas.1`。该候选由 Moss CI 生成拆分 Server 镜像、部署助手和 Nexus 引导脚本。CI 在下载大文件前检查上游 Release 附件，并检查 Runtime 内实际 Sudocode 版本；不能用开发机手工打包文件填补发布缺口。
+当前候选是 [`sudostack-v0.0.1-rc.6`](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.6)，其冻结清单为 `manifests/deployment/0.0.1-rc.6.json`；正式 `0.0.1` 尚未发布。rc.6 包含 SudoRouter，增加 CI 构建并验收的 COS 完整离线包，复用 rc.2 的既有制品，锁定 Moss 集成候选 `server-v0.1.53-atlas.1`。该候选由 Moss CI 生成拆分 Server 镜像、部署助手和 Nexus 引导脚本。CI 在下载大文件前检查上游 Release 附件，并检查 Runtime 内实际 Sudocode 版本；不能用开发机手工打包文件填补发布缺口。
 
 | 组件 | `0.0.1` 的版本组合 | 资源归属 |
 | --- | --- | --- |
@@ -26,11 +26,11 @@ Nexus Broker 的部署镜像由 sudostack CI 组装上述固定 daemon、Vault �
 
 ## 一键安装
 
-直接下载已发布候选的安装入口：
+通过 COS 获取包含全部资源的离线安装入口，目标机无需访问 GitHub：
 
 ```bash
-curl --http1.1 --retry 3 --retry-all-errors -fLO https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.5/install-atlas.sh
-sudo bash install-atlas.sh --host atlas.customer.example --root /data/atlas --manage-k3s
+curl --http1.1 --retry 3 --retry-all-errors -fLO https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.6/install-cos.sh
+sudo bash install-cos.sh --host atlas.customer.example --root /data/atlas --manage-k3s
 ```
 
 `--manage-k3s` 允许安装器引导/重启 k3s，并关闭其内置 Traefik，让 Caddy 使用 80/443/8443/9443。客户机不需要 Docker daemon。已有业务占用这些端口时，应先解决端口冲突；不能同时运行另一个控制 `moss-sessions` 的 Moss 实例。
@@ -48,7 +48,7 @@ sudo bash install-atlas.sh --host atlas.customer.example --root /data/atlas --ma
 默认生成安装专用 CA 和 90 天测试证书。客户端应信任 `/data/atlas/tls/ca.crt`；该证书用途为验收，正式交付请在首次安装时提供客户证书：
 
 ```bash
-sudo bash install-atlas.sh --host atlas.customer.example --manage-k3s \
+sudo bash install-cos.sh --host atlas.customer.example --manage-k3s \
   --tls-cert /secure/fullchain.pem --tls-key /secure/key.pem --tls-ca /secure/ca-chain.pem
 ```
 
@@ -92,19 +92,19 @@ sudo /data/atlas/restore.sh --backup /var/backups/atlas/20261012-160000 \
 
 1. 在 `manifests/deployment/VERSION.json` 提交新的版本组合。组件的仓库、tag、版本必须对应，禁止 `latest`、分支名或漏填组件。
 2. 可先运行 `python3 tools/deploy/release.py --lock manifests/deployment/0.0.1.json --check`，检查上游固定版本的附件是否齐全。此命令只读取公开发布信息，不修改集群。
-3. `.github/workflows/deployment-release.yml` 的 PR 和手动运行生成 CI artifact 并执行全新安装、相同版本重复安装及重启后的完整会话测试；PR 默认验收 `0.0.1`，手动运行可选择版本。推送 `sudostack-vVERSION` tag 才创建该版本的 GitHub prerelease。CI 从对应 tag 的版本清单拉取制品，不执行本地手工组件构建。发布 job 必须等待组装和安装验收通过，现有 Release 不会被覆盖。
+3. `.github/workflows/deployment-release.yml` 的 PR 和手动运行生成 CI artifact 并执行全新安装、相同版本重复安装及重启后的完整会话测试；PR 默认验收 `0.0.1`，手动运行可选择版本。推送 `sudostack-vVERSION` tag 才创建该版本的 GitHub prerelease 并发布 COS 完整包。CI 从对应 tag 的版本清单拉取制品，不执行本地手工组件构建。发布 job 必须等待组装和安装验收通过，现有 Release 不会被覆盖。
 4. 发布资产包括安装入口、Chart、运维脚本、`components.lock.json`、`atlas-release.json`、SHA256，以及 sudostack 组装的 Nexus/Caddy 镜像包和基础设施离线文件。Moss/WebUI/SudoRouter 镜像保留其原仓库的 Release URL；`baseRelease` 固定旧套件清单的 SHA256，复用其未变动制品。
-5. 客户入口自动下载和校验清单中的资源，缓存于 `/var/cache/sudostack/sudostack-vVERSION`。各文件下载使用临时文件，校验通过后才替换缓存。
+5. COS 入口下载完整压缩包，缓存于 `/var/cache/sudostack/sudostack-vVERSION`；校验后解压到 `assets/` 并调用本地安装器。资源内容、断点续传、手动解包安装和 COS 发布见 [COS 与离线交付](cos.md)。GitHub 的原始 `install-atlas.sh` 仍提供按来源逐项下载的旧入口。
 
 在联网的 Linux 构建机上复现 CI，需要 Python、GitHub CLI（`gh`）、curl 和 Docker Buildx：
 
 ```bash
 python3 tools/deploy/release.py --lock manifests/deployment/0.0.1.json --assets dist/assets
 python3 tools/deploy/package.py --assets dist/assets --publish dist/publish
-python3 tools/deploy/bundle.py --assets dist/assets --output sudostack-0.0.1-amd64.tar
+python3 tools/deploy/cos_bundle.py create --assets dist/assets --output dist/cos-release
 ```
 
-最后一条命令生成离线包及 `.sha256`，只收录 manifest 指定的文件并保留 `offline/` 子目录。CI 同时上传完整包到 `sudostack-installation-candidate` artifact，用于干净安装测试（保留 7 天；长期公开交付使用 Release 分文件资产）。完整包可能超过 GitHub Release 单文件大小限制，因此客户在线安装使用分文件下载。离线机核对 SHA256、解包后运行包内 `install-atlas.sh`，无需联网。不要打包客户安装目录。
+最后一条命令生成最终 COS `.tar.gz` 和入口、清单、校验文件，只收录 manifest 指定的资源并保留 `offline/` 子目录。CI 上传整套文件到 `sudostack-installation-candidate` artifact（保留 7 天），先解压该包做全新安装测试，通过后原样上传 COS。验收与发布阶段不会重新压缩；长期公开交付使用 COS 版本目录，避免 GitHub Release 单文件大小限制。离线机核对 SHA256、解包后运行包内 `install-atlas.sh`，无需联网。不要打包客户安装目录。
 
 180 的 rc.2 验收中，公开 Release 安装入口下载及校验成功，后续大文件下载因 GitHub CDN 超时中断。测试改为由目标机从同一次 GitHub CI 下载完整包，核对 artifact 和包的 SHA256 后执行原安装器。该次验证覆盖 CI 完整包安装路径，尚未证明该网络环境下分文件在线下载可稳定完成；没有使用内网镜像服务或旧服务器产物。
 

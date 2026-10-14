@@ -205,6 +205,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertNotIn('credentials.json', manifest['archives'])
         self.assertIn('/sudostack-v0.0.1/offline--runsc-amd64', manifest['sources']['offline/runsc-amd64']['url'])
         self.assertNotIn('@@ATLAS_RELEASE_TAG@@', (publish / 'install-atlas.sh').read_text())
+        self.assertIn('cleanup-atlas.sh', manifest['archives'])
         with tarfile.open(publish / manifest['chart']) as chart:
             text = chart.extractfile('atlas-mvp/Chart.yaml').read().decode()
             self.assertIn('version: 0.0.1\n', text)

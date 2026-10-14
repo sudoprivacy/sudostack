@@ -337,9 +337,13 @@ def finalize_install(root, assets, chart, manifest, images):
     gateway = json.loads((root / 'values.json').read_text())['gateway']
     (root / 'admin-credentials.txt').write_text('WebUI: ' + gateway['webuiOrigin'] + '\nMoss Admin: ' + gateway['mossOrigin'] + '/admin/\nUsername: '
         + credentials['adminUsername'] + '\nPassword: ' + credentials['adminPassword'] + '\n')
-    for filename in ('smoke.py', 'webui-smoke.cjs', 'mock-openai-server.mjs', 'snapshot.py', 'router.py'):
+    for filename in ('smoke.py', 'webui-smoke.cjs', 'mock-openai-server.mjs', 'snapshot.py', 'router.py', 'cleanup-atlas.sh'):
+        if filename == 'cleanup-atlas.sh' and not (assets / filename).exists():
+            continue
         if (assets / filename).resolve() != root / filename:
             shutil.copyfile(assets / filename, root / filename)
+        if filename == 'cleanup-atlas.sh':
+            (root / filename).chmod(0o700)
     for action in ('backup', 'restore'):
         script = root / (action + '.sh')
         script.write_text('#!/usr/bin/env bash\nset -euo pipefail\nexec python3 ' + shlex.quote(str(root / 'snapshot.py')) + ' ' + action + ' --root ' + shlex.quote(str(root)) + ' "$@"\n')
