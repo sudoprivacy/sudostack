@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""Controlled k3s/WebUI smoke using a temporary model, without a paid API key."""
+import argparse
+import importlib.util
+import json
+import os
+from pathlib import Path
+import secrets
+import ssl
+import subprocess
+import time
+import urllib.request
+
+os.umask(0o077)
+parser=argparse.ArgumentParser()
+parser.add_argument('--root',type=Path,default=Path('/data/atlas'))
+parser.add_argument('--resume',action='store_true')
+args=parser.parse_args()
+root=args.root.resolve()
+source=Path(__file__).resolve().parent
+spec=importlib.util.spec_from_file_location('atlas',source/'atlas.py')
+atlas=importlib.util.module_from_spec(spec);spec.loader.exec_module(atlas)
+values=json.loads((root/'values.json').read_text())
+credentials=json.loads((root/'credentials.json').read_text())
+evidence=root/'acceptance';evidence.mkdir(exist_ok=True)
+context=ssl.create_default_context(cafile=str(root/'tls/ca.crt'))
+base=values['gateway']['mossOrigin']
+token=None
+
+def api(path,body=None,method='GET'):
+    headers={'Content-Type':'application/json'}
+    if token:headers['Authorization']='Bearer '+token
+    request=urllib.request.Request(base+path,headers=headers,method=method,data=None if body is None else json.dumps(body).encode())
+    with urllib.request.urlopen(request,context=context,timeout=120) as response:return json.load(response)
+
+token=api('/api/v1/auth/login',{'grant_type':'password','username':credentials['adminUsername'],'password':credentials['adminPassword']},'POST')['access_token']
+original=api('/api/v1/settings/system?scope=organization')
+uses_router='router' in values['images']
+router_client=None
+channel_created=False
+# This automatic qualification is for a fresh deployment, before customer model credentials are configured.
+if uses_router:
+    import router
+    router.assert_moss_configuration(root)
+elif original.get('apiKey') or original.get('hasApiKey') or original.get('apiKeyConfigured'):
+    raise SystemExit('Refusing to replace existing model credentials; use the real-model acceptance procedure')
+key=secrets.token_urlsafe(24)
+ns=atlas.NAMESPACE
+name='atlas-acceptance-'+secrets.token_hex(4)
+atlas.secret(name,{'MOSS_E2E_API_KEY':key})
+atlas.apply({'apiVersion':'v1','kind':'ConfigMap','metadata':{'name':name,'namespace':ns},'data':{'mock.mjs':(source/'mock-openai-server.mjs').read_text()}})
+atlas.apply({'apiVersion':'v1','kind':'Service','metadata':{'name':name,'namespace':ns},'spec':{'selector':{'app':name},'ports':[{'port':18484,'targetPort':18484}]}})
+atlas.apply({'apiVersion':'v1','kind':'Pod','metadata':{'name':name,'namespace':ns,'labels':{'app':name}},'spec':{
+    'automountServiceAccountToken':False,'restartPolicy':'Never','containers':[{'name':'mock','image':values['images']['moss'],'imagePullPolicy':'Never',
+    'command':['node','/smoke/mock.mjs','--port','18484'],'envFrom':[{'secretRef':{'name':name}}],
+    'volumeMounts':[{'name':'script','mountPath':'/smoke','readOnly':True}],
+    'readinessProbe':{'httpGet':{'path':'/healthz','port':18484}}}],
+    'volumes':[{'name':'script','configMap':{'name':name}}]}})
+mock_source={'podSelector':{'matchLabels':{'app':'atlas-router'}}} if uses_router else {'namespaceSelector':{'matchLabels':{'kubernetes.io/metadata.name':'moss-sessions'}}}
+atlas.apply({'apiVersion':'networking.k8s.io/v1','kind':'NetworkPolicy','metadata':{'name':name,'namespace':ns},'spec':{'podSelector':{'matchLabels':{'app':name}},'policyTypes':['Ingress'],'ingress':[{'from':[mock_source],'ports':[{'protocol':'TCP','port':18484}]}]}})
+try:
+    atlas.kube('-n',ns,'wait','--for=condition=Ready','pod/'+name,'--timeout=120s')
+    if uses_router:
+        router_client=router.RouterClient(root)
+        router_client.__enter__()
+        router_client.login()
+        if router_client.request('/api/channel/?p=1&page_size=100')['data']['total']:
+            raise RuntimeError('Router already has upstream channels; use real-model acceptance instead of temporary channels')
+        upstream='http://'+name+'.'+ns+'.svc.cluster.local:18484'
+        router.wait_upstream(upstream)
+        router_client.request('/api/channel/',{'mode':'single','channel':{'name':name,'type':14,'status':1,
+            'key':key,'base_url':upstream,
+            'models':'claude-sonnet-4-6','group':'default'}})
+        channel_created=True
+        relay_key=router.credentials(root)['relayKey']
+        probe=router_client.request('/v1/messages',{'model':'claude-sonnet-4-6','max_tokens':32,
+            'messages':[{'role':'user','content':'Reply MOSS_E2E_TOKEN_router_probe'}]},bearer=relay_key)
+        if not any('MOSS_E2E_TOKEN_router_probe' in item.get('text','') for item in probe.get('content',[])):
+            raise RuntimeError('SudoRouter did not relay the model probe to the temporary upstream')
+    else:
+        api('/api/v1/settings/system?scope=organization',{'apiKey':key,'url':'http://'+name+'.'+ns+'.svc.cluster.local:18484/v1'},'PATCH')
+    for _ in range(20):
+        catalog=api('/api/v1/models/available')
+        if any(m.get('modelId')=='claude-sonnet-4-6' for m in catalog.get('data',[])):
+            break
+        time.sleep(2)
+    else:
+        raise RuntimeError('Temporary model endpoint did not become reachable')
+    config={'origin':values['gateway']['webuiOrigin'],'username':credentials['adminUsername'],'password':credentials['adminPassword']}
+    if args.resume:
+        previous=json.loads((evidence/'webui-before.json').read_text())
+        config.update(sessionId=previous['sessionId'],previousNonce=previous['nonce'])
+    script='const config = '+json.dumps(config)+';\n'+(source/'webui-smoke.cjs').read_text()
+    with (evidence/'driver.log').open('w+') as log:
+        process=subprocess.Popen(['k3s','kubectl','-n',ns,'exec','-i','deployment/sudowork-webui','--','node','-'],stdin=subprocess.PIPE,stdout=log,stderr=subprocess.STDOUT,text=True)
+        process.stdin.write(script);process.stdin.close()
+        observed={}
+        while process.poll() is None:
+            pods=json.loads(atlas.kube('-n','moss-sessions','get','pods','-o','json'))['items']
+            for pod in pods:
+                if pod['spec'].get('runtimeClassName')=='gvisor' and pod.get('status',{}).get('phase')=='Running':
+                    observed[pod['metadata']['name']]={'uid':pod['metadata']['uid'],'runtimeClass':'gvisor','image':pod['spec']['containers'][0]['image']}
+            time.sleep(.5)
+        log.seek(0);lines=log.read().splitlines()
+    if process.returncode:
+        raise RuntimeError('WebUI smoke failed: '+ '\n'.join(lines[-4:]))
+    result=json.loads(next(line for line in reversed(lines) if line.startswith('{"passed"')))
+    if not observed:raise RuntimeError('No running gVisor session was observed')
+    result['sandboxes']=observed
+    result['router']=uses_router
+    atlas.write(evidence/('webui-after.json' if args.resume else 'webui-before.json'),result)
+    print('WebUI HTTPS/login/WebSocket/gVisor/'+('SudoRouter/' if uses_router else '')+'transcript'+('/resume' if args.resume else '')+' passed')
+finally:
+    try:
+        if uses_router:
+            if channel_created:
+                channels=router_client.request('/api/channel/?p=1&page_size=100')['data']['items']
+                for channel in channels:
+                    if channel['name']==name:
+                        router_client.request('/api/channel/'+str(channel['id']),method='DELETE')
+                if any(channel['name']==name for channel in router_client.request('/api/channel/?p=1&page_size=100')['data']['items']):
+                    raise RuntimeError('Temporary SudoRouter channel was not removed')
+        else:
+            api('/api/v1/settings/system?scope=organization',{'apiKey':'','url':original.get('url') or 'https://hk.sudorouter.ai/v1'},'PATCH')
+    finally:
+        try:
+            if router_client:
+                router_client.__exit__(None,None,None)
+        finally:
+            atlas.kube('-n',ns,'delete','pod,service,configmap,secret,networkpolicy',name,'--ignore-not-found','--wait=true')

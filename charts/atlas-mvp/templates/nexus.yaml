@@ -1,0 +1,69 @@
+{{- if .Values.nexus.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: nexus-broker
+spec:
+  selector: {app: atlas-nexus}
+  ports:
+    - name: grpc
+      port: {{ .Values.nexus.port }}
+      targetPort: grpc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nexus-broker
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: atlas-nexus}
+  template:
+    metadata:
+      labels: {app: atlas-nexus}
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: {{ required "nodeName is required" .Values.nodeName | quote }}
+      serviceAccountName: atlas-controller
+      terminationGracePeriodSeconds: 45
+      containers:
+        - name: nexus
+          image: {{ required "images.nexus is required" .Values.images.nexus | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          args:
+            - --advertise-addr
+            - nexus-broker:{{ .Values.nexus.port }}
+            - --hostname
+            - nexus-node
+            - --data-dir
+            - {{ .Values.dataMountPath }}/.moss/nexus/data
+            - --identity-dir
+            - {{ .Values.dataMountPath }}/.moss/nexus/identity
+            - --plugin-dir
+            - /app/bin/nexus/plugins
+          env:
+            - name: NEXUS_DATA_DIR
+              value: {{ .Values.dataMountPath }}/.moss/nexus/data
+          ports:
+            - name: grpc
+              containerPort: {{ .Values.nexus.port }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+          startupProbe:
+            tcpSocket: {port: grpc}
+            periodSeconds: 2
+            failureThreshold: 90
+          readinessProbe:
+            tcpSocket: {port: grpc}
+          livenessProbe:
+            tcpSocket: {port: grpc}
+            periodSeconds: 15
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {memory: 2Gi}
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: atlas-data}
+{{- end }}

@@ -1,3 +1,8 @@
 .DS_Store
 node_modules/
 __pycache__/
+
+# Generated deployment bundles and local qualification records.
+/dist/
+/docs/deployment/evidence/
+/docs/deployment/10.0.1.180*-acceptance.md

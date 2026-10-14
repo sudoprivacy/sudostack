@@ -1,0 +1,161 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: webui-postgres
+spec:
+  selector: {app: atlas-postgres}
+  ports:
+    - {name: postgres, port: 5432, targetPort: postgres}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webui-postgres
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: atlas-postgres}
+  template:
+    metadata:
+      labels: {app: atlas-postgres}
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.nodeName | quote }}
+      containers:
+        - name: postgres
+          image: {{ required "images.postgres is required" .Values.images.postgres | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          envFrom:
+            - secretRef: {name: {{ .Values.webui.postgresSecret }}}
+          env:
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+          ports:
+            - {name: postgres, containerPort: 5432}
+          volumeMounts:
+            - {name: postgres, mountPath: /var/lib/postgresql/data}
+          startupProbe:
+            exec: {command: [pg_isready, -h, 127.0.0.1, -U, atlas, -d, sudowork_webui]}
+            failureThreshold: 60
+            periodSeconds: 2
+          readinessProbe:
+            exec: {command: [pg_isready, -h, 127.0.0.1, -U, atlas, -d, sudowork_webui]}
+          livenessProbe:
+            exec: {command: [pg_isready, -h, 127.0.0.1, -U, atlas, -d, sudowork_webui]}
+            periodSeconds: 15
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {memory: 1Gi}
+      volumes:
+        - name: postgres
+          persistentVolumeClaim: {claimName: atlas-postgres-data}
+{{- if .Values.webui.enabled }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: webui-migrate-{{ .Values.webui.migrationRevision }}-{{ .Release.Revision }}
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels: {app: atlas-webui}
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      initContainers:
+        - name: database
+          image: {{ .Values.images.webui | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          envFrom:
+            - secretRef: {name: {{ .Values.webui.envSecret }}}
+          env:
+            - {name: NODE_EXTRA_CA_CERTS, value: ""}
+          command:
+            - node
+            - -e
+            - |
+              const {Client}=require('pg');
+              (async()=>{for(let i=0;i<90;i++){const c=new Client({connectionString:process.env.DATABASE_URL,connectionTimeoutMillis:2000});try{await c.connect();await c.query('SELECT 1');await c.end();return}catch{}finally{await c.end().catch(()=>{})}await new Promise(r=>setTimeout(r,2000))}process.exit(1)})()
+      containers:
+        - name: migrate
+          image: {{ required "images.webui is required" .Values.images.webui | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          command: [node, dist/server/migrate.js]
+          env:
+            - {name: NODE_EXTRA_CA_CERTS, value: ""}
+          envFrom:
+            - secretRef: {name: {{ .Values.webui.envSecret }}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sudowork-webui
+spec:
+  selector: {app: atlas-webui-server}
+  ports:
+    - {name: http, port: 26808, targetPort: http}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sudowork-webui
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: atlas-webui-server}
+  template:
+    metadata:
+      labels: {app: atlas-webui-server}
+      annotations:
+        atlas/config-revision: {{ .Values.configRevision | quote }}
+    spec:
+      automountServiceAccountToken: false
+      initContainers:
+        - name: migration
+          env:
+            - {name: NODE_EXTRA_CA_CERTS, value: ""}
+          image: {{ .Values.images.webui | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          command:
+            - node
+            - -e
+            - |
+              const {Client}=require('pg'),fs=require('fs'),crypto=require('crypto');
+              const expected=fs.readdirSync('migrations').filter(n=>n.endsWith('.sql')).map(n=>[n,crypto.createHash('sha256').update(fs.readFileSync('migrations/'+n)).digest('hex')]);
+              (async()=>{for(let i=0;i<180;i++){const c=new Client({connectionString:process.env.DATABASE_URL});try{await c.connect();const rows=(await c.query('SELECT version,checksum FROM schema_migrations')).rows;const actual=new Map(rows.map(r=>[r.version,r.checksum]));if(expected.every(([n,h])=>actual.get(n)===h)){await c.end();return}}catch{}finally{await c.end().catch(()=>{})}await new Promise(r=>setTimeout(r,2000))}process.exit(1)})()
+          envFrom:
+            - secretRef: {name: {{ .Values.webui.envSecret }}}
+      containers:
+        - name: webui
+          image: {{ .Values.images.webui | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          envFrom:
+            - secretRef: {name: {{ .Values.webui.envSecret }}}
+          ports:
+            - {name: http, containerPort: 26808}
+          volumeMounts:
+            - {name: gateway-ca, mountPath: /etc/atlas-tls, readOnly: true}
+          startupProbe:
+            httpGet: {path: /health/live, port: http}
+            failureThreshold: 90
+            periodSeconds: 2
+          readinessProbe:
+            exec:
+              command: [node, -e, "const{Client}=require('pg');const c=new Client({connectionString:process.env.DATABASE_URL});c.connect().then(()=>c.query('SELECT 1')).then(()=>c.end()).catch(()=>process.exit(1))"]
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet: {path: /health/live, port: http}
+            periodSeconds: 15
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {memory: 2Gi}
+      volumes:
+        - name: gateway-ca
+          secret:
+            secretName: {{ .Values.gateway.tlsSecret }}
+            items:
+              - {key: ca.crt, path: ca.crt}
+{{- end }}

@@ -1,0 +1,43 @@
+nodeName: ""
+dataMountPath: /var/lib/atlas
+storageClass: local-path
+dataSize: 20Gi
+sessionsNamespace: moss-sessions
+configRevision: ""
+images:
+  moss: ""
+  nexus: ""
+  runtime: ""
+  webui: ""
+  postgres: ""
+  caddy: ""
+imagePullPolicy: IfNotPresent
+router:
+  enabled: false
+  expose: false
+  dataSize: 10Gi
+moss:
+  enabled: true
+  port: 43127
+  configSecret: atlas-moss-config
+  envSecret: atlas-moss-env
+nexus:
+  enabled: true
+  port: 2126
+  tlsSecret: atlas-nexus-client
+webui:
+  enabled: true
+  envSecret: atlas-webui-env
+  postgresSecret: atlas-postgres
+  databaseSize: 10Gi
+  migrationRevision: "1"
+gateway:
+  enabled: true
+  webuiOrigin: ""
+  mossOrigin: ""
+  routerOrigin: ""
+  webuiPort: 443
+  mossPort: 8443
+  routerPort: 9443
+  tlsSecret: atlas-gateway-tls
+  configMap: atlas-caddy
