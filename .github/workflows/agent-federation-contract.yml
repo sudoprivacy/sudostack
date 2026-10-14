@@ -28,4 +28,4 @@ jobs:
         run: node --test contracts/experimental/agent-federation/generate.test.mjs
       - run: npm ci --ignore-scripts
       - name: Check experimental TypeScript without changing stable exports
-        run: npx tsc --noEmit --module esnext --moduleResolution bundler --target es2022 --types node contracts/experimental/agent-federation/contract.gen.ts
+        run: npx tsc --noEmit --module esnext --moduleResolution bundler --target es2022 --types node contracts/experimental/agent-federation/contract.gen.ts contracts/experimental/agent-federation/task.contract.gen.ts

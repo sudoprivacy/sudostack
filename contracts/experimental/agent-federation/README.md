@@ -2,7 +2,7 @@
 
 Moss owns the editable JSON Schema and TypeScript definitions. This directory only assembles their exact committed bytes, with file digests in `source.lock.json`. ADR-003/004 remain Proposed; this is not acceptance of the six stable product contracts or a change to existing package exports.
 
-The current producer is Moss's Dify gateway adapter and the task-owner run-binding API. The custom HTTP adapter has local protocol conformance only: a second real Agent platform, Custom Manifest product onboarding, formal TaskSpec/Resolution, Principal/Version/Channel, canonical Nexus persistence and production/deployment admission remain pending.
+Moss now provides Dify/Custom HTTP onboarding, the common adapter/run-binding API and immutable experimental SubmitTask → TaskSpec/Resolution admission. This directory also pins task.contract.gen.ts and task.schema.gen.json. ResourceRef runtime conformance uses the separately pinned owner package; Task Schema resource slots alone are structural. Work consumes exact artifacts. A second real Agent platform, portable Principal/Version/Channel, canonical Nexus Task persistence and production/deployment admission remain pending.
 
 Regenerate with:
 
