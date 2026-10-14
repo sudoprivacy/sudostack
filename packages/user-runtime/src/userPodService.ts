@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { NexusZoneApiClient, userRuntimeServerName, createUserRuntimeCredentialBundle, type SessionCredential, type NexusVfsTlsConfig } from '@nexus-ai-fs/vfs-client'
 import { buildKubectlBaseArgs, kubectlApply, readK8sResource, deleteK8sResource, observeK8sRuntime, refreshK8sPodProjection, type K8sResource } from './k8sResources.js'
 import { parseCohostBuild, type RuntimeRelease } from './runtimeRelease.js'
+import { renewRuntimeSecretData } from './runtimeSecret.js'
 export interface UserRuntimeConnectionConfig {
   endpoint: string
   authToken: string
@@ -45,7 +46,7 @@ interface UserPodConnection {
 
 export interface UserPodResources {
   read: (kind: string, name: string) => Promise<K8sResource | undefined>
-  write: (manifest: Record<string, unknown>, verb?: 'create' | 'apply') => Promise<void>
+  write: (manifest: Record<string, unknown>, verb?: 'create' | 'apply' | 'patch') => Promise<void>
   remove?: (kind: 'pods' | 'secrets', name: string, uid: string) => Promise<void>
   observe?: (name: string) => Promise<{ version: string; binaryDigest: string }>
   refreshProjection?: (name: string, uid: string, ownerId: string) => Promise<void>
@@ -281,11 +282,21 @@ export class UserPodService {
       await this.assertUpgradePod(ownerId, pod)
       // Keep projected model configuration and use the observed Secret version
       // so a concurrent replacement cannot receive another Pod's update.
-      await this.resources.write({ apiVersion: 'v1', kind: 'Secret', type: 'Opaque',
-        metadata: { ...secret.metadata, namespace: this.options.namespace },
-        data: secret.data, stringData: userRuntimeCredentialData(ownerId, credential) })
+      await this.updateCredentialSecret(ownerId, secret, userRuntimeCredentialData(ownerId, credential), credential.caPem)
       await this.resources.refreshProjection?.(name, pod.metadata.uid!, ownerId)
     } finally { issuer.close() }
+  }
+
+  private async updateCredentialSecret(ownerId: string, secret: K8sResource, values: Record<string, string>, ca: Buffer): Promise<void> {
+    if (!secret.metadata.uid || !secret.metadata.resourceVersion || secret.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) throw new Error('Credential update requires the observed owner Secret identity and version')
+    const annotations = { ...secret.metadata.annotations }
+    // JSON Patch tests the identity/version/owner and updates data atomically,
+    // without copying certificate history into the apply annotation.
+    await this.resources.write({ apiVersion: 'v1', kind: 'Secret', type: 'Opaque',
+      metadata: { name: secret.metadata.name, namespace: this.options.namespace,
+        uid: secret.metadata.uid, resourceVersion: secret.metadata.resourceVersion,
+        annotations, labels: secret.metadata.labels },
+      data: renewRuntimeSecretData(ownerId, secret.data ?? {}, values, ca) }, 'patch')
   }
 
   private async runtimeConnection(ownerId: string): Promise<UserRuntimeConnectionConfig> {
@@ -372,13 +383,14 @@ export class UserPodService {
     let updates = Promise.resolve()
     const refresh = (replacement?: Record<string, string>) => {
       const update = updates.catch(() => {}).then(async () => {
-        await assertOwner('secret')
+        const observed = await assertOwner('secret')
         const next = replacement ?? configuration
         const issuer = NexusZoneApiClient.withMtls(this.options.issuer.endpoint, this.options.issuer.tls)
         try {
           const credential = await issuer.mintUserRuntime(ownerId, { validitySecs: CREDENTIAL_VALIDITY_SECS })
-          await this.resources.write({ ...manifests.secret,
-            stringData: { ...next, ...userRuntimeCredentialData(ownerId, credential) } })
+          const values = { ...next, ...userRuntimeCredentialData(ownerId, credential) }
+          if (observed) await this.updateCredentialSecret(ownerId, observed, values, credential.caPem)
+          else await this.resources.write({ ...manifests.secret, stringData: values }, 'create')
           configuration = next
         } finally { issuer.close() }
       })

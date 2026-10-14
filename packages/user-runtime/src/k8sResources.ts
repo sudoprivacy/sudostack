@@ -2,6 +2,9 @@ import { execFile, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
 import { z } from 'zod'
 import { randomUUID } from 'node:crypto'
+import { mkdtemp, writeFile, rm, rmdir } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 const execFileAsync = promisify(execFile)
 const ResourceSchema = z.object({
@@ -36,7 +39,30 @@ export async function readK8sResource(base: string[], kind: string, name: string
 }
 
 /** Keep credentials in stdin and report only the Kubernetes error category. */
-export async function kubectlApply(base: string[], manifest: Record<string, unknown>, verb: 'apply' | 'create' = 'apply'): Promise<void> {
+export async function kubectlApply(base: string[], manifest: Record<string, unknown>, verb: 'apply' | 'create' | 'patch' = 'apply'): Promise<void> {
+  if (verb === 'patch') {
+    const secret = ResourceSchema.parse(manifest)
+    const owner = secret.metadata.annotations?.['moss.sudo.dev/runtime-owner']
+    if (manifest.kind !== 'Secret' || !secret.metadata.uid || !secret.metadata.resourceVersion || !owner || !secret.data) throw new Error('Credential patch requires the observed owner Secret and version')
+    const patch: Record<string, unknown>[] = [
+      { op: 'test', path: '/metadata/uid', value: secret.metadata.uid },
+      { op: 'test', path: '/metadata/resourceVersion', value: secret.metadata.resourceVersion },
+      { op: 'test', path: '/metadata/annotations/moss.sudo.dev~1runtime-owner', value: owner },
+      { op: 'add', path: '/data', value: secret.data },
+    ]
+    if (Object.hasOwn(secret.metadata.annotations!, 'kubectl.kubernetes.io/last-applied-configuration')) patch.push({ op: 'remove', path: '/metadata/annotations/kubectl.kubernetes.io~1last-applied-configuration' })
+    // kubectl patch does not treat --patch-file - as stdin. Keep credentials
+    // out of argv in a private temporary file and retire it on every outcome.
+    const directory = await mkdtemp(join(tmpdir(), 'sudo-runtime-secret-'))
+    const patchFile = join(directory, 'patch.json')
+    try {
+      await writeFile(patchFile, JSON.stringify(patch), { mode: 0o600, flag: 'wx' })
+      return await kubectlJsonRequest(base, ['patch', 'secret', secret.metadata.name, '--type=json', '--patch-file', patchFile], undefined, verb)
+    } finally {
+      await rm(patchFile, { force: true })
+      await rmdir(directory)
+    }
+  }
   return kubectlJsonRequest(base, [verb, '-f', '-'], manifest, verb)
 }
 
@@ -63,7 +89,7 @@ export async function refreshK8sPodProjection(base: string[], name: string, uid:
   }
 }
 
-async function kubectlJsonRequest(base: string[], args: string[], manifest: Record<string, unknown>, verb: string): Promise<void> {
+async function kubectlJsonRequest(base: string[], args: string[], manifest: Record<string, unknown> | Record<string, unknown>[] | undefined, verb: string): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const child = spawn('kubectl', [...base, ...args], { stdio: ['pipe', 'ignore', 'pipe'], windowsHide: true })
     let stderr = ''
@@ -79,7 +105,7 @@ async function kubectlJsonRequest(base: string[], args: string[], manifest: Reco
       if (code === 0) resolve()
       else reject(formatKubectlApplyError(code, stderr, verb))
     })
-    child.stdin.end(JSON.stringify(manifest))
+    child.stdin.end(manifest === undefined ? undefined : JSON.stringify(manifest))
   })
 }
 
@@ -102,10 +128,12 @@ export function formatKubectlApplyError(code: number | null, stderr: string, ver
   const reason = /Error from server \((\w+)\)/.exec(stderr)?.[1]
   const allowedReasons = new Set([
     'Forbidden', 'Unauthorized', 'NotFound', 'AlreadyExists', 'Invalid', 'BadRequest',
-    'Timeout', 'ServerTimeout', 'InternalError', 'ServiceUnavailable', 'Gone',
+    'Timeout', 'ServerTimeout', 'InternalError', 'ServiceUnavailable', 'Gone', 'Conflict',
   ])
   const detail = isImmutablePodSpecError(new Error(stderr))
     ? 'pod spec field is immutable'
+    : /metadata\.annotations.*(?:Too long|262144)/s.test(stderr) ? 'metadata annotations exceed the Kubernetes size limit'
+    : /Secret.*(?:Too long|1048576)/s.test(stderr) ? 'Secret data exceeds the Kubernetes size limit'
     : reason && allowedReasons.has(reason) ? 'Kubernetes API ' + reason : 'manifest rejected'
   return new Error('kubectl ' + verb + ' failed (code ' + code + '): ' + detail)
 }
