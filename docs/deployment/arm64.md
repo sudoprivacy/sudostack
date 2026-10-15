@@ -8,7 +8,7 @@
 
 | 组件 | 本次固定版本 | 源码 PR |
 | --- | --- | --- |
-| Moss | [`server-v0.1.60-rc.arm64.20261015`](https://github.com/sudoprivacy/moss/releases/tag/server-v0.1.60-rc.arm64.20261015) | [#384](https://github.com/sudoprivacy/moss/pull/384) |
+| Moss | [`server-v0.1.60-rc.arm64.20261015.2`](https://github.com/sudoprivacy/moss/releases/tag/server-v0.1.60-rc.arm64.20261015.2) | [ARM64 #384](https://github.com/sudoprivacy/moss/pull/384)、[重启恢复 #385](https://github.com/sudoprivacy/moss/pull/385) |
 | SudoWork WebUI | [`v0.2.32-rc.arm64.20261015`](https://github.com/sudoprivacy/sudowork/releases/tag/v0.2.32-rc.arm64.20261015) | [#1253](https://github.com/sudoprivacy/sudowork/pull/1253) |
 | SudoRouter | [`sudorouter-v0.0.1-rc.2`](https://github.com/sudoprivacy/new-api/releases/tag/sudorouter-v0.0.1-rc.2) | [协议修复 #30](https://github.com/sudoprivacy/new-api/pull/30)、[ARM 打包 #29](https://github.com/sudoprivacy/new-api/pull/29) |
 | Sudocode | [`v0.2.32`](https://github.com/sudoprivacy/sudocode/releases/tag/v0.2.32)、配套 [`nexusd-cohost-v0.2.32`](https://github.com/sudoprivacy/sudocode/releases/tag/nexusd-cohost-v0.2.32) | [#959](https://github.com/sudoprivacy/sudocode/pull/959) |
@@ -73,6 +73,6 @@ gh workflow run deployment-release.yml -R sudoprivacy/sudostack \
 - SudoRouter 正式 rc.2 包校验、ARM64 启动及 HTTP 版本 `0.0.1-rc.2` 验证。
 - Sudocode 正式 `v0.2.32` ARM64 bundle/deb 从 COS 下载，校验摘要、隔离安装、执行、卸载及真实 deb 解包执行全部通过。
 - SudoWork 正式 RC 的 COS 双架构归档与 GitHub Release 摘要一致；166 上 ARM64 原生 PTY、PostgreSQL 初始化/迁移、HTTP 健康检查和页面资源通过。隔离测试资源已清理，旧服务保持运行。
-- Sudostack 的 62 项部署回归测试在 166 的 root 环境全部通过，覆盖完整 Runtime 版本匹配及 root 安装入口。
+- Sudostack 的 64 项部署回归测试在 166 的 root 环境全部通过，覆盖完整 Runtime 版本匹配及 root 安装入口。
 
 旧 Moss、WebUI、k3s-agent 的备份已完成且切换已获授权。整包 COS 首装及清空重装尚未执行，须以最终版本的实机验收结果为准。

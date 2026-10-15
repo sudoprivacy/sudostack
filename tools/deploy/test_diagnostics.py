@@ -1,6 +1,11 @@
+import base64
+import json
+from pathlib import Path
+import tempfile
 import unittest
+from unittest.mock import patch
 
-from diagnostics import redact
+from diagnostics import collect, redact
 
 
 class DiagnosticsTests(unittest.TestCase):
@@ -21,6 +26,23 @@ private-key-material
                        'another-password', 'configured-key', 'private-key-material',
                        'derived-session-cookie'):
             self.assertNotIn(secret, result)
+
+    def test_failed_runtime_probe_is_redacted_and_cannot_report_success(self):
+        credential = 'diagnostics-fixture-credential'
+
+        def command(*args, **kwargs):
+            if 'secrets' in args:
+                return json.dumps({'items': [{'data': {'password': base64.b64encode(credential.encode()).decode()}}]})
+            if 'pods' in args:
+                return '{"items": []}'
+            raise RuntimeError('SQL probe failed with ' + credential)
+
+        with tempfile.TemporaryDirectory() as directory, patch('diagnostics.kube', side_effect=command):
+            with self.assertRaisesRegex(RuntimeError, 'Moss recovery diagnostics failed'):
+                collect(Path(directory))
+            result = (Path(directory) / 'moss-runtime-state.log').read_text()
+            self.assertIn('SQL probe failed', result)
+            self.assertNotIn(credential, result)
 
 
 if __name__ == '__main__':

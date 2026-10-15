@@ -1,5 +1,6 @@
-// Read-only, field-allowlisted Moss restart state. Never prints config, tokens,
-// transcript content, event payloads, process arguments, or environment.
+// Read-only, field-allowlisted Moss restart state plus bounded runner stderr.
+// diagnostics.py redacts this output before saving it as qualification evidence.
+// Never dumps config, event payloads, process arguments, or environment.
 const fs = require('node:fs');
 const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
@@ -11,7 +12,7 @@ const attempts = db.prepare(`SELECT s.session_id, s.status, s.desired_state,
   a.runner_pid, a.attach_path, a.last_heartbeat_at, a.stopped_at,
   a.exit_code, a.exit_signal, a.stop_reason
   FROM sessions s LEFT JOIN session_attempts a ON a.attempt_id=s.current_attempt_id
-  ORDER BY s.updated_at DESC LIMIT 50`).all();
+  ORDER BY s.last_active_at DESC LIMIT 50`).all();
 for (const row of attempts) {
   row.heartbeatAgeMs = row.last_heartbeat_at == null ? null : now - row.last_heartbeat_at;
   row.socketExists = row.attach_path ? fs.existsSync(row.attach_path) : false;

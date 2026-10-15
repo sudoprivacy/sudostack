@@ -6,8 +6,8 @@
   "components": {
     "moss": {
       "repository": "sudoprivacy/moss",
-      "tag": "server-v0.1.60-rc.arm64.20261015",
-      "version": "0.1.60-rc.arm64.20261015"
+      "tag": "server-v0.1.60-rc.arm64.20261015.2",
+      "version": "0.1.60-rc.arm64.20261015.2"
     },
     "webui": {
       "repository": "sudoprivacy/sudowork",

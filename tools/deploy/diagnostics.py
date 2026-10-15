@@ -59,13 +59,17 @@ def collect(output):
                     except (RuntimeError, subprocess.TimeoutExpired) as error:
                         text = str(error)
                     (output / filename).write_text(redact(text, credentials))
+    state_failed = False
     try:
         state = kube('-n', 'atlas-system', 'exec', '-i', 'deployment/moss-server',
                      '-c', 'server', '--', 'node', '-',
                      input=Path(__file__).with_name('moss-diagnostics.cjs').read_text())
     except (RuntimeError, subprocess.TimeoutExpired) as error:
+        state_failed = True
         state = str(error)
     (output / 'moss-runtime-state.log').write_text(redact(state, credentials))
+    if state_failed:
+        raise RuntimeError('Moss recovery diagnostics failed; see moss-runtime-state.log')
 
 
 if __name__ == '__main__':
