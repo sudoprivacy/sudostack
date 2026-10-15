@@ -9,7 +9,8 @@ import tarfile
 from artifacts import checksum, release_url
 
 SCRIPTS = ('atlas.py', 'artifacts.py', 'install-atlas.sh', 'smoke.py',
-           'webui-smoke.cjs', 'mock-openai-server.mjs', 'snapshot.py', 'router.py', 'cleanup-atlas.sh')
+           'webui-smoke.cjs', 'mock-openai-server.mjs', 'snapshot.py', 'router.py', 'cleanup-atlas.sh',
+           'diagnostics.py')
 
 
 def package(assets, publish):

@@ -171,6 +171,7 @@ jobs:
           for STAGE in before after; do
             sudo test ! -f "/data/atlas/acceptance/webui-$STAGE.json" || sudo cat "/data/atlas/acceptance/webui-$STAGE.json" > "evidence/webui-$STAGE.json"
           done
+          sudo python3 candidate/assets/diagnostics.py --output evidence/pod-logs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
