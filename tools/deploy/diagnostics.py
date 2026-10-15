@@ -8,8 +8,8 @@ import re
 import subprocess
 
 
-def kube(*args):
-    result = subprocess.run(['k3s', 'kubectl', *args], text=True,
+def kube(*args, input=None):
+    result = subprocess.run(['k3s', 'kubectl', *args], text=True, input=input,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             timeout=45)
     if result.returncode:
@@ -59,6 +59,13 @@ def collect(output):
                     except (RuntimeError, subprocess.TimeoutExpired) as error:
                         text = str(error)
                     (output / filename).write_text(redact(text, credentials))
+    try:
+        state = kube('-n', 'atlas-system', 'exec', '-i', 'deployment/moss-server',
+                     '-c', 'server', '--', 'node', '-',
+                     input=Path(__file__).with_name('moss-diagnostics.cjs').read_text())
+    except (RuntimeError, subprocess.TimeoutExpired) as error:
+        state = str(error)
+    (output / 'moss-runtime-state.log').write_text(redact(state, credentials))
 
 
 if __name__ == '__main__':
