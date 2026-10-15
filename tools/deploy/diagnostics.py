@@ -23,6 +23,8 @@ def redact(text, credentials):
             text = text.replace(value, '[REDACTED]')
     text = re.sub(r'-----BEGIN [^-]+-----.*?-----END [^-]+-----',
                   '[REDACTED PEM]', text, flags=re.DOTALL)
+    text = re.sub(r'(?im)((?:set-cookie|cookie)["\']?\s*[:=]\s*)[^\r\n]+',
+                  r'\1[REDACTED]', text)
     text = re.sub(r'(?i)(bearer\s+)[A-Za-z0-9._~+/=-]+', r'\1[REDACTED]', text)
     text = re.sub(r'([a-z]+://[^\s?"\']+)\?[^\s"\']+', r'\1?[REDACTED]', text)
     text = re.sub(r'([a-z]+://)[^\s/@]+:[^\s/@]+@', r'\1[REDACTED]@', text)
