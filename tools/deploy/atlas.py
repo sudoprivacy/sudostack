@@ -292,7 +292,9 @@ def install(args):
     os.environ.update({'MOSS_ADMIN_USERNAME': credentials['adminUsername'], 'MOSS_ADMIN_PASSWORD': credentials['adminPassword'],
         'MOSS_ADVERTISED_HOST': args.host, 'MOSS_CONTROL_NAMESPACE': NAMESPACE, 'MOSS_K8S_NAMESPACE': 'moss-sessions'})
     generated = root / 'configuration'
-    helper.render(Path(DATA_ROOT), generated, manifest['mossVersion'], node)
+    # Older amd64 owner releases predate the architecture argument.
+    render_options = {'architecture': architecture} if architecture == 'arm64' else {}
+    helper.render(Path(DATA_ROOT), generated, manifest['mossVersion'], node, **render_options)
     config = json.loads((generated / 'server.json').read_text())
     config['server']['publicBaseUrl'] = moss_url
     config['k8s']['image'] = images['runtime']
