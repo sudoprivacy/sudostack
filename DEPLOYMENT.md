@@ -7,6 +7,7 @@ CI 从各组件仓库的固定 Release 获取资源，校验后发布 `sudostack
 COS 安装入口下载一份包含全部组件镜像与离线工具的压缩包，校验后调用包内安装器；目标机无需访问 GitHub 或镜像仓库。组件的原始 Release 来源和校验和保留在清单中。
 
 **当前候选为 [`sudostack-v0.0.1-rc.7`](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.7)；正式 `0.0.1` 尚未发布。**
+该候选只提供 Linux amd64 包。仓库已支持按版本清单组装 ARM64 包，但完整交付仍缺少部分上游 ARM64 制品；状态、发布条件和宿主机要求见 [ARM64 部署](docs/deployment/arm64.md)。
 该候选锁定 Moss `server-v0.1.53-atlas.1`，由 Moss CI 发布拆分 Server 镜像、部署助手和 Nexus 引导脚本。
 SudoRouter 固定为 `sudorouter-v0.0.1-rc.1`，由 `sudoprivacy/new-api` 的 `sudo/rc24` 代码及该仓库 CI 发布。其余组件复用 rc.2 的固定制品。
 CI 构建完整离线包，在全新 Ubuntu 22.04 上完成安装、经 Router 的会话、重复安装和重启恢复后，将同一份安装包及入口脚本发布到 COS。构建、验收和发布状态见 [部署发布 CI](https://github.com/sudoprivacy/sudostack/actions/workflows/deployment-release.yml)。

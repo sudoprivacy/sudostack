@@ -30,8 +30,12 @@ def local_files(directory):
     if sums != {name: item['sha256'] for name, item in files.items() if name != 'SHA256SUMS'}:
         raise ValueError('SHA256SUMS differs from the complete publication plan')
     stamp = 'ATLAS_RELEASE_TAG="${ATLAS_RELEASE_TAG:-' + data['release'] + '}"'
-    if stamp not in (directory / 'install-cos.sh').read_text():
+    launcher = (directory / 'install-cos.sh').read_text()
+    if stamp not in launcher:
         raise ValueError('COS installer is not pinned to the bundle release')
+    # Legacy amd64 launchers predate the architecture stamp.
+    if ('ATLAS_RELEASE_ARCH=' in launcher or data['architecture'] == 'arm64') and 'ATLAS_RELEASE_ARCH="' + data['architecture'] + '"' not in launcher:
+        raise ValueError('COS installer is not pinned to the bundle architecture')
     return data, files
 
 
@@ -106,8 +110,12 @@ def publish(directory, bucket, region, prefix, public_base, mode, config=None):
     if plan_release(release_base, files):
         raise RuntimeError('COS release verification found missing objects')
     if mode != 'release-only':
-        for name in ('install-cos.sh', 'cleanup-atlas.sh'):
-            upload(name, prefix + '/latest/' + name, False)
+        latest_keys = [prefix + '/latest/' + data['architecture']]
+        if data['architecture'] == 'amd64':
+            latest_keys.append(prefix + '/latest')
+        for latest_key in latest_keys:
+            for name in ('install-cos.sh', 'cleanup-atlas.sh'):
+                upload(name, latest_key + '/' + name, False)
     print('Published COS release: ' + release_base, flush=True)
 
 

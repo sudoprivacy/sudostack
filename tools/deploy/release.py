@@ -17,12 +17,13 @@ from artifacts import checksum, download
 
 HERE = Path(__file__).resolve().parent
 COMPONENTS = {'moss', 'webui', 'nexus', 'vault', 'sudocode', 'k3s', 'gvisor', 'helm', 'caddy', 'postgres', 'nexusBase'}
+ARCHITECTURES = {'amd64': ('x86_64', 'x64', 'k3s'), 'arm64': ('aarch64', 'arm64', 'k3s-arm64')}
 
 
 def read_lock(path):
     lock = json.loads(path.read_text())
-    if lock.get('schemaVersion') not in (1, 2) or lock.get('architecture') != 'amd64':
-        raise ValueError('Only deployment lock schemas 1 and 2 / amd64 are supported')
+    if lock.get('schemaVersion') not in (1, 2) or lock.get('architecture') not in ARCHITECTURES:
+        raise ValueError('Only deployment lock schemas 1 and 2 / amd64 or arm64 are supported')
     if lock.get('repository') != 'sudoprivacy/sudostack':
         raise ValueError('This installer is published by sudoprivacy/sudostack')
     if not re.fullmatch(r'\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?', lock['version']):
@@ -77,22 +78,30 @@ def release_assets(repository, tag, names):
     return result
 
 
-def resolve(lock):
+def required_assets(lock):
     c = lock['components']
+    arch = lock['architecture']
+    native, scode, k3s = ARCHITECTURES[arch]
     moss_version, webui_version = c['moss']['version'], c['webui']['version']
     requests = {
-        'moss': [f'moss-server-image-{moss_version}-linux-amd64.tar.gz',
-                 f'moss-runtime-{moss_version}-linux-amd64.tar.gz',
-                 f'moss-deploy-{moss_version}-linux-amd64.tar.gz', 'bootstrap-nexus.mjs', 'install.sh', 'SHA256SUMS'],
-        'webui': [f'sudowork-webui-{webui_version}-linux-amd64.tar.gz'],
-        'nexus': ['nexusd-cluster-linux-x86_64.tar.gz'],
-        'vault': ['nexus-vault-linux-x86_64.tar.gz'],
-        'sudocode': ['scode-linux-x64-bundle.tar.gz'],
-        'k3s': ['k3s', 'k3s-airgap-images-amd64.tar.zst', 'sha256sum-amd64.txt'],
-        'gvisor': ['gvisor-x86_64.tar.bz2'],
+        'moss': [f'moss-server-image-{moss_version}-linux-{arch}.tar.gz',
+                 f'moss-runtime-{moss_version}-linux-{arch}.tar.gz',
+                 f'moss-deploy-{moss_version}-linux-{arch}.tar.gz', 'bootstrap-nexus.mjs', 'install.sh', 'SHA256SUMS'],
+        'webui': [f'sudowork-webui-{webui_version}-linux-{arch}.tar.gz'],
+        'nexus': [f'nexusd-cluster-linux-{native}.tar.gz'],
+        'vault': [f'nexus-vault-linux-{native}.tar.gz'],
+        'sudocode': [f'scode-linux-{scode}' + ('-bundle' if arch == 'amd64' else '') + '.tar.gz'],
+        'k3s': [k3s, f'k3s-airgap-images-{arch}.tar.zst', f'sha256sum-{arch}.txt'],
+        'gvisor': [f'gvisor-{native}.tar.bz2'],
     }
     if 'router' in c:
-        requests['router'] = [f'sudorouter-{c["router"]["version"]}-linux-amd64.tar.gz']
+        requests['router'] = [f'sudorouter-{c["router"]["version"]}-linux-{arch}.tar.gz']
+    return requests
+
+
+def resolve(lock):
+    c = lock['components']
+    requests = required_assets(lock)
     resolved, errors = {}, []
     for name, names in requests.items():
         repository = c[name].get('repository', {'k3s': 'k3s-io/k3s', 'gvisor': 'google/gvisor'}.get(name))
@@ -103,7 +112,7 @@ def resolve(lock):
             errors.append(str(error))
     if errors:
         raise ValueError('Upstream release preflight failed:\n' + '\n'.join(errors))
-    if resolved['sudocode']['scode-linux-x64-bundle.tar.gz']['sha256'] != c['sudocode']['sha256']:
+    if resolved['sudocode'][requests['sudocode'][0]]['sha256'] != c['sudocode']['sha256']:
         raise ValueError('Sudocode release checksum differs from the deployment lock')
     if 'baseRelease' in lock:
         base = lock['baseRelease']
@@ -116,6 +125,8 @@ def resolve(lock):
             manifest = json.loads(path.read_text())
         if manifest['release'] != base['tag'] or manifest['components'] != {k: v for k, v in c.items() if k != 'router'}:
             raise ValueError('Adding SudoRouter must preserve every base component version')
+        if manifest['architecture'] != lock['architecture']:
+            raise ValueError('Base release architecture differs from the deployment lock; assemble a native release without baseRelease')
         resolved['baseRelease'] = {'source': source, 'manifest': manifest}
     return resolved
 
@@ -131,15 +142,15 @@ def save_image(ref, destination):
             raise RuntimeError('docker save failed: ' + ref)
 
 
-def pull_image(ref):
-    subprocess.run(['docker', 'pull', '--platform', 'linux/amd64', ref], check=True)
+def pull_image(ref, architecture='amd64'):
+    subprocess.run(['docker', 'pull', '--platform', 'linux/' + architecture, ref], check=True)
     details = json.loads(subprocess.check_output(['docker', 'image', 'inspect', ref], text=True))[0]
-    if details['Architecture'] != 'amd64' or not details.get('RepoDigests'):
-        raise ValueError('An amd64 registry image with a digest is required: ' + ref)
+    if details['Architecture'] != architecture or details.get('Os') != 'linux' or not details.get('RepoDigests'):
+        raise ValueError('A linux/' + architecture + ' registry image with a digest is required: ' + ref)
     return details['RepoDigests'][0]
 
 
-def verify_image_archive(path, expected_refs):
+def verify_image_archive(path, expected_refs, architecture='amd64'):
     def canonical(ref):
         if '/' not in ref:
             return 'docker.io/library/' + ref
@@ -154,8 +165,8 @@ def verify_image_archive(path, expected_refs):
                 if canonical(ref) not in tagged:
                     raise ValueError(f'{path.name} does not contain the locked image {ref}')
                 config = json.load(archive.extractfile(tagged[canonical(ref)]['Config']))
-                if config.get('architecture') != 'amd64' or config.get('os') != 'linux':
-                    raise ValueError(f'{path.name}: {ref} must be a linux/amd64 image')
+                if config.get('architecture') != architecture or config.get('os') != 'linux':
+                    raise ValueError(f'{path.name}: {ref} must be a linux/{architecture} image')
         except (KeyError, TypeError, json.JSONDecodeError) as error:
             raise ValueError('Invalid Docker image archive: ' + path.name) from error
 
@@ -175,11 +186,12 @@ def add_router_archive(metadata, resolved, assets):
     component = metadata['components'].get('router')
     if not component:
         return
-    name = f'sudorouter-{component["version"]}-linux-amd64.tar.gz'
+    arch = metadata['architecture']
+    name = f'sudorouter-{component["version"]}-linux-{arch}.tar.gz'
     source = resolved['router'][name]
     download(source['url'], assets / name, source['sha256'])
-    ref = f'docker.io/sudoprivacy/new-api:{component["version"]}-amd64'
-    verify_image_archive(assets / name, [ref])
+    ref = f'docker.io/sudoprivacy/new-api:{component["version"]}-{arch}'
+    verify_image_archive(assets / name, [ref], arch)
     metadata['sources'][name] = source
     metadata['imageArchives'].append(name)
     metadata['images']['router'] = ref
@@ -188,6 +200,8 @@ def add_router_archive(metadata, resolved, assets):
 
 def assemble_from_base(lock, resolved, assets):
     base = resolved['baseRelease']['manifest']
+    if base['architecture'] != lock['architecture']:
+        raise ValueError('Base release architecture differs from the deployment lock')
     metadata = json.loads(json.dumps(base))
     names = set(base['imageArchives']) | {base['mossBootstrap'], base['mossDeploymentBundle'],
         'install.sh', 'SHA256SUMS', base['helm']['archive']}
@@ -212,6 +226,8 @@ def assemble(lock, resolved, assets):
         assemble_from_base(lock, resolved, assets)
         return
     c = lock['components']
+    arch = lock['architecture']
+    native, _, k3s = ARCHITECTURES[arch]
     version, moss_version, webui_version = lock['version'], c['moss']['version'], c['webui']['version']
     sources = {}
     assets.mkdir(parents=True, exist_ok=True)
@@ -224,17 +240,17 @@ def assemble(lock, resolved, assets):
 
     for name in resolved['moss']:
         fetch_component('moss', name, assets / name)
-    webui_archive = f'sudowork-webui-{webui_version}-linux-amd64.tar.gz'
+    webui_archive = f'sudowork-webui-{webui_version}-linux-{arch}.tar.gz'
     fetch_component('webui', webui_archive, assets / webui_archive)
     offline = assets / 'offline'
     offline.mkdir(exist_ok=True)
-    for name, local in [('k3s', 'k3s-amd64'), ('k3s-airgap-images-amd64.tar.zst', 'k3s-airgap-images-amd64.tar.zst'),
-                        ('sha256sum-amd64.txt', 'k3s-sha256sum-amd64.txt')]:
+    for name, local in [(k3s, f'k3s-{arch}'), (f'k3s-airgap-images-{arch}.tar.zst', f'k3s-airgap-images-{arch}.tar.zst'),
+                        (f'sha256sum-{arch}.txt', f'k3s-sha256sum-{arch}.txt')]:
         fetch_component('k3s', name, offline / local)
     installer = github('repos/k3s-io/k3s/contents/install.sh?ref=' + quote(c['k3s']['version'], safe=''))
     (offline / 'k3s-install.sh').write_bytes(base64.b64decode(installer['content']))
 
-    helm_archive = f'helm-{c["helm"]["version"]}-linux-amd64.tar.gz'
+    helm_archive = f'helm-{c["helm"]["version"]}-linux-{arch}.tar.gz'
     helm_url = 'https://get.helm.sh/' + helm_archive
     helm_sha = subprocess.check_output(['curl', '-fsSL', '--max-time', '60', helm_url + '.sha256sum'], text=True).split()[0]
     download(helm_url, assets / helm_archive, helm_sha)
@@ -243,69 +259,70 @@ def assemble(lock, resolved, assets):
     with tempfile.TemporaryDirectory(prefix='atlas-release-') as tmp:
         build = Path(tmp).resolve()
         gvisor_archive = build / 'gvisor.tar.bz2'
-        fetch_component('gvisor', 'gvisor-x86_64.tar.bz2', gvisor_archive)
+        fetch_component('gvisor', f'gvisor-{native}.tar.bz2', gvisor_archive)
         with tarfile.open(gvisor_archive) as archive:
             members = archive.getmembers()
             for binary in ('runsc', 'containerd-shim-runsc-v1'):
                 names = [m.name for m in members if m.isfile() and Path(m.name).name == binary]
                 if len(names) != 1:
                     raise ValueError('Missing/ambiguous gVisor binary: ' + binary)
-                target = offline / (binary + '-amd64')
+                target = offline / (binary + '-' + arch)
                 extract_file(gvisor_archive, names[0], target, executable=True)
                 (offline / (target.name + '.sha512')).write_text(hashlib.sha512(target.read_bytes()).hexdigest() + '  ' + target.name + '\n')
             helper_sums = []
             for member in members:
                 parts = Path(member.name).parts
                 if member.isfile() and len(parts) == 2 and parts[0] == 'gvisor-bin':
-                    target = offline / 'gvisor-bin-amd64' / parts[1]
+                    target = offline / f'gvisor-bin-{arch}' / parts[1]
                     extract_file(gvisor_archive, member.name, target, executable=True)
                     helper_sums.append(hashlib.sha512(target.read_bytes()).hexdigest() + '  ' + target.name)
-            (offline / 'gvisor-bin-amd64').mkdir(exist_ok=True)
-            (offline / 'gvisor-bin-amd64/SHA512SUMS').write_text('\n'.join(helper_sums) + '\n')
+            (offline / f'gvisor-bin-{arch}').mkdir(exist_ok=True)
+            (offline / f'gvisor-bin-{arch}/SHA512SUMS').write_text('\n'.join(helper_sums) + '\n')
 
-        fetch_component('nexus', 'nexusd-cluster-linux-x86_64.tar.gz', build / 'nexus.tar.gz')
-        fetch_component('vault', 'nexus-vault-linux-x86_64.tar.gz', build / 'vault.tar.gz')
-        extract_file(build / 'nexus.tar.gz', 'nexusd-cluster-linux-x86_64/nexusd-cluster', build / 'nexus/nexusd', True)
+        fetch_component('nexus', f'nexusd-cluster-linux-{native}.tar.gz', build / 'nexus.tar.gz')
+        fetch_component('vault', f'nexus-vault-linux-{native}.tar.gz', build / 'vault.tar.gz')
+        extract_file(build / 'nexus.tar.gz', f'nexusd-cluster-linux-{native}/nexusd-cluster', build / 'nexus/nexusd', True)
         for name in ('libnexus_vault.so', 'libnexus_vault.so.sig'):
             extract_file(build / 'vault.tar.gz', name, build / 'nexus/plugins' / name)
         kubectl_version = c['k3s']['version'].split('+')[0]
-        kubectl_url = f'https://dl.k8s.io/release/{kubectl_version}/bin/linux/amd64/kubectl'
+        kubectl_url = f'https://dl.k8s.io/release/{kubectl_version}/bin/linux/{arch}/kubectl'
         kubectl_sha = subprocess.check_output(['curl', '-fsSL', '--max-time', '60', kubectl_url + '.sha256'], text=True).strip()
         download(kubectl_url, build / 'kubectl', kubectl_sha)
-        node_image = pull_image(c['nexusBase']['image'])
-        nexus_image = f'docker.io/library/atlas-nexus:{version}-amd64'
-        subprocess.run(['docker', 'buildx', 'build', '--platform', 'linux/amd64', '--load',
+        node_image = pull_image(c['nexusBase']['image'], arch)
+        nexus_image = f'docker.io/library/atlas-nexus:{version}-{arch}'
+        subprocess.run(['docker', 'buildx', 'build', '--platform', 'linux/' + arch, '--load',
                         '--build-arg', 'NODE_IMAGE=' + node_image, '-t', nexus_image,
                         '-f', str(HERE / 'nexus.Dockerfile'), str(build)], check=True)
-        nexus_archive = f'atlas-nexus-{version}-linux-amd64.tar.gz'
+        nexus_archive = f'atlas-nexus-{version}-linux-{arch}.tar.gz'
         save_image(nexus_image, assets / nexus_archive)
 
-    caddy_digest = pull_image(c['caddy']['image'])
-    caddy_archive = f'caddy-{c["caddy"]["version"]}-linux-amd64.tar.gz'
+    caddy_digest = pull_image(c['caddy']['image'], arch)
+    caddy_archive = f'caddy-{c["caddy"]["version"]}-linux-{arch}.tar.gz'
     save_image(c['caddy']['image'], assets / caddy_archive)
-    runtime_archive = f'moss-runtime-{moss_version}-linux-amd64.tar.gz'
+    runtime_archive = f'moss-runtime-{moss_version}-linux-{arch}.tar.gz'
     # Inspect the actual owner-built runtime, including its embedded Sudocode.
+    runtime_image = f'docker.io/library/my-moss-runtime:{moss_version}-{arch}'
+    verify_image_archive(assets / runtime_archive, [runtime_image], arch)
     subprocess.run(['docker', 'load', '-i', str(assets / runtime_archive)], check=True)
-    runtime_image = f'docker.io/library/my-moss-runtime:{moss_version}-amd64'
     scode_version = subprocess.check_output(['docker', 'run', '--rm', '--entrypoint', 'scode', runtime_image, '--version'], text=True)
     if not re.search(r'(?<![0-9.])' + re.escape(c['sudocode']['version']) + r'(?![0-9.])', scode_version):
         raise ValueError('The Moss runtime does not contain the locked Sudocode version')
 
     metadata = {
-        'release': 'sudostack-v' + version, 'version': version, 'architecture': 'amd64',
+        'release': 'sudostack-v' + version, 'version': version, 'architecture': arch,
         'components': c, 'sourceLock': lock, 'buildInputs': resolved,
         'registryInputs': {'nexusBase': node_image, 'caddy': caddy_digest}, 'sources': sources,
-        'imageArchives': [f'moss-server-image-{moss_version}-linux-amd64.tar.gz', runtime_archive, nexus_archive, webui_archive, caddy_archive],
-        'images': {'moss': f'docker.io/library/moss-server:{moss_version}-amd64', 'nexus': nexus_image,
+        'imageArchives': [f'moss-server-image-{moss_version}-linux-{arch}.tar.gz', runtime_archive, nexus_archive, webui_archive, caddy_archive],
+        'images': {'moss': f'docker.io/library/moss-server:{moss_version}-{arch}', 'nexus': nexus_image,
                    'runtime': runtime_image, 'webui': f'docker.io/library/sudowork-webui:{webui_version}',
                    'postgres': c['postgres']['image'], 'caddy': c['caddy']['image']},
-        'mossBootstrap': 'bootstrap-nexus.mjs', 'mossDeploymentBundle': f'moss-deploy-{moss_version}-linux-amd64.tar.gz',
+        'mossBootstrap': 'bootstrap-nexus.mjs', 'mossDeploymentBundle': f'moss-deploy-{moss_version}-linux-{arch}.tar.gz',
         'mossVersion': moss_version, 'helm': {'version': c['helm']['version'], 'archive': helm_archive},
         'k3s': c['k3s']['version'], 'gvisor': c['gvisor']['version'], 'nexus': c['nexus'],
         'sudocode': c['sudocode'], 'runtimeClass': 'gvisor',
     }
     for name, components in zip(metadata['imageArchives'], [('moss',), ('runtime',), ('nexus',), ('webui', 'postgres'), ('caddy',)]):
-        verify_image_archive(assets / name, [metadata['images'][component] for component in components])
+        verify_image_archive(assets / name, [metadata['images'][component] for component in components], arch)
         print('Verified locked image tags and architecture: ' + name, flush=True)
     add_router_archive(metadata, resolved, assets)
     (assets / 'build-input.json').write_text(json.dumps(metadata, indent=2) + '\n')

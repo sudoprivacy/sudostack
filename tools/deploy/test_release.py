@@ -1,4 +1,5 @@
 import copy
+import base64
 import hashlib
 import io
 import json
@@ -7,6 +8,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -42,6 +44,150 @@ class ReleaseTests(unittest.TestCase):
                 lock['components'][name][field] = value
                 with self.assertRaises(ValueError):
                     self.read_lock(lock)
+
+    def test_release_lock_accepts_only_supported_architectures(self):
+        for architecture in ('amd64', 'arm64'):
+            self.lock['architecture'] = architecture
+            self.assertEqual(self.read_lock(self.lock)['architecture'], architecture)
+        self.lock['architecture'] = 'aarch64'
+        with self.assertRaisesRegex(ValueError, 'amd64 or arm64'):
+            self.read_lock(self.lock)
+
+    def test_arm64_preflight_uses_native_owner_assets_and_pinned_sudocode_checksum(self):
+        self.lock['architecture'] = 'arm64'
+        self.lock.pop('baseRelease')
+        def assets(repository, tag, names):
+            return {name: {'sha256': self.lock['components']['sudocode']['sha256']} for name in names}
+        with patch.object(release, 'release_assets', side_effect=assets):
+            resolved = release.resolve(self.lock)
+        self.assertIn('nexusd-cluster-linux-aarch64.tar.gz', resolved['nexus'])
+        self.assertIn('nexus-vault-linux-aarch64.tar.gz', resolved['vault'])
+        self.assertIn('gvisor-aarch64.tar.bz2', resolved['gvisor'])
+        self.assertEqual(set(resolved['k3s']), {'k3s-arm64', 'k3s-airgap-images-arm64.tar.zst', 'sha256sum-arm64.txt'})
+        self.assertIn('scode-linux-arm64.tar.gz', resolved['sudocode'])
+        with patch.object(release, 'release_assets', side_effect=lambda repo, tag, names: {name: {'sha256': '0' * 64} for name in names}):
+            with self.assertRaisesRegex(ValueError, 'Sudocode release checksum'):
+                release.resolve(self.lock)
+
+    def test_arm64_base_cannot_reuse_amd64_images(self):
+        self.lock['architecture'] = 'arm64'
+        resolved = {'baseRelease': {'manifest': {'architecture': 'amd64'}}}
+        with patch.object(release, 'download') as download:
+            with self.assertRaisesRegex(ValueError, 'Base release architecture'):
+                release.assemble_from_base(self.lock, resolved, self.root / 'assets')
+            download.assert_not_called()
+        self.assertFalse((self.root / 'assets').exists())
+
+    def test_arm64_assembly_packages_native_binaries_images_and_installer(self):
+        self.lock['architecture'] = 'arm64'
+        self.lock.pop('baseRelease')
+        c = self.lock['components']
+        def tar_bytes(files):
+            buffer = io.BytesIO()
+            with tarfile.open(fileobj=buffer, mode='w:gz') as archive:
+                for name, raw in files.items():
+                    member = tarfile.TarInfo(name)
+                    member.size = len(raw)
+                    archive.addfile(member, io.BytesIO(raw))
+            return buffer.getvalue()
+        def image_bytes(refs):
+            entries, files = [], {}
+            for index, ref in enumerate(refs):
+                name = f'config-{index}.json'
+                entries.append({'Config': name, 'RepoTags': [ref]})
+                files[name] = b'{"architecture":"arm64","os":"linux"}'
+            files['manifest.json'] = json.dumps(entries).encode()
+            return tar_bytes(files)
+        native = {
+            'nexusd-cluster-linux-aarch64.tar.gz': tar_bytes({'nexusd-cluster-linux-aarch64/nexusd-cluster': b'arm64 nexus'}),
+            'nexus-vault-linux-aarch64.tar.gz': tar_bytes({'libnexus_vault.so': b'arm64 vault', 'libnexus_vault.so.sig': b'signature'}),
+            'gvisor-aarch64.tar.bz2': tar_bytes({'runsc': b'arm64 runsc', 'containerd-shim-runsc-v1': b'arm64 shim', 'gvisor-bin/helper': b'helper'}),
+            f'moss-server-image-{c["moss"]["version"]}-linux-arm64.tar.gz': image_bytes([f'moss-server:{c["moss"]["version"]}-arm64']),
+            f'moss-runtime-{c["moss"]["version"]}-linux-arm64.tar.gz': image_bytes([f'my-moss-runtime:{c["moss"]["version"]}-arm64']),
+            f'sudowork-webui-{c["webui"]["version"]}-linux-arm64.tar.gz': image_bytes([f'sudowork-webui:{c["webui"]["version"]}', c['postgres']['image']]),
+            f'sudorouter-{c["router"]["version"]}-linux-arm64.tar.gz': image_bytes([f'sudoprivacy/new-api:{c["router"]["version"]}-arm64']),
+        }
+        requests = release.required_assets(self.lock)
+        resolved = {component: {name: {'url': 'https://owner.test/' + name,
+                    'sha256': hashlib.sha256(native.get(name, name.encode())).hexdigest()} for name in names}
+                    for component, names in requests.items()}
+        def download(url, target, digest):
+            name = url.rsplit('/', 1)[1]
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(native.get(name, name.encode()))
+        def check_output(command, **kwargs):
+            if command[0] == 'curl':
+                name = command[-1].rsplit('/', 1)[1].removesuffix('.sha256sum').removesuffix('.sha256')
+                return hashlib.sha256(native.get(name, name.encode())).hexdigest()
+            if command[:2] == ['docker', 'run']:
+                return c['sudocode']['version']
+            self.fail('Unexpected subprocess: ' + repr(command))
+        def pull(ref, architecture):
+            self.assertEqual(architecture, 'arm64')
+            return ref + '@sha256:' + 'b' * 64
+        assets = self.root / 'assets'
+        with patch.object(release, 'download', side_effect=download), \
+             patch.object(release, 'github', return_value={'content': base64.b64encode(b'#!/bin/sh\n').decode()}), \
+             patch.object(release, 'pull_image', side_effect=pull), \
+             patch.object(release, 'save_image', side_effect=lambda ref, path: path.write_bytes(image_bytes([ref]))), \
+             patch.object(release.subprocess, 'check_output', side_effect=check_output), \
+             patch.object(release.subprocess, 'run') as run:
+            release.assemble(self.lock, resolved, assets)
+        build = next(call.args[0] for call in run.call_args_list if call.args[0][:3] == ['docker', 'buildx', 'build'])
+        self.assertEqual(build[build.index('--platform') + 1], 'linux/arm64')
+        self.assertEqual((assets / 'offline/k3s-arm64').read_bytes(), b'k3s-arm64')
+        self.assertEqual((assets / 'offline/runsc-arm64').read_bytes(), b'arm64 runsc')
+        self.assertEqual((assets / 'offline/containerd-shim-runsc-v1-arm64').read_bytes(), b'arm64 shim')
+        self.assertTrue((assets / 'offline/gvisor-bin-arm64/SHA512SUMS').is_file())
+        package.package(assets, self.root / 'publish')
+        manifest = json.loads((assets / 'atlas-release.json').read_text())
+        self.assertEqual(manifest['architecture'], 'arm64')
+        self.assertEqual(manifest['sourceLock']['architecture'], 'arm64')
+        self.assertTrue(manifest['helm']['archive'].endswith('-linux-arm64.tar.gz'))
+        self.assertTrue(all(name.endswith('-linux-arm64.tar.gz') for name in manifest['imageArchives']))
+        self.assertFalse(any('amd64' in name or 'x86_64' in name for name in manifest['archives']))
+
+    def test_arm64_host_validation_rejects_wrong_bundle_and_page_size(self):
+        with patch.object(atlas.platform, 'system', return_value='Linux'), \
+             patch.object(atlas.platform, 'machine', return_value='aarch64'), \
+             patch.object(atlas.os, 'sysconf', return_value=4096) as pages:
+            self.assertEqual(atlas.validate_host({'architecture': 'arm64'}), 'arm64')
+            with self.assertRaisesRegex(ValueError, 'Architecture mismatch'):
+                atlas.validate_host({'architecture': 'amd64'})
+            pages.return_value = 65536
+            with self.assertRaisesRegex(ValueError, '4096-byte'):
+                atlas.validate_host({'architecture': 'arm64'})
+
+    def test_incompatible_host_fails_before_installation_root_is_created(self):
+        assets, chart = self.root / 'assets', self.root / 'chart'
+        assets.mkdir()
+        chart.mkdir()
+        (chart / 'Chart.yaml').write_text('name: atlas-mvp')
+        (assets / 'atlas-release.json').write_text('{"architecture":"amd64"}')
+        args = SimpleNamespace(root=self.root / 'installation', assets=assets, chart=chart)
+        with patch.object(atlas.platform, 'system', return_value='Linux'), \
+             patch.object(atlas.platform, 'machine', return_value='aarch64'), patch.object(atlas, 'run') as run:
+            with self.assertRaisesRegex(ValueError, 'Architecture mismatch'):
+                atlas.install(args)
+            run.assert_not_called()
+        self.assertFalse(args.root.exists())
+
+    def test_existing_multi_node_cluster_fails_before_installation_root_is_created(self):
+        assets, chart = self.root / 'assets', self.root / 'chart'
+        assets.mkdir()
+        chart.mkdir()
+        (chart / 'Chart.yaml').write_text('name: atlas-mvp')
+        (assets / 'atlas-release.json').write_text('{"architecture":"arm64"}')
+        args = SimpleNamespace(root=self.root / 'installation', assets=assets, chart=chart)
+        nodes = subprocess.CompletedProcess([], 0, json.dumps({'items': [{}, {}]}))
+        with patch.object(atlas, 'validate_host', return_value='arm64'), \
+             patch.object(atlas.shutil, 'which', return_value='/usr/local/bin/k3s'), \
+             patch.object(atlas.subprocess, 'run', return_value=nodes) as run:
+            with self.assertRaisesRegex(ValueError, 'existing multi-node cluster'):
+                atlas.install(args)
+            run.assert_called_once()
+            self.assertEqual(run.call_args.args[0][:4], ['k3s', 'kubectl', 'get', 'nodes'])
+        self.assertFalse(args.root.exists())
 
     def test_router_release_requires_all_components_and_an_immutable_base(self):
         for mutate in (lambda lock: lock['components'].pop('router'),
@@ -83,7 +229,7 @@ class ReleaseTests(unittest.TestCase):
         names = ['moss.tar.gz', 'bootstrap.mjs', 'deploy.tar.gz', 'install.sh', 'SHA256SUMS', 'helm.tar.gz', 'offline/k3s']
         sources = {name: {'url': 'https://github.com/owner/release/' + name,
             'sha256': hashlib.sha256(name.encode()).hexdigest()} for name in names + ['atlas.py', 'old-chart.tgz']}
-        base = {'release': 'sudostack-v0.0.1-rc.2', 'version': '0.0.1-rc.2', 'sources': sources,
+        base = {'release': 'sudostack-v0.0.1-rc.2', 'version': '0.0.1-rc.2', 'architecture': 'amd64', 'sources': sources,
             'imageArchives': ['moss.tar.gz'], 'images': {'moss': 'moss:1'}, 'mossBootstrap': 'bootstrap.mjs',
             'mossDeploymentBundle': 'deploy.tar.gz', 'helm': {'archive': 'helm.tar.gz'}, 'buildInputs': {},
             'chart': 'old-chart.tgz', 'archives': {k: v['sha256'] for k, v in sources.items()}}
@@ -159,8 +305,12 @@ class ReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'locked image'):
             release.verify_image_archive(path, ['sudowork-webui:0.2.28', 'postgres:16-alpine'])
         bundle('arm64')
+        release.verify_image_archive(path, ['sudowork-webui:0.2.28'], 'arm64')
         with self.assertRaisesRegex(ValueError, 'linux/amd64'):
             release.verify_image_archive(path, ['sudowork-webui:0.2.28'])
+        bundle('amd64')
+        with self.assertRaisesRegex(ValueError, 'linux/arm64'):
+            release.verify_image_archive(path, ['sudowork-webui:0.2.28'], 'arm64')
 
     def test_fetch_rejects_paths_before_network_access(self):
         for name in ('../outside', '/absolute', 'offline/../../outside', './file'):
@@ -195,7 +345,7 @@ class ReleaseTests(unittest.TestCase):
         (assets / 'credentials.json').write_text('{"password":"not-a-release-asset"}')
         sources = {name: {'url': f'https://github.com/owner/component/releases/download/v1.0.0/{name}',
                           'sha256': artifacts.checksum(assets / name)} for name in ('moss.tar.gz', 'webui.tar.gz')}
-        metadata = {'release': 'sudostack-v0.0.1', 'version': '0.0.1', 'sourceLock': self.lock,
+        metadata = {'release': 'sudostack-v0.0.1', 'version': '0.0.1', 'architecture': 'amd64', 'sourceLock': self.lock,
                     'sources': sources, 'imageArchives': ['moss.tar.gz', 'webui.tar.gz', 'nexus.tar.gz']}
         (assets / 'build-input.json').write_text(json.dumps(metadata))
         package.package(assets, publish)

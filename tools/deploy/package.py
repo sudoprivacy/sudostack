@@ -14,6 +14,9 @@ SCRIPTS = ('atlas.py', 'artifacts.py', 'install-atlas.sh', 'smoke.py',
 
 def package(assets, publish):
     metadata = json.loads((assets / 'build-input.json').read_text())
+    architecture = metadata.get('architecture')
+    if architecture not in ('amd64', 'arm64') or architecture != metadata['sourceLock']['architecture']:
+        raise ValueError('Release architecture must match its amd64 or arm64 source lock')
     repository = metadata['sourceLock']['repository']
     release = metadata['release']
     root = Path(__file__).resolve().parents[2]

@@ -24,6 +24,8 @@ Nexus Broker 的部署镜像由 sudostack CI 组装上述固定 daemon、Vault �
 
 适用范围：单节点 Linux amd64、本地 local-path 存储、独立命名空间 `atlas-system` 和 `moss-sessions`。CI 在全新 Ubuntu 22.04 runner 上执行安装、登录/会话、重复安装和重启恢复，全部通过后才发布到 COS。各版本状态见 [部署发布 CI](https://github.com/sudoprivacy/sudostack/actions/workflows/deployment-release.yml)，验收报告保存在对应运行的 `sudostack-installation-evidence` artifact 中。Ubuntu 24.04 验收及正式供应链签名尚未完成。
 
+ARM64 版本的组装和原生 Ubuntu 24.04 ARM runner 验收流程已接入，尚未完成完整制品发布，见 [ARM64 部署](arm64.md)。两种架构均沿用单节点要求；安装器会在修改 k3s 配置前拒绝已有的多节点集群。
+
 ## 一键安装
 
 通过 COS 获取包含全部资源的离线安装入口，目标机无需访问 GitHub：

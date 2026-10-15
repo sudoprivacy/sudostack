@@ -47,6 +47,8 @@ rc.7 安装地址由 [tag CI](https://github.com/sudoprivacy/sudostack/actions/w
 
 在 Ubuntu 22.04 / x86_64 服务器以 root 执行，替换第一行 IP：
 
+下面的 rc.7 地址只提供 amd64 制品。ARM64 构建流程与尚待补齐的上游制品见 [ARM64 部署](arm64.md)，目前不能用该地址在 aarch64 主机安装。
+
 ```bash
 ATLAS_HOST="你的服务器IP"
 apt-get update \
@@ -61,6 +63,18 @@ apt-get update \
 默认缓存为 `/var/cache/sudostack/sudostack-v0.0.1-rc.7/`，可以用 `ATLAS_CACHE_DIR` 指定父目录。下载包与解压文件同时占用空间，导入镜像和业务数据还需要额外磁盘空间。
 
 安装后 SudoWork、Moss、Router 分别位于 `https://<host>`、`https://<host>:8443/admin/`、`https://<host>:9443`。账号文件见 [部署入口](../../DEPLOYMENT.md)。真实模型调用仍需在 Router 配置上游渠道。
+
+### 环境检查失败
+
+旧版入口的 `Installation requires root on Linux x86_64.` 同时检查权限、操作系统和 CPU 架构；即使已经是 root，架构不匹配也会触发这条提示。在实际安装的目标机上执行：
+
+```bash
+id -u
+uname -s
+uname -m
+```
+
+使用 rc.7 时，预期依次输出 `0`、`Linux`、`x86_64`。如果架构输出 `aarch64` 或 `arm64`，该发布包无法安装：k3s、gVisor、Helm、Nexus 等二进制及容器镜像均固定为 amd64，需要选择完整的 ARM64 发布包。新版入口会报告主机和发布包各自的架构；删除架构检查不能让 amd64 制品支持 ARM64。
 
 ## 先下载，再本地安装
 
