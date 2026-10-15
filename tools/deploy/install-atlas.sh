@@ -64,10 +64,15 @@ fi
 ATLAS_CHART_DIR="$(mktemp -d)"
 trap 'rm -rf -- "$ATLAS_CHART_DIR"' EXIT
 python3 - "$ATLAS_ASSETS" "$ATLAS_CHART_DIR" <<'PY'
-import hashlib,json,sys,tarfile
+import hashlib,json,platform,sys,tarfile
 from pathlib import Path
 assets,dest=map(Path,sys.argv[1:])
 m=json.loads((assets/'atlas-release.json').read_text())
+host_arch={'x86_64':'amd64','amd64':'amd64','aarch64':'arm64','arm64':'arm64'}.get(platform.machine())
+if platform.system()!='Linux' or host_arch is None:
+    raise SystemExit('Installation requires Linux amd64 or arm64; detected '+platform.system()+' '+platform.machine())
+if m.get('architecture')!=host_arch:
+    raise SystemExit('Architecture mismatch: host is '+host_arch+', release is '+str(m.get('architecture')))
 for name in ('atlas.py', m['chart']):
     if hashlib.sha256((assets/name).read_bytes()).hexdigest()!=m['archives'][name]:
         raise SystemExit('Installer/chart checksum mismatch')

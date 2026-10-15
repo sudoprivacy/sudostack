@@ -47,6 +47,8 @@ rc.7 安装地址由 [tag CI](https://github.com/sudoprivacy/sudostack/actions/w
 
 在 Ubuntu 22.04 / x86_64 服务器以 root 执行，替换第一行 IP：
 
+下面的 rc.7 地址只提供 amd64 制品。ARM64 构建流程与尚待补齐的上游制品见 [ARM64 部署](arm64.md)，目前不能用该地址在 aarch64 主机安装。
+
 ```bash
 ATLAS_HOST="你的服务器IP"
 apt-get update \
@@ -61,6 +63,18 @@ apt-get update \
 默认缓存为 `/var/cache/sudostack/sudostack-v0.0.1-rc.7/`，可以用 `ATLAS_CACHE_DIR` 指定父目录。下载包与解压文件同时占用空间，导入镜像和业务数据还需要额外磁盘空间。
 
 安装后 SudoWork、Moss、Router 分别位于 `https://<host>`、`https://<host>:8443/admin/`、`https://<host>:9443`。账号文件见 [部署入口](../../DEPLOYMENT.md)。真实模型调用仍需在 Router 配置上游渠道。
+
+### 环境检查失败
+
+旧版入口的 `Installation requires root on Linux x86_64.` 同时检查权限、操作系统和 CPU 架构；即使已经是 root，架构不匹配也会触发这条提示。在实际安装的目标机上执行：
+
+```bash
+id -u
+uname -s
+uname -m
+```
+
+使用 rc.7 时，预期依次输出 `0`、`Linux`、`x86_64`。如果架构输出 `aarch64` 或 `arm64`，该发布包无法安装：k3s、gVisor、Helm、Nexus 等二进制及容器镜像均固定为 amd64，需要选择完整的 ARM64 发布包。新版入口会报告主机和发布包各自的架构；删除架构检查不能让 amd64 制品支持 ARM64。
 
 ## 先下载，再本地安装
 
@@ -92,10 +106,11 @@ sha256sum -c sudostack-0.0.1-rc.7-linux-amd64.tar.gz.sha256 \
 
 1. 推送 `sudostack-vVERSION` tag，CI 读取对应的版本锁，从固定的组件 Release 获取并校验全部资源。
 2. `assemble` 生成最终 `.tar.gz`、入口脚本、manifest、descriptor 和 SHA256，并上传同一份 candidate artifact。
-3. `qualify` 校验并解压这份完整包，在全新 Ubuntu 22.04 runner 验收安装、经 Router 的会话、重复安装和重启恢复。验收证据保存包的 descriptor 与 SHA256。
-4. GitHub Release 成功后，`publish-cos` 下载同一份 candidate artifact，校验后原样上传 COS，不重新打包。所有版本文件验证通过后才更新 `latest` 入口。
+3. `qualify` 校验并解压这份完整包，在全新原生 runner（amd64 为 Ubuntu 22.04，arm64 为 Ubuntu 24.04）验收安装、经 Router 的会话、重复安装和重启恢复。验收证据保存包的 descriptor 与 SHA256。
+4. `qualify` 成功后，GitHub Release 和 `publish-cos` 发布同一次构建的产物。COS 原样上传完整 candidate artifact，不重新打包；tag 默认仅发布固定版本目录。
+5. 目标机完成从 COS 安装、清空安装数据和缓存、重新下载安装的验收后，用 `publish_run` 指向原成功 run，选择 `cos_mode=latest-only`，将同一版本推广到对应架构的 `latest` 入口。详见 [ARM64 发布说明](arm64.md#ci验收与入口发布)。
 
-CI 使用与 Moss 一致的 `TENCENT_SECRET_ID`、`TENCENT_SECRET_KEY` Actions secrets；目标机下载无需凭据。PR 和手动运行只构建和验收，不发布 COS。构建端仍需连接组件 Release 来源；目标机部署资源全部来自 COS。
+CI 使用与 Moss 一致的 `TENCENT_SECRET_ID`、`TENCENT_SECRET_KEY` Actions secrets；目标机下载无需凭据。PR 只构建和验收。手动运行默认不发布 COS，显式设置 `cos_mode` 才发布固定版本或推广入口；复用原包时需要成功的来源 run 和安装验收记录。构建端仍需连接组件 Release 来源；目标机部署资源全部来自 COS。
 
 以下命令仅用于开发机复现打包和排查发布过程，正常发版交给 CI：
 

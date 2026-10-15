@@ -45,7 +45,7 @@ def https_base(value):
 
 def descriptor(path):
     data = json.loads(path.read_text())
-    if data.get('schemaVersion') != 1 or data.get('architecture') != 'amd64' or not RELEASE.fullmatch(data.get('release', '')):
+    if data.get('schemaVersion') != 1 or data.get('architecture') not in ('amd64', 'arm64') or not RELEASE.fullmatch(data.get('release', '')):
         raise ValueError('Invalid COS bundle descriptor')
     if not SHA256.fullmatch(data.get('manifestSha256', '')):
         raise ValueError('Missing pinned release manifest checksum')
@@ -54,7 +54,7 @@ def descriptor(path):
         safe_path(path.parent, name, flat=True)
         if not SHA256.fullmatch(item.get('sha256', '')) or type(item.get('size')) is not int or item['size'] < 0:
             raise ValueError('Invalid file metadata: ' + name)
-    expected = 'sudostack-' + data['release'].removeprefix('sudostack-v') + '-linux-amd64.tar.gz'
+    expected = 'sudostack-' + data['release'].removeprefix('sudostack-v') + '-linux-' + data['architecture'] + '.tar.gz'
     allowed = {expected, expected + '.sha256', 'cos_bundle.py', 'install-cos.sh', 'cleanup-atlas.sh', 'atlas-release.json', 'components.lock.json'}
     if data.get('bundle') != expected or allowed != files.keys():
         raise ValueError('Incomplete COS release')
@@ -103,6 +103,8 @@ def release_manifest(raw, data):
     manifest = json.loads(raw)
     if manifest['release'] != data['release'] or 'atlas-release.json' in manifest['archives']:
         raise ValueError('Bundle belongs to a different release')
+    if manifest.get('architecture') != data['architecture']:
+        raise ValueError('Bundle architecture differs from the release manifest')
     for name, digest in manifest['archives'].items():
         if not SHA256.fullmatch(digest):
             raise ValueError('Invalid asset checksum: ' + name)
@@ -184,20 +186,24 @@ def create(assets, output):
     manifest = json.loads((assets / 'atlas-release.json').read_text())
     if not RELEASE.fullmatch(manifest['release']):
         raise ValueError('A fixed sudostack release is required')
+    arch = manifest.get('architecture')
+    if arch not in ('amd64', 'arm64'):
+        raise ValueError('Release architecture must be amd64 or arm64')
     if output.exists() and any(output.iterdir()):
         raise ValueError('COS output directory must be empty')
     output.mkdir(parents=True, exist_ok=True)
-    name = 'sudostack-' + manifest['release'].removeprefix('sudostack-v') + '-linux-amd64.tar.gz'
+    name = 'sudostack-' + manifest['release'].removeprefix('sudostack-v') + '-linux-' + arch + '.tar.gz'
     create_archive(assets, output / name)
     source = Path(__file__).resolve().parent
     for filename in ('cos_bundle.py', 'cleanup-atlas.sh'):
         shutil.copyfile(source / filename, output / filename)
     launcher = (source / 'install-cos.sh').read_text().replace('@@ATLAS_RELEASE_TAG@@', manifest['release'])
+    launcher = launcher.replace('@@ATLAS_RELEASE_ARCH@@', arch)
     (output / 'install-cos.sh').write_text(launcher)
     for filename in ('atlas-release.json', 'components.lock.json'):
         shutil.copyfile(assets / filename, output / filename)
     files = {p.name: {'sha256': checksum(p), 'size': p.stat().st_size} for p in sorted(output.iterdir()) if p.is_file()}
-    data = {'schemaVersion': 1, 'release': manifest['release'], 'architecture': 'amd64',
+    data = {'schemaVersion': 1, 'release': manifest['release'], 'architecture': arch,
             'bundle': name, 'manifestSha256': checksum(assets / 'atlas-release.json'), 'files': files}
     (output / 'bundle.json').write_text(json.dumps(data, indent=2) + '\n')
     descriptor(output / 'bundle.json')

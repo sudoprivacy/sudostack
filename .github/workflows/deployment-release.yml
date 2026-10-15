@@ -14,36 +14,86 @@ on:
         description: 'Version with a committed manifests/deployment/VERSION.json lock'
         required: true
         default: '0.0.1'
+      cos_mode:
+        description: 'Publish to COS after qualification; use release-only before host acceptance'
+        type: choice
+        options: [none, release-only, latest-only, all]
+        default: none
+      publish_run:
+        description: 'Reuse the complete bundle from an already successful run (optional run ID)'
+        type: string
+        required: false
 permissions:
   contents: read
 concurrency:
   group: deployment-release-${{ github.ref }}-${{ inputs.version }}
   cancel-in-progress: false
 jobs:
-  assemble:
+  select:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    outputs:
+      lock: ${{ steps.suite.outputs.lock }}
+      build-runner: ${{ steps.suite.outputs.build-runner }}
+      qualify-runner: ${{ steps.suite.outputs.qualify-runner }}
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+        with:
+          fetch-depth: 0
       - name: Select the suite's committed version lock
+        id: suite
         env:
           REQUESTED_VERSION: ${{ inputs.version }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           if [[ "$GITHUB_REF" == refs/tags/sudostack-v* ]]; then
             VERSION="${GITHUB_REF_NAME#sudostack-v}"
           else
             VERSION="${REQUESTED_VERSION:-0.0.1}"
+            if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+              mapfile -t CHANGED_LOCKS < <(git diff --name-only --diff-filter=AM "$PR_BASE_SHA" "$PR_HEAD_SHA" -- 'manifests/deployment/*.json')
+              if (( ${#CHANGED_LOCKS[@]} > 1 )); then
+                echo 'Qualify one deployment version lock per PR.' >&2
+                exit 1
+              fi
+              if (( ${#CHANGED_LOCKS[@]} == 1 )); then
+                VERSION="${CHANGED_LOCKS[0]##*/}"
+                VERSION="${VERSION%.json}"
+              fi
+            fi
           fi
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]
           LOCK="manifests/deployment/$VERSION.json"
           test -f "$LOCK"
           test "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$LOCK")" = "$VERSION"
-          echo "ATLAS_LOCK=$LOCK" >> "$GITHUB_ENV"
+          python3 tools/deploy/release.py --lock "$LOCK" --validate
+          ARCH="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["architecture"])' "$LOCK")"
+          echo "lock=$LOCK" >> "$GITHUB_OUTPUT"
+          case "$ARCH" in
+            amd64)
+              echo 'build-runner=ubuntu-24.04' >> "$GITHUB_OUTPUT"
+              echo 'qualify-runner=ubuntu-22.04' >> "$GITHUB_OUTPUT"
+              ;;
+            arm64)
+              echo 'build-runner=ubuntu-24.04-arm' >> "$GITHUB_OUTPUT"
+              echo 'qualify-runner=ubuntu-24.04-arm' >> "$GITHUB_OUTPUT"
+              ;;
+            *) exit 1 ;;
+          esac
+  assemble:
+    if: inputs.publish_run == ''
+    needs: select
+    runs-on: ${{ needs.select.outputs.build-runner }}
+    timeout-minutes: 90
+    env:
+      ATLAS_LOCK: ${{ needs.select.outputs.lock }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
       - name: Validate deployment files
         run: |
-          python3 -m unittest discover -s tools/deploy -p 'test_*.py'
+          sudo python3 -m unittest discover -s tools/deploy -p 'test_*.py'
           bash -n tools/deploy/install-atlas.sh
           bash -n tools/deploy/install-cos.sh
           bash -n tools/deploy/cleanup-atlas.sh
@@ -79,8 +129,8 @@ jobs:
           compression-level: 0
           retention-days: 14
   qualify:
-    needs: assemble
-    runs-on: ubuntu-22.04
+    needs: [select, assemble]
+    runs-on: ${{ needs.select.outputs.qualify-runner }}
     timeout-minutes: 30
     steps:
       - uses: actions/download-artifact@v4
@@ -121,13 +171,14 @@ jobs:
           for STAGE in before after; do
             sudo test ! -f "/data/atlas/acceptance/webui-$STAGE.json" || sudo cat "/data/atlas/acceptance/webui-$STAGE.json" > "evidence/webui-$STAGE.json"
           done
+          sudo python3 candidate/assets/diagnostics.py --output evidence/pod-logs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: sudostack-installation-evidence
           path: evidence/*
   publish:
-    if: startsWith(github.ref, 'refs/tags/sudostack-v')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/sudostack-v')
     needs: [assemble, qualify]
     runs-on: ubuntu-24.04
     permissions:
@@ -149,28 +200,68 @@ jobs:
           gh release create "$GITHUB_REF_NAME" ./* --verify-tag --prerelease \
             --title "$GITHUB_REF_NAME" --notes 'Pinned component releases and deployment files. See atlas-release.json and components.lock.json. Deployment qualification is required before production use.'
   publish-cos:
-    if: startsWith(github.ref, 'refs/tags/sudostack-v')
-    needs: [publish, qualify]
+    if: >-
+      always() && needs.select.result == 'success' &&
+      ((github.event_name == 'push' && startsWith(github.ref, 'refs/tags/sudostack-v')) || (inputs.cos_mode != '' && inputs.cos_mode != 'none')) &&
+      (needs.qualify.result == 'success' || (inputs.publish_run != '' && needs.assemble.result == 'skipped'))
+    needs: [select, assemble, qualify]
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    permissions:
+      actions: read
+      contents: read
     concurrency:
       group: sudostack-cos-publication
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
+      - name: Verify the source run passed installation qualification
+        if: inputs.publish_run != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_RUN: ${{ inputs.publish_run }}
+        run: |
+          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN" > source-run.json
+          python3 - <<'PYRUN'
+          import json, os
+          source = json.load(open('source-run.json'))
+          assert source['status'] == 'completed' and source['conclusion'] == 'success'
+          assert source['path'] == '.github/workflows/deployment-release.yml'
+          assert source['head_repository']['full_name'] == os.environ['GH_REPO']
+          assert source['head_branch'] == os.environ['GITHUB_REF_NAME']
+          PYRUN
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN/jobs?per_page=100&filter=all" > source-jobs.json
+          python3 - <<'PYJOBS'
+          import json
+          jobs = json.load(open('source-jobs.json'))['jobs']
+          assert any(job['name'] == 'qualify' and job['conclusion'] == 'success' for job in jobs)
+          PYJOBS
       - uses: actions/download-artifact@v4
         with:
           name: sudostack-installation-candidate
           path: cos-release
+          run-id: ${{ inputs.publish_run || github.run_id }}
+          github-token: ${{ github.token }}
       - name: Verify the exact delivery that passed installation qualification
         run: |
           set -euo pipefail
           cd cos-release
           sha256sum -c SHA256SUMS
-      - name: Publish immutable COS release and update installer entrypoints
+          python3 - "../${{ needs.select.outputs.lock }}" <<'PYLOCK'
+          import json, sys
+          lock = json.load(open(sys.argv[1]))
+          bundle = json.load(open('bundle.json'))
+          assert bundle['release'] == 'sudostack-v' + lock['version']
+          assert bundle['architecture'] == lock['architecture']
+          assert json.load(open('components.lock.json')) == lock
+          PYLOCK
+      - name: Publish immutable COS release and selected installer entrypoints
         env:
           TENCENT_SECRET_ID: ${{ secrets.TENCENT_SECRET_ID }}
           TENCENT_SECRET_KEY: ${{ secrets.TENCENT_SECRET_KEY }}
+          COS_MODE: ${{ inputs.cos_mode || 'release-only' }}
         run: |
           set -euo pipefail
           [ -n "$TENCENT_SECRET_ID" ] || { echo 'TENCENT_SECRET_ID is not configured'; exit 1; }
@@ -178,7 +269,7 @@ jobs:
           pip install coscmd==1.9.0.6
           coscmd config -a "$TENCENT_SECRET_ID" -s "$TENCENT_SECRET_KEY" \
             -b sudowork-release-1309794936 -e cos.accelerate.myqcloud.com -m 8 -p 16
-          python3 tools/deploy/publish_cos.py --directory cos-release
+          python3 tools/deploy/publish_cos.py --directory cos-release --mode "$COS_MODE"
           python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json
           from pathlib import Path

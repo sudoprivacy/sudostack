@@ -17,6 +17,8 @@ import publish_cos
 
 
 class CosBundleTests(unittest.TestCase):
+    architecture = 'amd64'
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='atlas-cos-test-')
         self.addCleanup(self.temp.cleanup)
@@ -29,7 +31,7 @@ class CosBundleTests(unittest.TestCase):
             path = self.assets / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(content)
-        manifest = {'release': 'sudostack-v0.0.1-rc.5', 'chart': 'chart.tgz',
+        manifest = {'release': 'sudostack-v0.0.1-rc.5', 'architecture': self.architecture, 'chart': 'chart.tgz',
                     'archives': {name: hashlib.sha256(content).hexdigest() for name, content in files.items()},
                     'sources': {name: {'url': 'https://github.com/owner/release/' + name} for name in files}}
         (self.assets / 'atlas-release.json').write_text(json.dumps(manifest))
@@ -56,7 +58,34 @@ class CosBundleTests(unittest.TestCase):
         for name in manifest['archives']:
             self.assertEqual((destination / name).read_bytes(), (self.assets / name).read_bytes())
         self.assertNotIn('@@ATLAS_RELEASE_TAG@@', (self.output / 'install-cos.sh').read_text())
+        self.assertIn('ATLAS_RELEASE_ARCH="' + self.architecture + '"', (self.output / 'install-cos.sh').read_text())
+        self.assertTrue(self.data['bundle'].endswith('-linux-' + self.architecture + '.tar.gz'))
         publish_cos.local_files(self.output)
+
+    def test_descriptor_cannot_mislabel_manifest_architecture(self):
+        raw = (self.assets / 'atlas-release.json').read_bytes()
+        self.data['architecture'] = 'arm64' if self.architecture == 'amd64' else 'amd64'
+        with self.assertRaisesRegex(ValueError, 'Bundle architecture differs'):
+            cos_bundle.release_manifest(raw, self.data)
+
+    def test_descriptor_rejects_bundle_filename_for_another_architecture(self):
+        self.data['architecture'] = 'arm64' if self.architecture == 'amd64' else 'amd64'
+        (self.output / 'bundle.json').write_text(json.dumps(self.data))
+        with self.assertRaisesRegex(ValueError, 'Incomplete COS release'):
+            cos_bundle.descriptor(self.output / 'bundle.json')
+
+    def test_latest_publication_preserves_other_architectures(self):
+        _, files = publish_cos.local_files(self.output)
+        def head(url):
+            item = files[url.rsplit('/', 1)[1]]
+            return {'content-length': str(item['size']), 'x-cos-meta-sha256': item['sha256']}
+        with patch.object(publish_cos, 'head', side_effect=head), patch.object(publish_cos.subprocess, 'run') as run:
+            publish_cos.publish(self.output, 'test-12345', 'ap-beijing', 'sudostack', 'https://cos.example', 'all')
+        paths = {call.args[0][-1] for call in run.call_args_list}
+        expected = {'sudostack/latest/' + self.architecture + '/' + name for name in ('install-cos.sh', 'cleanup-atlas.sh')}
+        if self.architecture == 'amd64':
+            expected |= {'sudostack/latest/install-cos.sh', 'sudostack/latest/cleanup-atlas.sh'}
+        self.assertEqual(paths, expected)
 
     def test_packaging_is_reproducible(self):
         another = self.root / 'another'
@@ -145,7 +174,7 @@ class CosBundleTests(unittest.TestCase):
                 publish_cos.publish(self.output, 'test-12345', 'ap-beijing', 'sudostack', 'https://cos.example', 'all')
             run.assert_not_called()
 
-    def test_launcher_downloads_only_from_cos_then_prepares_local_install(self):
+    def launch(self, *, download_only=True, host_arch=None):
         bindir = self.root / 'bin'
         bindir.mkdir()
         curl = bindir / 'curl'
@@ -164,18 +193,54 @@ shutil.copyfile(Path(os.environ['COS_TEST_RELEASE'])/parsed.path.rsplit('/',1)[1
         flock = bindir / 'flock'
         flock.write_text('#!/bin/sh\nexit 0\n')
         flock.chmod(0o755)
+        if host_arch:
+            uname = bindir / 'uname'
+            uname.write_text('#!/bin/sh\nif [ "$1" = -s ]; then echo Linux; else echo ' + host_arch + '; fi\n')
+            uname.chmod(0o755)
         log = self.root / 'requests.log'
         cache = self.root / 'cache'
         env = {**os.environ, 'PATH': str(bindir) + os.pathsep + os.environ['PATH'],
                'ATLAS_COS_BASE': 'https://cos.test/sudostack', 'ATLAS_CACHE_DIR': str(cache),
                'COS_TEST_RELEASE': str(self.output), 'COS_TEST_LOG': str(log)}
-        result = subprocess.run(['bash', str(self.output / 'install-cos.sh'), '--download-only'],
+        result = subprocess.run(['bash', str(self.output / 'install-cos.sh'), *(['--download-only'] if download_only else [])],
                                 env=env, text=True, capture_output=True)
+        return result, log, cache
+
+    def test_launcher_downloads_only_from_cos_then_prepares_local_install(self):
+        result, log, cache = self.launch()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(len(log.read_text().splitlines()), 3)
         destination = cache / self.data['release'] / 'assets'
         cos_bundle.validate_assets(destination, self.data)
         self.assertTrue((destination / 'install-atlas.sh').is_file())
+
+    @unittest.skipUnless(os.geteuid() == 0, 'installation entrypoint requires root')
+    def test_launcher_installs_matching_architecture_after_verified_download(self):
+        result, log, _ = self.launch(download_only=False, host_arch='aarch64' if self.architecture == 'arm64' else 'x86_64')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('local-install', result.stdout)
+        self.assertEqual(len(log.read_text().splitlines()), 3)
+
+    @unittest.skipUnless(os.geteuid() == 0, 'installation entrypoint requires root')
+    def test_launcher_rejects_wrong_architecture_before_network_or_cache_writes(self):
+        result, log, cache = self.launch(download_only=False, host_arch='x86_64' if self.architecture == 'arm64' else 'aarch64')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Architecture mismatch', result.stderr)
+        self.assertFalse(log.exists())
+        self.assertFalse(cache.exists())
+
+    def test_launcher_rejects_a_different_descriptor_architecture(self):
+        self.data['architecture'] = 'arm64' if self.architecture == 'amd64' else 'amd64'
+        (self.output / 'bundle.json').write_text(json.dumps(self.data))
+        result, log, cache = self.launch()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('COS bundle architecture differs from the installer', result.stderr)
+        self.assertEqual(len(log.read_text().splitlines()), 1)
+        self.assertFalse((cache / self.data['release'] / 'assets').exists())
+
+
+class Arm64CosBundleTests(CosBundleTests):
+    architecture = 'arm64'
 
 
 if __name__ == '__main__':

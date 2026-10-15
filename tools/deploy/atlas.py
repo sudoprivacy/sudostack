@@ -7,6 +7,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import platform
 import secrets
 import shutil
 import subprocess
@@ -126,10 +127,42 @@ def create_gateway_tls(root, host, args):
                 '-extfile', str(tls / 'extensions.cnf'), stdout=log, stderr=log)
     secret('atlas-gateway-tls', {name: (tls / name).read_bytes() for name in ('tls.crt', 'tls.key', 'ca.crt')}, 'kubernetes.io/tls')
 
+def validate_host(manifest):
+    machine = platform.machine()
+    host_arch = {'x86_64': 'amd64', 'amd64': 'amd64', 'aarch64': 'arm64', 'arm64': 'arm64'}.get(machine)
+    if platform.system() != 'Linux' or host_arch is None:
+        raise ValueError('Installation requires Linux amd64 or arm64; detected ' + platform.system() + ' ' + machine)
+    if manifest.get('architecture') != host_arch:
+        raise ValueError('Architecture mismatch: host is ' + host_arch + ', release is ' + str(manifest.get('architecture')))
+    # The pinned upstream gVisor arm64 release uses the default 4K-page build.
+    if host_arch == 'arm64' and os.sysconf('SC_PAGE_SIZE') != 4096:
+        raise ValueError('The bundled ARM64 gVisor requires a 4096-byte host page size')
+    return host_arch
+
+
+def preflight_existing_cluster():
+    systemctl = shutil.which('systemctl')
+    if systemctl and subprocess.run([systemctl, 'is-active', '--quiet', 'k3s-agent'],
+                                   capture_output=True, timeout=10).returncode == 0:
+        raise ValueError('An existing k3s-agent is running; detach this host from its cluster before installing the single-node profile')
+    if not shutil.which('k3s'):
+        return
+    probe = subprocess.run(['k3s', 'kubectl', 'get', 'nodes', '--request-timeout=10s', '-o', 'json'],
+                           capture_output=True, text=True, timeout=15)
+    if probe.returncode and systemctl and subprocess.run([systemctl, 'is-active', '--quiet', 'k3s'],
+                                                        capture_output=True, timeout=10).returncode == 0:
+        raise ValueError('Cannot inspect the existing active k3s cluster; restore API access before installing')
+    if probe.returncode == 0 and len(json.loads(probe.stdout)['items']) > 1:
+        raise ValueError('This profile supports one k3s node; the existing multi-node cluster cannot be managed by this installer')
+
+
 def install(args):
     root, assets, chart = args.root.resolve(), args.assets.resolve(), args.chart.resolve()
     if root == Path('/') or not (chart / 'Chart.yaml').exists():
         raise ValueError('Invalid installation root or chart')
+    manifest = json.loads((assets / 'atlas-release.json').read_text())
+    architecture = validate_host(manifest)
+    preflight_existing_cluster()
     root.mkdir(parents=True, exist_ok=True)
     root.chmod(0o700)
     import fcntl
@@ -138,7 +171,6 @@ def install(args):
     import re
     if not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9.-]*', args.host):
         raise ValueError('host must be an IPv4 address or DNS name')
-    manifest = json.loads((assets / 'atlas-release.json').read_text())
     for name, expected in manifest['archives'].items():
         path = assets / name
         if not path.resolve().is_relative_to(assets) or checksum(path) != expected:
@@ -188,7 +220,7 @@ def install(args):
     if not shutil.which('helm'):
         helm_archive = assets / manifest['helm']['archive']
         with tarfile.open(helm_archive) as bundle:
-            member = bundle.getmember('linux-amd64/helm')
+            member = bundle.getmember('linux-' + architecture + '/helm')
             with bundle.extractfile(member) as source, open('/usr/local/bin/helm', 'wb') as dest:
                 shutil.copyfileobj(source, dest)
         Path('/usr/local/bin/helm').chmod(0o755)
@@ -260,7 +292,9 @@ def install(args):
     os.environ.update({'MOSS_ADMIN_USERNAME': credentials['adminUsername'], 'MOSS_ADMIN_PASSWORD': credentials['adminPassword'],
         'MOSS_ADVERTISED_HOST': args.host, 'MOSS_CONTROL_NAMESPACE': NAMESPACE, 'MOSS_K8S_NAMESPACE': 'moss-sessions'})
     generated = root / 'configuration'
-    helper.render(Path(DATA_ROOT), generated, manifest['mossVersion'], node)
+    # Older amd64 owner releases predate the architecture argument.
+    render_options = {'architecture': architecture} if architecture == 'arm64' else {}
+    helper.render(Path(DATA_ROOT), generated, manifest['mossVersion'], node, **render_options)
     config = json.loads((generated / 'server.json').read_text())
     config['server']['publicBaseUrl'] = moss_url
     config['k8s']['image'] = images['runtime']
@@ -292,6 +326,7 @@ def install(args):
 def validate_router_addition(previous, manifest):
     base = manifest.get('extends', {})
     if (previous['release'] != base.get('release') or previous['archives'] != base.get('archives')
+        or previous.get('architecture') != manifest.get('architecture')
         or 'router' in previous['images'] or set(manifest['images']) != set(previous['images']) | {'router'}
         or previous['components'] != {k: v for k, v in manifest['components'].items() if k != 'router'}
         or any(manifest['images'][k] != v for k, v in previous['images'].items())
