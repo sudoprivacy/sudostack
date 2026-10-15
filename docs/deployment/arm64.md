@@ -1,6 +1,6 @@
 # ARM64 部署
 
-发布、离线包和安装流程支持 `amd64` 与 `arm64`，架构由版本锁中的 `architecture` 固定。本次 ARM64 交付目标为 `sudostack-v0.0.1-rc.8-arm64`。**整包尚未发布。** 组件 Release 齐备后，先通过整包 CI 发布固定 COS 版本目录，再在 166 验证首装及清空重装；全部通过后更新 ARM64 latest 入口。 已有 `sudostack-v0.0.1-rc.7` 仍为 amd64 包。
+发布、离线包和安装流程支持 `amd64` 与 `arm64`，架构由版本锁中的 `architecture` 固定。本次 ARM64 版本 [`sudostack-v0.0.1-rc.8-arm64`](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.8-arm64) 已通过原生整包 CI 并发布固定 COS 版本目录。**166 的 COS 首装和清空重装验收尚未完成，ARM64 latest 尚未更新。** 实机全部通过后再推广入口。已有 `sudostack-v0.0.1-rc.7` 仍为 amd64 包。
 
 ## 组件与来源
 
@@ -29,7 +29,7 @@ Sudocode 从 0.2.32 起补齐 Linux ARM64 bundle/deb，ARM64 二进制要求 gli
 
 ## 从 COS 安装
 
-以下固定版本入口须在整包发布后使用：
+固定版本安装入口：
 
 ```bash
 curl -fsSL https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.8-arm64/install-cos.sh -o install-cos.sh
@@ -67,7 +67,7 @@ gh workflow run deployment-release.yml -R sudoprivacy/sudostack \
 
 ## 166 验证记录
 
-目标机 `172.16.20.166`（spark-01）为 Ubuntu 24.04.4、aarch64、4 KB 页，内核 `6.17.0-1029-nvidia`。截至整包发布前，已完成：
+目标机 `172.16.20.166`（spark-01）为 Ubuntu 24.04.4、aarch64、4 KB 页，内核 `6.17.0-1029-nvidia`。已完成以下组件预检：
 
 - gVisor ARM64 原生 systrap 沙箱运行 `/bin/sh` 和 `uname`。
 - SudoRouter 正式 rc.2 包校验、ARM64 启动及 HTTP 版本 `0.0.1-rc.2` 验证。
@@ -75,4 +75,6 @@ gh workflow run deployment-release.yml -R sudoprivacy/sudostack \
 - SudoWork 正式 RC 的 COS 双架构归档与 GitHub Release 摘要一致；166 上 ARM64 原生 PTY、PostgreSQL 初始化/迁移、HTTP 健康检查和页面资源通过。隔离测试资源已清理，旧服务保持运行。
 - Sudostack 的 64 项部署回归测试在 166 的 root 环境全部通过，覆盖完整 Runtime 版本匹配及 root 安装入口。
 
-旧 Moss、WebUI、k3s-agent 的备份已完成且切换已获授权。整包 COS 首装及清空重装尚未执行，须以最终版本的实机验收结果为准。
+[最终 tag CI 38718729124](https://github.com/sudoprivacy/sudostack/actions/runs/38718729124) 已通过原生 ARM64 整包组装、干净安装、保持 Pod UID 的重复安装、同会话重启恢复及诊断采集，并将同一归档发布到 COS。完整归档 SHA256 为 `52599a8cfce055fbc4e0e9dfca026c2019d6a95f2df38d372dfe730ec10d07fc`。
+
+旧 Moss、WebUI、k3s-agent 的备份已完成且切换已获授权。166 的整包 COS 首装及清空重装尚未执行，须以最终版本的实机验收结果为准。
