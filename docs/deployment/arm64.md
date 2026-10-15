@@ -23,7 +23,7 @@
 
 Moss、SudoWork WebUI 和 SudoRouter 的发布流程已增加原生 amd64/arm64 构建、镜像架构检查和运行检查；安装器与离线下载器按主机架构选择产物。Moss 的 Server、Nexus、Runtime 使用一致架构，Nexus/Vault 以及 Sudocode 都固定真实 ARM64 附件和校验值。Sudocode 发布流程另增 ARM64 bundle/deb，现有 v0.2.23 的独立二进制包已足够用于套件构建。
 
-本地脚本/安装回归验证不等于完整镜像和实机验收。需将各仓库改动提交并通过原生 CI，以新版本发布 Moss、WebUI、Router，才能生成首次 ARM64 套件。现有 tag 及下载入口不会自动增加 ARM64 产物。
+组件按 commit → PR → 合并 → tag Release 流程发布。完整 ARM64 套件只锁定已发布的组件版本和校验和；开发分支的临时 CI 附件不作为最终安装来源。现有 tag 及下载入口不会自动增加 ARM64 产物。
 
 Moss 的企微会话存档 SDK 依赖上游仅提供的 amd64 原生库，ARM64 镜像不包含该库；此能力暂不属于 ARM64 支持范围。
 
@@ -66,4 +66,16 @@ COS 包名为 `sudostack-<版本>-linux-arm64.tar.gz`。入口脚本、`bundle.j
 
 另行执行 Moss `contractsActivation.test.ts` 时，其既有 Candidate2 包指纹检查失败（期望 SHA1 `5774dcb…`，本地 npm pack 为 `f7f1f239…`），未修改该依赖或期望值。SudoWork 根目录没有 tsconfig，裸 `bunx tsc --noEmit` 向上使用工作区父目录配置，发生内存耗尽；实际 WebUI 两份 tsconfig 的检查通过。
 
-当前本地 Docker 守护进程不可用，SSH 到 `172.16.20.168:22` 重试超时，尚未进行真实 ARM64 镜像构建或目标机安装。代码未推送、未发布新 Release。此前只读检查确认 spark-02 为 Ubuntu 24.04 / aarch64 / 4 KB 页，属于已有双节点 k3s 集群。
+目标验收机现为 `172.16.20.166`（spark-01）：Ubuntu 24.04.4、aarch64、4 KB 页，内核 `6.17.0-1029-nvidia`。组件分支的原生 CI 已开始验证，但最终仍需各仓库 PR 合并后的 Release 和整套安装验收。166 当前有旧 Moss、Docker WebUI 和运行 DeepSeek worker 的 k3s-agent；备份已准备，切换旧服务需明确授权。不得直接对已有集群执行本项目的测试清理脚本。
+
+## COS 验收与发布入口
+
+新 tag 的流水线在干净 runner 上安装、重复安装、重启和会话验收成功后，发布版本目录，默认使用 `release-only`，保留现有 latest 入口。目标主机完成该固定版本的 COS 安装与清空后重装验证，再从同一次成功 CI 复用完整包发布对应架构的 latest：
+
+```bash
+gh workflow run deployment-release.yml -R sudoprivacy/sudostack \
+  --ref <原构建的分支或tag> -f version=<版本> \
+  -f publish_run=<完整安装验收通过的run-id> -f cos_mode=latest-only
+```
+
+复用检查要求来源 run 成功且确有成功的 `qualify` 作业，仓库、workflow、分支/tag、套件版本和架构均匹配；不会重新生成或替换已发布的离线包。

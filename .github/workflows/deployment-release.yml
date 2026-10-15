@@ -244,7 +244,7 @@ jobs:
         env:
           TENCENT_SECRET_ID: ${{ secrets.TENCENT_SECRET_ID }}
           TENCENT_SECRET_KEY: ${{ secrets.TENCENT_SECRET_KEY }}
-          COS_MODE: ${{ startsWith(github.ref, 'refs/tags/sudostack-v') && 'all' || inputs.cos_mode }}
+          COS_MODE: ${{ inputs.cos_mode || 'release-only' }}
         run: |
           set -euo pipefail
           [ -n "$TENCENT_SECRET_ID" ] || { echo 'TENCENT_SECRET_ID is not configured'; exit 1; }
