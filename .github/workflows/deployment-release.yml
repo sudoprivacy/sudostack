@@ -37,16 +37,31 @@ jobs:
       qualify-runner: ${{ steps.suite.outputs.qualify-runner }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Select the suite's committed version lock
         id: suite
         env:
           REQUESTED_VERSION: ${{ inputs.version }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           if [[ "$GITHUB_REF" == refs/tags/sudostack-v* ]]; then
             VERSION="${GITHUB_REF_NAME#sudostack-v}"
           else
             VERSION="${REQUESTED_VERSION:-0.0.1}"
+            if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+              mapfile -t CHANGED_LOCKS < <(git diff --name-only --diff-filter=AM "$PR_BASE_SHA" "$PR_HEAD_SHA" -- 'manifests/deployment/*.json')
+              if (( ${#CHANGED_LOCKS[@]} > 1 )); then
+                echo 'Qualify one deployment version lock per PR.' >&2
+                exit 1
+              fi
+              if (( ${#CHANGED_LOCKS[@]} == 1 )); then
+                VERSION="${CHANGED_LOCKS[0]##*/}"
+                VERSION="${VERSION%.json}"
+              fi
+            fi
           fi
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]
           LOCK="manifests/deployment/$VERSION.json"
