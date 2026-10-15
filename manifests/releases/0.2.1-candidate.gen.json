@@ -27,7 +27,7 @@
   },
   "compatibility": {
     "prior_baseline_path": "compatibility/baselines/0.2.0-package.json",
-    "prior_baseline_sha256": "9ec2cffbcb19f3e728a6691176ed739bab6de52a56b60abe4217420d2ce0c17c",
+    "prior_baseline_sha256": "364c68731c754e563dcea8855aae0263e7014fa4f8e1aeb3331c37959164aed7",
     "resource_ref": "byte_identical_behavior",
     "runtime_contract": "byte_identical",
     "zone_id": "compatible_behavior"
@@ -51,7 +51,7 @@
   "generated_artifacts": [
     {
       "path": "compatibility/current.gen.json",
-      "sha256": "a27553991ab8bd57d66bc12aaca4b08f52cd8def13a1f971d698fa3f435b35ad"
+      "sha256": "8256655fc5789344102d4295daa08c1519aac818fdf2c175cb916b38a848d756"
     },
     {
       "path": "contracts/common/v1/resource-ref/fixture-index.gen.json",
@@ -306,7 +306,7 @@
     "actual_consumers": [],
     "actual_producers": [],
     "name": "@sudo/contracts",
-    "package_json_sha256": "5800916d364e6f32dee97e9d58bfbccb932338a4ba148fe4a673c6cca8ac9fcb",
+    "package_json_sha256": "7c621d7e1b01de1da14c524b0c7b2200f7f786cda90cb9c56d5a3b389b49a2d7",
     "package_lock_sha256": "1a6782d8059230a98ffcf1a497783cd31e25a3adeac1374ecac4f59272afe519",
     "private": true,
     "support_state": "pending_moss_repin",
@@ -327,7 +327,7 @@
     "content_stage": {
       "exact_pin_target": "content_commit_C",
       "metadata_path": "manifests/candidates/0.2.1-content.json",
-      "metadata_sha256": "0b648ce7d7d7e83cd1e63a34ec66776545ca2b60949d0c72b5c8e70c7a69df27",
+      "metadata_sha256": "a6b02703882e843ee5b059f1cf2df0a46040991c0cbfe28f7c3796585f83b41a",
       "revision_source": "containing_commit",
       "state": "staged"
     },
@@ -335,7 +335,7 @@
     "predecessor": {
       "activation_revision": "60bd8dda6fb2d348ec8571b9b1a4eaa535e36dc5",
       "baseline_path": "compatibility/baselines/0.2.0-package.json",
-      "baseline_sha256": "9ec2cffbcb19f3e728a6691176ed739bab6de52a56b60abe4217420d2ce0c17c",
+      "baseline_sha256": "364c68731c754e563dcea8855aae0263e7014fa4f8e1aeb3331c37959164aed7",
       "baseline_source_revision": "5a2a53130e37d1c63993ebf8ba1253b15eb9eebf",
       "candidate_content_revision": "30da0ddd953268ff8a9a0f0980276300ab153003",
       "package_version": "0.2.0",
@@ -364,7 +364,7 @@
     },
     "content_candidate_verifier": {
       "path": "tools/contracts/content-candidate.mjs",
-      "sha256": "d5f9643c9c8b928001ae13045dfcaab187c5ade46bf31f9aaba001cc8f1c26c7"
+      "sha256": "2083d79c277028d901459461645d141f7340c714959e3fb0bc083171a233ce22"
     },
     "generator": {
       "id": "contracts/generate.mjs@2",

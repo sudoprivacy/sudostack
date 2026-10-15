@@ -17,7 +17,9 @@ import {
 import { verifyHistoricalPackage } from './history-0.2.0.mjs'
 import { requireSupportedNode } from './node-version.mjs'
 import { runNpm } from './npm-runner.mjs'
+import { ZONE_V1_PACKED_PATHS } from './zone-v1-lineage.mjs'
 
+const ZONE_V1_PACKED_PATH_SET = new Set(ZONE_V1_PACKED_PATHS)
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const PACKAGE = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8'))
 requireSupportedNode(process.versions.node, PACKAGE.engines.node)
@@ -40,10 +42,13 @@ const packageMetadataPaths = new Set([
 const packedDistributionPaths = [...packedPaths]
   .filter((path) => !packageMetadataPaths.has(path))
   .sort()
+const candidateDistributionPaths = packedDistributionPaths.filter((path) => !ZONE_V1_PACKED_PATH_SET.has(path))
+const zoneV1DistributionPaths = packedDistributionPaths.filter((path) => ZONE_V1_PACKED_PATH_SET.has(path))
 assert.deepEqual(
-  packedDistributionPaths,
+  candidateDistributionPaths,
   candidate.generated_artifacts.map((artifact) => artifact.path).sort(),
 )
+assert.deepEqual(zoneV1DistributionPaths, [...ZONE_V1_PACKED_PATHS])
 for (const artifact of candidate.internal_generation_artifacts) {
   assert.equal(packedPaths.has(artifact.path), false, `package contains internal ${artifact.path}`)
 }
@@ -59,8 +64,8 @@ for (const entry of baseline.packed_files) {
 assert.deepEqual(changed.sort(), [...allowedChanged].sort(), 'expected packed metadata deltas are missing')
 assert.deepEqual(
   baseline.successor_policy.added_packed_paths,
-  [CANDIDATE_PATH],
-  'the staged candidate must be the only added packed path',
+  [CANDIDATE_PATH, ...ZONE_V1_PACKED_PATHS],
+  'the staged candidate plus the zone-v1 lineage are the only added packed paths',
 )
 
 const forbidden = [

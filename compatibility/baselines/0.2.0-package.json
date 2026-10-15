@@ -389,7 +389,28 @@
       "package.json"
     ],
     "added_packed_paths": [
-      "manifests/releases/0.2.1-candidate.gen.json"
+      "manifests/releases/0.2.1-candidate.gen.json",
+      "contracts/zone-v1/auth/v1/index.gen.d.ts",
+      "contracts/zone-v1/auth/v1/index.gen.js",
+      "contracts/zone-v1/codes.gen.js",
+      "contracts/zone-v1/common/v1/index.gen.d.ts",
+      "contracts/zone-v1/common/v1/index.gen.js",
+      "contracts/zone-v1/fixtures/compatibility.gen.json",
+      "contracts/zone-v1/fixtures/invalid.gen.json",
+      "contracts/zone-v1/fixtures/path-traversal.gen.json",
+      "contracts/zone-v1/fixtures/roundtrip.gen.json",
+      "contracts/zone-v1/fixtures/secret-negative.gen.json",
+      "contracts/zone-v1/fixtures/valid.gen.json",
+      "contracts/zone-v1/projections.gen/existing-zone-id-ref.schema.gen.json",
+      "contracts/zone-v1/projections.gen/remote-learned-zone-id.schema.gen.json",
+      "contracts/zone-v1/projections.gen/system-zone-id.schema.gen.json",
+      "contracts/zone-v1/projections.gen/tenant-zone-id-create.schema.gen.json",
+      "contracts/zone-v1/projections.gen/zone-path.schema.gen.json",
+      "contracts/zone-v1/provenance.gen.json",
+      "contracts/zone-v1/runtime/v2/index.gen.d.ts",
+      "contracts/zone-v1/runtime/v2/index.gen.js",
+      "contracts/zone-v1/schema-bundle.gen.json",
+      "contracts/zone-v1/validators.gen.js"
     ],
     "version_only_paths": [
       "package.json",

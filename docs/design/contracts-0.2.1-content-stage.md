@@ -54,9 +54,9 @@ No stage embeds a future revision. A must not record its own containing commit S
 - package: `@sudo/contracts@0.2.1`;
 - exact dependency: `github:sudoprivacy/sudostack#273fd4097cbc33c1c049c39bb1fb60cef2663e2b`;
 - candidate manifest: `manifests/releases/0.2.1-candidate.gen.json`;
-- candidate manifest SHA-256: `956a19cbc6b42ebc3c4e1c9ebe93e0842e1c295d1f6465e0d42d532d45785a9b`;
-- compatibility manifest SHA-256: `a27553991ab8bd57d66bc12aaca4b08f52cd8def13a1f971d698fa3f435b35ad`;
-- immutable predecessor baseline SHA-256: `9ec2cffbcb19f3e728a6691176ed739bab6de52a56b60abe4217420d2ce0c17c`;
+- candidate manifest SHA-256: `0cad9da45d55f7952638cccf31c0ca0233dc1621b6864e307dba3bbe2b2cca1c`;
+- compatibility manifest SHA-256: `8256655fc5789344102d4295daa08c1519aac818fdf2c175cb916b38a848d756`;
+- immutable predecessor baseline SHA-256: `364c68731c754e563dcea8855aae0263e7014fa4f8e1aeb3331c37959164aed7`;
 - expected package support state: empty producer/consumer arrays and `pending_moss_repin`;
 - required boundary: installed ZoneId validator at the real embedded `NexusManager.start()` path, immutable binding, exactly one `--cluster-init` argument, invalid-value rejection before process creation, no side effects, and explicit external-mode exclusion;
 - forbidden claims: `ResourceRef` adoption, runtime `ZonePath` adoption, release, deployment, or C-03 closure.
@@ -65,7 +65,7 @@ The content-stage manifest intentionally retains `candidate_revision: null`; imm
 
 ## Package-external activation outcome
 
-`SUDOSTACK-ACTIVATE2` records exact C, M and integration evidence in [`0.2.1-activation-support.json`](../../manifests/operations/0.2.1-activation-support.json) (SHA-256 `ae956ef3c0cc4f97b1601395e89464006453a01b50f0df7856a464529b65f4ed`), verified by [`activation-0.2.1.mjs`](../../tools/contracts/activation-0.2.1.mjs) (SHA-256 `17778b6796f135de80ace0becb99e6e30d4fac947805a736b96f3f4f2ae933ab`). Its offline mode validates the record, all 43 C package paths and tarball identity; local mode additionally verifies the exact three-file Moss repin, unchanged production source/caller tests, installed `0.2.1` identity and default runner/workflow bytes from an explicit repository; only remote mode verifies the pinned GitHub PR, workflow attempts and check-run IDs. The record contains no A SHA, changes no C package byte, and requires no Moss repin.
+`SUDOSTACK-ACTIVATE2` records exact C, M and integration evidence in [`0.2.1-activation-support.json`](../../manifests/operations/0.2.1-activation-support.json) (SHA-256 `ae956ef3c0cc4f97b1601395e89464006453a01b50f0df7856a464529b65f4ed`), verified by [`activation-0.2.1.mjs`](../../tools/contracts/activation-0.2.1.mjs) (SHA-256 `b679c1347f9d2a2f928cc8e7aa90aec8b83d3c37c421c1eb7cb8273ce12ec929`). Its offline mode validates the record, all 43 C package paths and tarball identity; local mode additionally verifies the exact three-file Moss repin, unchanged production source/caller tests, installed `0.2.1` identity and default runner/workflow bytes from an explicit repository; only remote mode verifies the pinned GitHub PR, workflow attempts and check-run IDs. The record contains no A SHA, changes no C package byte, and requires no Moss repin.
 
 This evidence resolves C-03 only for the included Moss/ZoneId embedded boundary. C remains internally staged/unfrozen with empty package support; `ResourceRef`, runtime `ZonePath`, external topology, B0 live inputs, mixed-version smoke, rollback, release and deployment remain unchanged or pending.
 

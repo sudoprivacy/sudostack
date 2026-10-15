@@ -106,7 +106,7 @@
       "content_revision": null,
       "exact_pin_target": "content_commit_C",
       "release_manifest_path": "../releases/0.2.1-candidate.gen.json",
-      "release_manifest_sha256": "956a19cbc6b42ebc3c4e1c9ebe93e0842e1c295d1f6465e0d42d532d45785a9b",
+      "release_manifest_sha256": "0cad9da45d55f7952638cccf31c0ca0233dc1621b6864e307dba3bbe2b2cca1c",
       "content_stage_path": "../candidates/0.2.1-content.json",
       "immutable_baseline_path": "../../compatibility/baselines/0.2.0-package.json",
       "immutable_baseline_sha256": "9ec2cffbcb19f3e728a6691176ed739bab6de52a56b60abe4217420d2ce0c17c",

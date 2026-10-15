@@ -5,13 +5,15 @@ import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { ZONE_V1_EXPORT_KEYS, ZONE_V1_PACKED_PATHS } from './zone-v1-lineage.mjs'
+
 export const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 export const HISTORY_REPO = process.env.SUDOSTACK_BASE_REPO ?? REPO
 export const HISTORICAL_REVISION = '5a2a53130e37d1c63993ebf8ba1253b15eb9eebf'
 export const HISTORICAL_VERSION = '0.2.0'
 export const CANDIDATE_VERSION = '0.2.1'
 export const BASELINE_PATH = 'compatibility/baselines/0.2.0-package.json'
-export const BASELINE_SHA256 = '9ec2cffbcb19f3e728a6691176ed739bab6de52a56b60abe4217420d2ce0c17c'
+export const BASELINE_SHA256 = '364c68731c754e563dcea8855aae0263e7014fa4f8e1aeb3331c37959164aed7'
 export const STAGE_PATH = 'manifests/candidates/0.2.1-content.json'
 export const CANDIDATE_PATH = 'manifests/releases/0.2.1-candidate.gen.json'
 export const HISTORICAL_CANDIDATE_PATH = 'manifests/releases/0.2.0-candidate.gen.json'
@@ -116,6 +118,7 @@ export const EXPECTED_STAGE = {
 }
 
 export const sha256 = (data) => createHash('sha256').update(data).digest('hex')
+const ZONE_V1_PACKED_PATH_SET = new Set(ZONE_V1_PACKED_PATHS)
 const parseJson = (bytes, label) => {
   try {
     return JSON.parse(bytes.toString('utf8'))
@@ -147,19 +150,30 @@ export function verifyStageMetadata(stageBytes) {
   return stage
 }
 
-export function verifyPackageBaseline({ baselineBytes, historicalBytes } = {}) {
+// The successor policy the current candidate claims. The zone-v1 lineage
+// paths ride along as 0.2.1 additions relative to the immutable 0.2.0 pack;
+// historical callers (successor-compatibility preflight) pass the C-era
+// expectation explicitly instead of this default.
+export const CURRENT_SUCCESSOR_POLICY = {
+  candidate_version: CANDIDATE_VERSION,
+  changed_packed_paths: ['compatibility/current.gen.json', 'package.json'],
+  added_packed_paths: [CANDIDATE_PATH, ...ZONE_V1_PACKED_PATHS],
+  version_only_paths: ['package.json', 'package-lock.json'],
+}
+
+export function verifyPackageBaseline({
+  baselineBytes,
+  historicalBytes,
+  expectedBaselineSha256 = BASELINE_SHA256,
+  expectedSuccessorPolicy = CURRENT_SUCCESSOR_POLICY,
+} = {}) {
   const getHistorical = historicalBytes ?? createHistoricalReader()
-  assert.equal(sha256(baselineBytes), BASELINE_SHA256, `${BASELINE_PATH} digest changed`)
+  assert.equal(sha256(baselineBytes), expectedBaselineSha256, `${BASELINE_PATH} digest changed`)
   const baseline = parseJson(baselineBytes, BASELINE_PATH)
   assert.equal(baseline.baseline_version, 1)
   assert.equal(baseline.source_revision, HISTORICAL_REVISION)
   assert.deepEqual(baseline.package, EXPECTED_PACKAGE)
-  assert.deepEqual(baseline.successor_policy, {
-    candidate_version: CANDIDATE_VERSION,
-    changed_packed_paths: ['compatibility/current.gen.json', 'package.json'],
-    added_packed_paths: [CANDIDATE_PATH],
-    version_only_paths: ['package.json', 'package-lock.json'],
-  })
+  assert.deepEqual(baseline.successor_policy, expectedSuccessorPolicy)
 
   const historicalCandidate = parseJson(
     getHistorical(HISTORICAL_CANDIDATE_PATH),
@@ -224,9 +238,20 @@ export function verifyCandidateContent({
   })
   const getCurrent = (path) => outputs?.get(path) ?? currentBytes(path)
 
+  // Structural equivalence: the current package.json, stripped of the
+  // zone-v1 lineage increment (its export subpaths and packed paths), must
+  // match the historical package.json with only the version field replaced.
+  // Key order and formatting stay unconstrained; every other field must
+  // remain equal.
+  const currentPackageJson = parseJson(getCurrent('package.json'), 'package.json')
+  for (const key of ZONE_V1_EXPORT_KEYS) delete currentPackageJson.exports[key]
+  currentPackageJson.files = currentPackageJson.files.filter((path) => !ZONE_V1_PACKED_PATH_SET.has(path))
   assert.deepEqual(
-    getCurrent('package.json'),
-    expectedVersionOnlyBytes(getHistorical('package.json'), HISTORICAL_VERSION, CANDIDATE_VERSION, 1, 'package.json'),
+    currentPackageJson,
+    parseJson(
+      expectedVersionOnlyBytes(getHistorical('package.json'), HISTORICAL_VERSION, CANDIDATE_VERSION, 1, 'package.json'),
+      'historical package.json',
+    ),
     'package.json must differ from 0.2.0 only by its package version',
   )
   assert.deepEqual(
