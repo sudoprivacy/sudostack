@@ -1,17 +1,17 @@
 # ARM64 部署
 
-发布、离线包和安装流程支持 `amd64` 与 `arm64`，架构由版本锁中的 `architecture` 固定。本次 ARM64 交付目标为 `sudostack-v0.0.1-rc.8-arm64`。**整包尚未发布：须等下列组件正式 Release 齐备、整包 CI 和 166 的 COS 清空重装验收完成。** 已有 `sudostack-v0.0.1-rc.7` 仍为 amd64 包。
+发布、离线包和安装流程支持 `amd64` 与 `arm64`，架构由版本锁中的 `architecture` 固定。本次 ARM64 交付目标为 `sudostack-v0.0.1-rc.8-arm64`。**整包尚未发布。** 组件 Release 齐备后，先通过整包 CI 发布固定 COS 版本目录，再在 166 验证首装及清空重装；全部通过后更新 ARM64 latest 入口。 已有 `sudostack-v0.0.1-rc.7` 仍为 amd64 包。
 
 ## 组件与来源
 
 各仓库按 commit → PR → 合并 → tag Release 发布，套件只使用正式发布的附件及其 SHA256。开发分支的临时 CI 附件不进入最终版本锁。
 
-| 组件 | 本次固定版本计划 | 源码 PR |
+| 组件 | 本次固定版本 | 源码 PR |
 | --- | --- | --- |
-| Moss | `server-v0.1.60-rc.arm64.20261015` | [#384](https://github.com/sudoprivacy/moss/pull/384) |
-| SudoWork WebUI | `v0.2.32-rc.arm64.20261015` | [#1253](https://github.com/sudoprivacy/sudowork/pull/1253) |
+| Moss | [`server-v0.1.60-rc.arm64.20261015`](https://github.com/sudoprivacy/moss/releases/tag/server-v0.1.60-rc.arm64.20261015) | [#384](https://github.com/sudoprivacy/moss/pull/384) |
+| SudoWork WebUI | [`v0.2.32-rc.arm64.20261015`](https://github.com/sudoprivacy/sudowork/releases/tag/v0.2.32-rc.arm64.20261015) | [#1253](https://github.com/sudoprivacy/sudowork/pull/1253) |
 | SudoRouter | [`sudorouter-v0.0.1-rc.2`](https://github.com/sudoprivacy/new-api/releases/tag/sudorouter-v0.0.1-rc.2) | [协议修复 #30](https://github.com/sudoprivacy/new-api/pull/30)、[ARM 打包 #29](https://github.com/sudoprivacy/new-api/pull/29) |
-| Sudocode | `v0.2.32`、配套 `nexusd-cohost-v0.2.32` | [#959](https://github.com/sudoprivacy/sudocode/pull/959) |
+| Sudocode | [`v0.2.32`](https://github.com/sudoprivacy/sudocode/releases/tag/v0.2.32)、配套 [`nexusd-cohost-v0.2.32`](https://github.com/sudoprivacy/sudocode/releases/tag/nexusd-cohost-v0.2.32) | [#959](https://github.com/sudoprivacy/sudocode/pull/959) |
 | Nexus / Vault | `v0.8.15` / `vault-v0.5.68`，plugin ABI 7 | 使用已有 ARM64 Release |
 | k3s / gVisor | `v1.34.1+k3s1` / `release-20261005.0` | 使用已有 ARM64 Release |
 
@@ -71,7 +71,8 @@ gh workflow run deployment-release.yml -R sudoprivacy/sudostack \
 
 - gVisor ARM64 原生 systrap 沙箱运行 `/bin/sh` 和 `uname`。
 - SudoRouter 正式 rc.2 包校验、ARM64 启动及 HTTP 版本 `0.0.1-rc.2` 验证。
-- Sudocode ARM64 bundle 安装、执行、卸载及真实 deb 解包执行；RC 0.2.32-rc.1 的包版本与 Cargo 二进制版本 0.2.32 分别核对。
-- Sudostack 当时的 61 项部署测试在 root 下全部通过；随后增加完整 Runtime 版本匹配回归，本地 62 项中 58 通过、4 项 root 入口测试由 Linux CI 执行。
+- Sudocode 正式 `v0.2.32` ARM64 bundle/deb 从 COS 下载，校验摘要、隔离安装、执行、卸载及真实 deb 解包执行全部通过。
+- SudoWork 正式 RC 的 COS 双架构归档与 GitHub Release 摘要一致；166 上 ARM64 原生 PTY、PostgreSQL 初始化/迁移、HTTP 健康检查和页面资源通过。隔离测试资源已清理，旧服务保持运行。
+- Sudostack 的 62 项部署回归测试在 166 的 root 环境全部通过，覆盖完整 Runtime 版本匹配及 root 安装入口。
 
 旧 Moss、WebUI、k3s-agent 的备份已完成且切换已获授权。整包 COS 首装及清空重装尚未执行，须以最终版本的实机验收结果为准。
