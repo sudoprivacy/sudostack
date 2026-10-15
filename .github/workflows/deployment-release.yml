@@ -231,7 +231,7 @@ jobs:
           assert source['head_repository']['full_name'] == os.environ['GH_REPO']
           assert source['head_branch'] == os.environ['GITHUB_REF_NAME']
           PYRUN
-          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN/jobs?per_page=100" > source-jobs.json
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN/jobs?per_page=100&filter=all" > source-jobs.json
           python3 - <<'PYJOBS'
           import json
           jobs = json.load(open('source-jobs.json'))['jobs']
@@ -254,6 +254,7 @@ jobs:
           bundle = json.load(open('bundle.json'))
           assert bundle['release'] == 'sudostack-v' + lock['version']
           assert bundle['architecture'] == lock['architecture']
+          assert json.load(open('components.lock.json')) == lock
           PYLOCK
       - name: Publish immutable COS release and selected installer entrypoints
         env:
