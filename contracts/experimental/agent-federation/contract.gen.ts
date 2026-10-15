@@ -1,4 +1,4 @@
-// Derived from Moss dd0b29f36d574ad07e288870034f9ba18ba95cba:contracts/agent-federation/v1alpha1/contract.ts. DO NOT EDIT.
+// Derived from Moss 4dc9f1edf7a14761a1a27436cdfd8447075a6e12:contracts/agent-federation/v1alpha1/contract.ts. DO NOT EDIT.
 /** Moss-owned federation boundary. Experimental; ADR-003/004 remain Proposed. */
 export const AGENT_FEDERATION_API = 'agent-federation.sudo.dev/v1alpha1' as const
 export const AGENT_HTTP_API = 'agent-http.sudo.dev/v1alpha1' as const

@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/sudoprivacy/moss",
-  "revision": "dd0b29f36d574ad07e288870034f9ba18ba95cba",
+  "revision": "4dc9f1edf7a14761a1a27436cdfd8447075a6e12",
   "semanticOwner": "moss",
   "maturity": "experimental-adapter-baseline",
   "apiVersion": "agent-federation.sudo.dev/v1alpha1",
