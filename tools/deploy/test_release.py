@@ -335,6 +335,13 @@ class ReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'linux/arm64'):
             release.verify_image_archive(path, ['sudowork-webui:0.2.28'], 'arm64')
 
+    def test_runtime_prerelease_cannot_satisfy_a_stable_version_lock(self):
+        release.verify_runtime_version('scode 0.2.32\n', '0.2.32')
+        release.verify_runtime_version('scode 0.2.32-rc.1\n', '0.2.32-rc.1')
+        for output in ('scode 0.2.32-rc.1', 'scode 0.2.32+local', 'scode 0.2.320', 'scode 10.2.32'):
+            with self.subTest(output=output), self.assertRaisesRegex(ValueError, 'locked Sudocode version'):
+                release.verify_runtime_version(output, '0.2.32')
+
     def test_fetch_rejects_paths_before_network_access(self):
         for name in ('../outside', '/absolute', 'offline/../../outside', './file'):
             with self.subTest(name=name), patch.object(artifacts, 'download') as download:

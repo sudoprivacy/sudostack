@@ -171,6 +171,11 @@ def verify_image_archive(path, expected_refs, architecture='amd64'):
             raise ValueError('Invalid Docker image archive: ' + path.name) from error
 
 
+def verify_runtime_version(output, locked_version):
+    if locked_version not in output.split():
+        raise ValueError('The Moss runtime does not contain the locked Sudocode version')
+
+
 def extract_file(archive_path, member_name, destination, executable=False):
     with tarfile.open(archive_path) as archive:
         member = archive.getmember(member_name)
@@ -305,8 +310,7 @@ def assemble(lock, resolved, assets):
     verify_image_archive(assets / runtime_archive, [runtime_image], arch)
     subprocess.run(['docker', 'load', '-i', str(assets / runtime_archive)], check=True)
     scode_version = subprocess.check_output(['docker', 'run', '--rm', '--entrypoint', 'scode', runtime_image, '--version'], text=True)
-    if not re.search(r'(?<![0-9.])' + re.escape(c['sudocode']['version']) + r'(?![0-9.])', scode_version):
-        raise ValueError('The Moss runtime does not contain the locked Sudocode version')
+    verify_runtime_version(scode_version, c['sudocode']['version'])
 
     metadata = {
         'release': 'sudostack-v' + version, 'version': version, 'architecture': arch,
