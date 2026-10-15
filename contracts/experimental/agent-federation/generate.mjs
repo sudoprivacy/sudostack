@@ -7,6 +7,8 @@ const root = dirname(fileURLToPath(import.meta.url))
 const files = {
   'contracts/agent-federation/v1alpha1/contract.ts': 'contract.gen.ts',
   'contracts/agent-federation/v1alpha1/schema.json': 'schema.gen.json',
+  'contracts/agent-http/v1alpha2/contract.ts': 'agent-http.contract.gen.ts',
+  'contracts/agent-http/v1alpha2/schema.json': 'agent-http.schema.gen.json',
   'contracts/task/v1alpha1/contract.ts': 'task.contract.gen.ts',
   'contracts/task/v1alpha1/schema.json': 'task.schema.gen.json',
 }
@@ -28,7 +30,7 @@ export function renderFederationFile(lock, path, source) {
   if (source.includes('\r') || !source.endsWith('\n')) throw new Error('Owner source must use LF with a final newline')
   if (path.endsWith('.json')) {
     const schema = JSON.parse(source)
-    if (schema.$schema !== 'https://json-schema.org/draft/2020-12/schema' || schema.$id !== (path.startsWith('contracts/task/') ? 'https://schemas.sudo.dev/experimental/task/v1alpha1' : 'https://schemas.sudo.dev/experimental/agent-federation/v1alpha1')) throw new Error('Invalid federation schema identity')
+    if (schema.$schema !== 'https://json-schema.org/draft/2020-12/schema' || schema.$id !== (path.startsWith('contracts/task/') ? 'https://schemas.sudo.dev/experimental/task/v1alpha1' : path.startsWith('contracts/agent-http/') ? 'https://schemas.sudo.dev/agent-http/v1alpha2' : 'https://schemas.sudo.dev/experimental/agent-federation/v1alpha1')) throw new Error('Invalid federation schema identity')
     return source
   }
   return `// Derived from Moss ${lock.revision}:${path}. DO NOT EDIT.\n${source}`

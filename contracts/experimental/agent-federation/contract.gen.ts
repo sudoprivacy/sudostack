@@ -1,4 +1,4 @@
-// Derived from Moss 4dc9f1edf7a14761a1a27436cdfd8447075a6e12:contracts/agent-federation/v1alpha1/contract.ts. DO NOT EDIT.
+// Derived from Moss 9f6456de38de159821fdbac415d6ea51a7a60768:contracts/agent-federation/v1alpha1/contract.ts. DO NOT EDIT.
 /** Moss-owned federation boundary. Experimental; ADR-003/004 remain Proposed. */
 export const AGENT_FEDERATION_API = 'agent-federation.sudo.dev/v1alpha1' as const
 export const AGENT_HTTP_API = 'agent-http.sudo.dev/v1alpha1' as const
@@ -24,7 +24,9 @@ export interface CustomAgentManifest {
   description?: string
   source_revision: string
   execution_mode: 'external_hosted'
-  protocol: typeof AGENT_HTTP_API
+  protocol: typeof AGENT_HTTP_API | 'agent-http.sudo.dev/v1alpha2'
+  /** Required for durable HTTP; legacy profiles cannot assert an execution revision. */
+  execution_revision?: string
   input_profile: 'query_only_v1'
   output_profile: 'text_v1'
   capabilities: ProviderCapabilities
@@ -51,8 +53,9 @@ export interface ExternalRunBinding extends TaskCorrelation {
   adapter_version: string
   observability: 'partial'
   replay: 'unsupported'
-  resume: 'unsupported'
-  version_evidence: 'source_snapshot_only'
+  resume: 'unsupported' | 'query_only'
+  version_evidence: 'source_snapshot_only' | 'provider_revision_fenced'
+  execution_revision?: string
   started_at: string
   completed_at?: string
 }
@@ -88,4 +91,67 @@ export interface HttpAgentResult {
   provider_session_id?: string
   status: 'succeeded' | 'failed'
   output: { text: string }
+}
+
+/** Product publication identity; this registry record is not a Nexus certificate or ReBAC grant. */
+export interface AgentExecutionSnapshot {
+  provider_kind?: 'dify' | 'custom_http'
+  endpoint: string
+  app_id: string
+  workspace_id: string
+  source_digest: string
+  sourceManifest?: CustomAgentManifest
+  parametersDigest: string | null
+  decoder: 'text' | 'reply_actions_v1'
+  definitionProfileVersion?: number
+}
+export interface AgentVersionManifest {
+  api_version: typeof AGENT_FEDERATION_API
+  kind: 'AgentVersionManifest'
+  principal: { trust_domain: string; agent_name: string }
+  version: string
+  spec_digest: string
+  snapshot: AgentExecutionSnapshot
+  created_by: string
+  created_at: number
+}
+export interface AgentChannel {
+  name: 'stable' | 'canary'
+  version: string
+  revision: number
+  updated_at: number
+  enabled: boolean
+}
+export interface AgentVersionDecision {
+  id: string
+  decision: 'approved' | 'revoked'
+  actor_id: string
+  note: string
+  expires_at: number
+  created_at: number
+}
+export interface AgentVersionsPage {
+  api_version: typeof AGENT_FEDERATION_API
+  kind: 'AgentVersionsPage'
+  principal: { trust_domain: string; agent_name: string }
+  items: (AgentVersionManifest & { decisions: AgentVersionDecision[] })[]
+  channels: AgentChannel[]
+  next_cursor: string | null
+}
+
+/** Authorized user projection; never includes endpoint, prompts, credentials or reviewer notes. */
+export interface AgentReleaseOptions {
+  api_version: typeof AGENT_FEDERATION_API
+  kind: 'AgentReleaseOptions'
+  catalog_id: string
+  principal: AgentVersionManifest['principal']
+  items: {
+    version: string
+    source_digest: string
+    spec_digest: string
+    execution_revision?: string
+    approval_expires_at: number
+  }[]
+  channels: AgentChannel[]
+  next_cursor: string | null
 }
