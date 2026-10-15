@@ -50,13 +50,13 @@ COS 包名为 `sudostack-<版本>-linux-arm64.tar.gz`。入口脚本、`bundle.j
 
 当前固定 gVisor 使用默认 4 KB 页大小构建，因此 ARM64 主机的 `getconf PAGE_SIZE` 必须为 `4096`。上游对 64 KB 页使用[独立的 `pagesize_64k` 构建标记](https://github.com/google/gvisor/blob/release-20261005.0/pkg/hostarch/hostarch_arm64.go)，本流程尚未发布或验收该变体。Ubuntu 24.04、4 KB 页的 ARM64 主机可作为原生验收目标。
 
-安装配置仍限于单节点 k3s。若目标机已加入双节点或更大的集群，安装器会在创建安装目录、修改 k3s 配置或重启服务之前退出。已有模型服务与 Traefik 的集群需要单独设计集群部署方案；不能直接套用会关闭 Traefik 的 `--manage-k3s` 单节点流程。
+安装配置仍限于单节点 k3s。若目标机已加入双节点或更大的集群，安装器会在创建安装目录、修改 k3s 配置或重启服务之前退出。正在运行的 k3s-agent 会被直接拒绝；已有 k3s server 的 API 不可访问时也会停止安装，不将其当成空环境。已有模型服务与 Traefik 的集群需要单独设计集群部署方案；不能直接套用会关闭 Traefik 的 `--manage-k3s` 单节点流程。
 
 ## 本地验证记录（2026-10-15）
 
 | 仓库 | 验证结果 |
 | --- | --- |
-| Sudostack | `python3 -m unittest discover -s tools/deploy -p 'test_*.py'`：55 通过，4 项 root 入口测试跳过；CI 使用 sudo 执行完整测试 |
+| Sudostack | `python3 -m unittest discover -s tools/deploy -p 'test_*.py'`：57 通过，4 项 root 入口测试跳过；CI 使用 sudo 执行完整测试 |
 | Moss | `deploy/k3s/test_control.py` 与 `deploy/test_fetch_scode.py`：7 通过；scode 路径及发布回归测试：19 通过 |
 | SudoWork | `apps/webui/tests/unit/deployScript.test.ts`：15 通过（含 ARM64 安装、双架构校验清单及错误架构拒绝）；单文件 ESLint/Prettier 与 WebUI `bun run typecheck` 通过 |
 | Sudocode | bundle 安装/卸载与 deb 打包脚本测试对 amd64、arm64 均通过；本地 deb 测试使用打包工具替身，原生 CI 额外检查真实 deb 架构 |

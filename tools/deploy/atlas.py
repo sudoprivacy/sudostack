@@ -141,10 +141,17 @@ def validate_host(manifest):
 
 
 def preflight_existing_cluster():
+    systemctl = shutil.which('systemctl')
+    if systemctl and subprocess.run([systemctl, 'is-active', '--quiet', 'k3s-agent'],
+                                   capture_output=True, timeout=10).returncode == 0:
+        raise ValueError('An existing k3s-agent is running; detach this host from its cluster before installing the single-node profile')
     if not shutil.which('k3s'):
         return
     probe = subprocess.run(['k3s', 'kubectl', 'get', 'nodes', '--request-timeout=10s', '-o', 'json'],
                            capture_output=True, text=True, timeout=15)
+    if probe.returncode and systemctl and subprocess.run([systemctl, 'is-active', '--quiet', 'k3s'],
+                                                        capture_output=True, timeout=10).returncode == 0:
+        raise ValueError('Cannot inspect the existing active k3s cluster; restore API access before installing')
     if probe.returncode == 0 and len(json.loads(probe.stdout)['items']) > 1:
         raise ValueError('This profile supports one k3s node; the existing multi-node cluster cannot be managed by this installer')
 

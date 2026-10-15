@@ -181,13 +181,36 @@ class ReleaseTests(unittest.TestCase):
         args = SimpleNamespace(root=self.root / 'installation', assets=assets, chart=chart)
         nodes = subprocess.CompletedProcess([], 0, json.dumps({'items': [{}, {}]}))
         with patch.object(atlas, 'validate_host', return_value='arm64'), \
-             patch.object(atlas.shutil, 'which', return_value='/usr/local/bin/k3s'), \
+             patch.object(atlas.shutil, 'which', side_effect=lambda name: '/usr/local/bin/k3s' if name == 'k3s' else None), \
              patch.object(atlas.subprocess, 'run', return_value=nodes) as run:
             with self.assertRaisesRegex(ValueError, 'existing multi-node cluster'):
                 atlas.install(args)
             run.assert_called_once()
             self.assertEqual(run.call_args.args[0][:4], ['k3s', 'kubectl', 'get', 'nodes'])
         self.assertFalse(args.root.exists())
+
+    def test_existing_agent_without_admin_kubeconfig_is_rejected_before_mutation(self):
+        assets, chart = self.root / 'assets', self.root / 'chart'
+        assets.mkdir()
+        chart.mkdir()
+        (chart / 'Chart.yaml').write_text('name: atlas-mvp')
+        (assets / 'atlas-release.json').write_text('{"architecture":"arm64"}')
+        args = SimpleNamespace(root=self.root / 'installation', assets=assets, chart=chart)
+        with patch.object(atlas, 'validate_host', return_value='arm64'), \
+             patch.object(atlas.shutil, 'which', side_effect=lambda name: '/usr/bin/' + name), \
+             patch.object(atlas.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0)) as run:
+            with self.assertRaisesRegex(ValueError, 'existing k3s-agent'):
+                atlas.install(args)
+            run.assert_called_once()
+            self.assertEqual(run.call_args.args[0], ['/usr/bin/systemctl', 'is-active', '--quiet', 'k3s-agent'])
+        self.assertFalse(args.root.exists())
+
+    def test_unreadable_active_server_cluster_is_not_treated_as_a_clean_host(self):
+        responses = [subprocess.CompletedProcess([], 3), subprocess.CompletedProcess([], 1), subprocess.CompletedProcess([], 0)]
+        with patch.object(atlas.shutil, 'which', side_effect=lambda name: '/usr/bin/' + name), \
+             patch.object(atlas.subprocess, 'run', side_effect=responses):
+            with self.assertRaisesRegex(ValueError, 'Cannot inspect the existing active k3s cluster'):
+                atlas.preflight_existing_cluster()
 
     def test_router_release_requires_all_components_and_an_immutable_base(self):
         for mutate in (lambda lock: lock['components'].pop('router'),
