@@ -1,12 +1,14 @@
 # sudostack 版本化交付与单节点 k3s 部署
 
+[部署与发布总览](../../DEPLOYMENT.md) · [全部版本](../../DEPLOYMENT.md#选择版本)
+
 每个 sudostack 版本固定一套子组件及其部署文件。`manifests/deployment/0.0.1.json` 是 `0.0.1` 的版本组合；Git tag `sudostack-v0.0.1` 冻结该清单及本仓库的 Chart、安装器和运维脚本。升级任一组件或部署文件均应发布新的 sudostack 版本。
 
 CI 生成的 `atlas-release.json` 进一步记录各资源的来源 URL、组件版本、Release asset ID、SHA256，以及构建 Nexus/Caddy 时取得的 registry digest。客户安装时只读取该 Release 的清单，不解析任何子组件的 `latest`。构建输入清单随同发布为 `components.lock.json`。
 
-当前候选是 [`sudostack-v0.0.1-rc.7`](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.7)，其冻结清单为 `manifests/deployment/0.0.1-rc.7.json`；正式 `0.0.1` 尚未发布。rc.7 包含 SudoRouter，提供 CI 构建并验收的 COS 完整离线包，复用 rc.2 的既有制品，锁定 Moss 集成候选 `server-v0.1.53-atlas.1`。该候选由 Moss CI 生成拆分 Server 镜像、部署助手和 Nexus 引导脚本。CI 在下载大文件前检查上游 Release 附件，并检查 Runtime 内实际 Sudocode 版本；不能用开发机手工打包文件填补发布缺口。
+本页使用 amd64 候选 [`sudostack-v0.0.1-rc.7`](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.7)，其冻结清单为 `manifests/deployment/0.0.1-rc.7.json`；正式 `0.0.1` 尚未发布。rc.7 包含 SudoRouter，提供 CI 构建并验收的 COS 完整离线包，复用 rc.2 的既有制品，锁定 Moss 集成候选 `server-v0.1.53-atlas.1`。该候选由 Moss CI 生成拆分 Server 镜像、部署助手和 Nexus 引导脚本。CI 在下载大文件前检查上游 Release 附件，并检查 Runtime 内实际 Sudocode 版本；不能用开发机手工打包文件填补发布缺口。
 
-| 组件 | `0.0.1` 的版本组合 | 资源归属 |
+| 组件 | amd64 rc.7 的版本组合 | 资源归属 |
 | --- | --- | --- |
 | Moss Server / Session Runtime | `server-v0.1.53-atlas.1` | `sudoprivacy/moss` 的 CI Release 镜像包 |
 | Sudocode | `v0.2.23` | `sudoprivacy/sudocode`；CI 检查 Runtime 内实际版本 |
@@ -22,7 +24,7 @@ Nexus Broker 的部署镜像由 sudostack CI 组装上述固定 daemon、Vault �
 
 本入口装配 Moss Server、Nexus Broker、SudoWork WebUI、PostgreSQL、Caddy、SudoRouter；Sudocode 随 Runtime 镜像运行在按需创建的 gVisor Pod 中。业务服务使用 Helm/k3s 管理。宿主机 systemd 只管理 k3s 基础设施。
 
-适用范围：单节点 Linux amd64、本地 local-path 存储、独立命名空间 `atlas-system` 和 `moss-sessions`。CI 在全新 Ubuntu 22.04 runner 上执行安装、登录/会话、重复安装和重启恢复，全部通过后才发布到 COS。各版本状态见 [部署发布 CI](https://github.com/sudoprivacy/sudostack/actions/workflows/deployment-release.yml)，验收报告保存在对应运行的 `sudostack-installation-evidence` artifact 中。Ubuntu 24.04 验收及正式供应链签名尚未完成。
+适用范围：单节点 Linux amd64、本地 local-path 存储、独立命名空间 `atlas-system` 和 `moss-sessions`。CI 在全新 Ubuntu 22.04 runner 上执行安装、登录/会话、重复安装和重启恢复，全部通过后才发布到 COS。各版本状态见 [部署发布 CI](https://github.com/sudoprivacy/sudostack/actions/workflows/deployment-release.yml)，验收报告保存在对应运行的 `sudostack-installation-evidence` artifact 中。本页 amd64 示例的 CI 使用 Ubuntu 22.04；正式供应链签名尚未完成。
 
 ARM64 的 rc.8 完整包已发布，rc.9 安装器修复候选及 166 实机记录见 [ARM64 部署](arm64.md)。两种架构均沿用单节点要求；安装器会在修改 k3s 配置前拒绝已有的多节点集群。
 

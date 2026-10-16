@@ -2,7 +2,7 @@
 
 **测试候选：原生 ARM64 CI、166 从 COS 首装及清空重装均已通过，测试环境已清理。GitHub Release 尚未创建，ARM64 latest 尚未推广。** [PR #55](https://github.com/sudoprivacy/sudostack/pull/55)。
 
-[返回全部版本](../../.github/README.md#整包版本与组件清单) · [快速发布](../../.github/README.md#快速发布新整包) · [完整发版步骤](../../docs/deployment/releasing.md)
+[返回全部版本](../../DEPLOYMENT.md#选择版本) · [快速发布](../../DEPLOYMENT.md#修改组件并发布新整包) · [完整发版步骤](../../docs/deployment/releasing.md)
 
 [本版组件锁](../../manifests/deployment/0.0.1-rc.9-arm64.json)。业务组件与 rc.8 ARM64 一致，更新安装器、环境检查、TLS 诊断与访问摘要。
 

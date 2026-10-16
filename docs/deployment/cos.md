@@ -1,8 +1,10 @@
 # COS 完整离线包
 
+[部署与发布总览](../../DEPLOYMENT.md) · [全部版本](../../DEPLOYMENT.md#选择版本)
+
 目标机通过 COS 下载一份完整压缩包，校验后本地安装。部署阶段不再访问 GitHub、Docker Hub、npm 或 Helm 下载站。Python、curl、openssl 等系统基础依赖需预先安装；Ubuntu 软件源与部署制品下载是两个独立步骤。
 
-本页文件名示例为 amd64 rc.7；已发布的 ARM64 rc.8 见 [完整发布清单与下载地址](../../releases/0.0.1-rc.8-arm64/README.md)。组件版本变更和新整包发布步骤见 [发版操作手册](releasing.md)。
+本页文件名示例为 amd64 rc.7；ARM64 请从 [部署总览](../../DEPLOYMENT.md#选择版本) 选择版本。组件版本变更和新整包发布步骤见 [发版操作手册](releasing.md)。
 
 发布桶沿用 Moss 的 `sudowork-release-1309794936`，sudostack 使用独立前缀：
 

@@ -1,6 +1,6 @@
 # 修改组件版本并发布新的 Sudostack 整包
 
-一个套件版本锁对应一种架构、一组组件版本、一份通过安装验收的完整归档。从 [全部版本](../../.github/README.md#整包版本与组件清单) 进入各版本 README，查看组件、下载、安装、清理和更新命令。已发布的 ARM64 固定版见 [rc.8 发布清单](../../releases/0.0.1-rc.8-arm64/README.md)；安装器修复候选及实机验收状态见 [rc.9 ARM64](../../releases/0.0.1-rc.9-arm64/README.md)。ARM64 latest 尚未推广。
+一个套件版本锁对应一种架构、一组组件版本、一份通过安装验收的完整归档。从 [全部版本](../../DEPLOYMENT.md#选择版本) 进入各版本 README，查看组件、下载、安装、清理和更新命令。已发布的 ARM64 固定版见 [rc.8 发布清单](../../releases/0.0.1-rc.8-arm64/README.md)；安装器修复候选及实机验收状态见 [rc.9 ARM64](../../releases/0.0.1-rc.9-arm64/README.md)。ARM64 latest 尚未推广。
 
 ## 发布清单保存在哪里
 
@@ -12,6 +12,7 @@
 | `bundle.json` | 完整包文件名、大小、SHA256，以及 COS 交付文件摘要 | COS |
 | `SHA256SUMS` | 同一下载目录中各文件的 SHA256 | GitHub 与 COS 分别生成，校验范围不同 |
 | `README.md` | 由实际 manifest 和 bundle 自动生成的组件表、下载入口、逐文件清单 | 新版发布 CI 的 GitHub 附件与 Release 正文 |
+| `DEPLOYMENT.md` / `releases/<版本>/README.md` | 仓库统一部署入口、各版本说明及发布状态 | 正式发布成功后由 `sync-docs` 自动提交到默认分支 |
 
 rc.8 已发布制品保持原有字节；本次为其补充发布说明和仓库清单。后续包含本次流水线改动的 tag 会自动生成 `README.md`。它作为 GitHub 交付说明，不加入运行时完整包，也不改变 COS descriptor 格式。
 
@@ -121,7 +122,23 @@ https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releas
 
 tag 默认 `cos_mode=release-only`，成功发布固定目录也不会自动更新 latest。公开下载无需凭据；COS 写入由仓库 Actions secrets `TENCENT_SECRET_ID` / `TENCENT_SECRET_KEY` 提供。
 
+GitHub Release 与 COS 都发布成功后，`sync-docs` 读取实际已发布 manifest / bundle 和固定 Moss tag 的运行时锁，生成该版本 README、发布元数据，并更新根目录 `DEPLOYMENT.md` 的版本表。它将这三份文档一起提交到默认分支；同一版本可重复同步，其他版本和总览正文保留。166 验收只有在记录中的归档摘要匹配时才会写入该版状态。发布任务应连同 `sync-docs` 一起检查；若文档推送失败，处理分支更新后重跑该作业。
+
 如果 GitHub 已成功而 COS 上传失败，修复发布环境后从**原 tag、原成功的 assemble/qualify 作业**重跑失败作业，复用现有 artifact；不要重新压缩或重建已发布版本。脚本允许相同对象继续上传，遇到同名但摘要/大小不同的不可变对象会拒绝覆盖。`publish_run` 快捷复用要求来源整次 run 为 success，不能拿失败的 run 绕过此检查。
+
+### 候选已上传 COS，补发同版本 GitHub Release
+
+当 COS 目录已经固定且原始 CI artifact 仍在时，使用新发布流程复用原始制品，无需重新构建。以下变量必须对应同一个已成功完成 `assemble` 和 `qualify` 的来源 run：
+
+```bash
+ATLAS_VERSION="实际已验收的套件版本"
+ATLAS_SOURCE_RUN="原始成功的run-id"
+gh workflow run deployment-release.yml -R sudoprivacy/sudostack \
+  --ref main -f version="$ATLAS_VERSION" -f publish_run="$ATLAS_SOURCE_RUN" \
+  -f publish_github=true -f cos_mode=release-only
+```
+
+该路径校验来源仓库、workflow、成功作业、当前版本锁、GitHub 附件摘要和 COS manifest。它原样复用安装制品，仅生成外层发布文档；tag 指向原始 CI 的源码提交。使用工作流的 `GITHUB_TOKEN` 创建 tag / Release，不触发再次构建同版本的递归流水线。此选项仅接受 `release-only`，不推广 latest；随后同样自动同步 `DEPLOYMENT.md`。普通 latest 复用仍要求来源 run 与所选 tag 一致。
 
 ## 5. 实机首装、清空重装，再推广 latest
 

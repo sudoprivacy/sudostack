@@ -2,7 +2,7 @@
 
 **规划版本，尚未发布，也没有提交专用版本锁或进行 amd64 组装验收。** 下表是拟采用的组件组合，不能据此声称已有 amd64 整包。
 
-[返回全部版本](../../.github/README.md#整包版本与组件清单) · [快速发布](../../.github/README.md#快速发布新整包) · [完整发版步骤](../../docs/deployment/releasing.md)
+[返回全部版本](../../DEPLOYMENT.md#选择版本) · [快速发布](../../DEPLOYMENT.md#修改组件并发布新整包) · [完整发版步骤](../../docs/deployment/releasing.md)
 
 准备此架构时需新增 `manifests/deployment/0.0.1-rc.9-amd64.json`，设 `architecture=amd64` 并核对 amd64 Sudocode 附件摘要；单独提交版本锁 PR，通过原生 CI 后再发 tag。
 

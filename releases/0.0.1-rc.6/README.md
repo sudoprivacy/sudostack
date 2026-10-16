@@ -157,4 +157,4 @@ GitHub Release 在原生 CI 安装、同版本重复安装和会话重启恢复�
 
 </details>
 
-[返回全部版本](../../.github/README.md#整包版本与组件清单)
+[返回全部版本](../../DEPLOYMENT.md#选择版本)

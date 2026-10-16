@@ -10,6 +10,7 @@ from cos_bundle import checksum, descriptor, https_base
 
 COS_BASE = 'https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack'
 GUIDE = 'https://github.com/sudoprivacy/sudostack/blob/main/docs/deployment/releasing.md'
+OVERVIEW = 'https://github.com/sudoprivacy/sudostack/blob/main/DEPLOYMENT.md'
 LABELS = {'moss': 'Moss Server / Runtime / 部署助手', 'webui': 'SudoWork WebUI',
           'router': 'SudoRouter', 'sudocode': 'Sudocode', 'nexus': 'Nexus cluster',
           'vault': 'Nexus Vault', 'k3s': 'k3s', 'gvisor': 'gVisor', 'helm': 'Helm',
@@ -101,6 +102,8 @@ def render(manifest_path, bundle_path, cos_base=COS_BASE, run_url=None):
                           for filename, item in manifest['buildInputs'][name].items())
 
     lines = [f'# Sudostack {lock["version"]}', '',
+             link('部署与发布总览', OVERVIEW) + ' · ' + link('全部版本', OVERVIEW + '#选择版本')
+             + ' · ' + link('快速发布', OVERVIEW + '#修改组件并发布新整包'), '',
              f'平台：**Linux {data["architecture"]}**。完整包：**{info["size"]:,} 字节**'
              f'（约 {info["size"] / 1024**3:.2f} GiB）。', '',
              '## 整包与交付文件', '', '| 文件 | 下载地址 |', '| --- | --- |']

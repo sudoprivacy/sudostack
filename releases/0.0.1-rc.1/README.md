@@ -1,6 +1,6 @@
 # Sudostack 0.0.1-rc.1
 
-[GitHub Release](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.1) · [返回全部版本](../../.github/README.md#整包版本与组件清单)
+[GitHub Release](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.1) · [返回全部版本](../../DEPLOYMENT.md#选择版本)
 
 历史分项发布。未发现该版本的 COS 完整包 descriptor；请使用该版 GitHub 发布清单中的来源下载，不能套用新版 COS 整包地址。
 
@@ -72,7 +72,7 @@ Moss Runtime 的内嵌版本见 [该 Moss tag 的运行时锁](https://github.co
 
 安装与主机要求见 [部署文档](../../DEPLOYMENT.md)；该历史包的架构固定为 amd64。
 
-后续发版见 [首页快速发布](../../.github/README.md#快速发布新整包)。
+后续发版见 [快速发布新整包](../../DEPLOYMENT.md#修改组件并发布新整包)。
 
 ## 清理环境
 

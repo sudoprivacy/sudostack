@@ -165,4 +165,4 @@ GitHub Release 在原生 CI 安装、同版本重复安装和会话重启恢复�
 
 </details>
 
-[返回全部版本](../../.github/README.md#整包版本与组件清单) · [快速发布](../../.github/README.md#快速发布新整包)
+[返回全部版本](../../DEPLOYMENT.md#选择版本) · [快速发布](../../DEPLOYMENT.md#修改组件并发布新整包)

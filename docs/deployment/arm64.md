@@ -1,5 +1,7 @@
 # ARM64 部署
 
+[部署与发布总览](../../DEPLOYMENT.md) · [全部版本](../../DEPLOYMENT.md#选择版本)
+
 发布、离线包和安装流程支持 `amd64` 与 `arm64`，架构由版本锁中的 `architecture` 固定。[rc.8 ARM64](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.8-arm64) 已发布 GitHub Release 和 COS 固定包；[rc.9 ARM64](../../releases/0.0.1-rc.9-arm64/README.md) 是修复安装器后的 COS 测试候选，实机记录见下文。ARM64 latest 尚未推广。已有 `sudostack-v0.0.1-rc.7` 仍为 amd64 包。
 
 ## 组件与来源
@@ -31,14 +33,14 @@ Sudocode 从 0.2.32 起补齐 Linux ARM64 bundle/deb，ARM64 二进制要求 gli
 
 ## 从 COS 安装
 
-固定版本安装入口：
+以下使用已完成 166 验收的 rc.9 ARM64，发布状态见 [版本 README](../../releases/0.0.1-rc.9-arm64/README.md)。rc.8 的原始下载命令保留在其自己的版本页。
 
 ```bash
-curl -fsSL https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.8-arm64/install-cos.sh -o install-cos.sh
+curl -fsSL https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/install-cos.sh -o install-cos.sh
 sudo bash install-cos.sh --host "你的服务器IP或域名" --root /data/atlas --manage-k3s
 ```
 
-安装器从 COS 下载包含全部依赖的 `sudostack-0.0.1-rc.8-arm64-linux-arm64.tar.gz`，校验整包和内部文件后执行本地安装。入口脚本、`bundle.json`、包内 `atlas-release.json` 的架构必须一致。
+安装器从 COS 下载包含全部依赖的 `sudostack-0.0.1-rc.9-arm64-linux-arm64.tar.gz`，校验整包和内部文件后执行本地安装。入口脚本、`bundle.json`、包内 `atlas-release.json` 的架构必须一致。
 
 使用 `bash install-cos.sh --download-only` 可先下载并校验，不修改运行中的服务，也允许从另一种架构的机器上准备离线包。准备后可直接运行缓存中的 `assets/install-atlas.sh` 离线安装。
 
