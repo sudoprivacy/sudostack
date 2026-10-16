@@ -10,17 +10,21 @@
 
 | 组件 | 版本 | 来源 |
 | --- | --- | --- |
-| Moss Server / Runtime / 部署助手 | `0.1.53-atlas.1` | https://github.com/sudoprivacy/moss/releases/tag/server-v0.1.53-atlas.1 |
-| SudoWork WebUI | `0.2.28` | https://github.com/sudoprivacy/sudowork/releases/tag/v0.2.28 |
-| Nexus cluster | `0.8.4` | https://github.com/nexi-lab/nexus-vfs/releases/tag/v0.8.4 |
-| Nexus Vault | `0.5.68` | https://github.com/nexi-lab/nexus/releases/tag/vault-v0.5.68 |
-| Sudocode | `0.2.23` | https://github.com/sudoprivacy/sudocode/releases/tag/v0.2.23 |
-| k3s | `v1.34.1+k3s1` | 见下方实际制品来源 |
-| gVisor | `release-20261005.0` | 见下方实际制品来源 |
-| Helm | `v3.19.0` | 见下方实际制品来源 |
+| Moss Server / Runtime / 部署助手 | `0.1.53-atlas.1` | [上游 Release](https://github.com/sudoprivacy/moss/releases/tag/server-v0.1.53-atlas.1) |
+| SudoWork WebUI | `0.2.28` | [上游 Release](https://github.com/sudoprivacy/sudowork/releases/tag/v0.2.28) |
+| Nexus cluster | `0.8.4` | [Nexus 原始包](https://github.com/nexi-lab/nexus-vfs/releases/download/v0.8.4/nexusd-cluster-linux-x86_64.tar.gz) |
+| Nexus Vault | `0.5.68` | [Vault 插件](https://github.com/nexi-lab/nexus/releases/download/vault-v0.5.68/nexus-vault-linux-x86_64.tar.gz) |
+| Sudocode | `0.2.23` | [Sudocode 二进制](https://github.com/sudoprivacy/sudocode/releases/download/v0.2.23/scode-linux-x64-bundle.tar.gz) |
+| k3s | `v1.34.1+k3s1` | [k3s](https://github.com/k3s-io/k3s/releases/download/v1.34.1%2Bk3s1/k3s) / [k3s-airgap-images-amd64.tar.zst](https://github.com/k3s-io/k3s/releases/download/v1.34.1%2Bk3s1/k3s-airgap-images-amd64.tar.zst) / [sha256sum-amd64.txt](https://github.com/k3s-io/k3s/releases/download/v1.34.1%2Bk3s1/sha256sum-amd64.txt) |
+| gVisor | `release-20261005.0` | [gvisor-x86_64.tar.bz2](https://github.com/google/gvisor/releases/download/release-20261005.0/gvisor-x86_64.tar.bz2) |
+| Helm | `v3.19.0` | [Helm 归档](https://get.helm.sh/helm-v3.19.0-linux-amd64.tar.gz) |
 | Caddy | `2.10.2` | docker.io/library/caddy:2.10.2-alpine |
 | PostgreSQL | `16` | docker.io/library/postgres:16-alpine |
 | Nexus 基础镜像（Node.js） | `22.22.1` | docker.io/library/node:22.22.1-trixie-slim |
+| nexusd-cohost（随 Moss Runtime） | `0.2.26` | [Cohost 二进制](https://github.com/sudoprivacy/sudocode/releases/download/nexusd-cohost-v0.2.26/nexusd-cohost-linux-x64.tar.gz) |
+| kubectl（随 Nexus 镜像） | `v1.34.1` | [上游二进制](https://dl.k8s.io/release/v1.34.1/bin/linux/amd64/kubectl) |
+
+Moss Runtime 的内嵌版本见 [该 Moss tag 的运行时锁](https://github.com/sudoprivacy/moss/blob/server-v0.1.53-atlas.1/src/server/nexus/runtime-versions.json)。
 
 各版本独立锁定。Helm Chart 与安装器版本均为 `0.0.1-rc.2`；依赖的镜像和原始文件摘要以下面 manifest 为准。
 
@@ -91,7 +95,7 @@ sudo bash cleanup-atlas.sh
 同版本重试：修复环境问题后重跑原来的安装命令，会复用校验通过的缓存并继续验证。
 
 ```bash
-# 使用该版原安装入口；候选离线包替换为实际解包路径
+# 在保存该版安装入口的目录运行
 sudo bash ./install-atlas.sh --host "你的服务器IP或域名" --root /data/atlas --manage-k3s
 ```
 

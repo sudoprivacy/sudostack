@@ -1,0 +1,76 @@
+{
+  "release": "sudostack-v0.0.1-rc.9-arm64",
+  "host": "172.16.20.166",
+  "hostname": "spark-01",
+  "os": "Ubuntu 24.04.4",
+  "architecture": "arm64",
+  "pageSizeBytes": 4096,
+  "sourceCommit": "2dd55bce173755282603db414431efc0625fcbab",
+  "sourceRun": "https://github.com/sudoprivacy/sudostack/actions/runs/38835398155",
+  "cosPublicationRun": "https://github.com/sudoprivacy/sudostack/actions/runs/38836691293",
+  "bundle": "sudostack-0.0.1-rc.9-arm64-linux-arm64.tar.gz",
+  "bundleSha256": "3cd1652990bb84a869bc7f82f4fc44f949707b67b8e1e587f86e43e5e7808b51",
+  "bundleSizeBytes": 3121514868,
+  "manifestSha256": "ef36125faf2c24ba73f9f4ed4b842a0ba481fe14593bd7ea942ca491d167a936",
+  "verifiedInstallerSourceHashes": {
+    "atlas.py": "9fc3a723ad48d426b0625f0bee46eecd4873586bdf9cea9fb1010fd51f7dfacd",
+    "router.py": "96f195f8b1bb01c491832ee5db9aa8b07f730c4b0e133a5e375113738d9ff8ef",
+    "smoke.py": "c35850d848583ebdccda5c586886011f78b180bcce7a7ed545ac04b88ea808c5",
+    "cleanup-atlas.sh": "f80c3525313124b3d457863d9605f2eb41c0b1e2584af568e6633311222cb5bb"
+  },
+  "environmentGuards": {
+    "occupied443RejectedBeforeHostChanges": true,
+    "stoppedAgentRejectedBeforeHostChanges": true
+  },
+  "phases": {
+    "first": {
+      "qualifiedAt": "2026-10-16T02:02:42.063842+00:00",
+      "cleanedAt": "2026-10-16T02:02:47.688619+00:00",
+      "sixDeploymentsReady": true,
+      "passed": true,
+      "repeatPreservedPodUIDs": true,
+      "restartSessionResume": true,
+      "proxyIndependentGatewayVerification": true,
+      "accessSummaryContainsLocationsOnly": true,
+      "clusterRemoved": true,
+      "installDataAndCacheRemoved": true,
+      "helmAndGvisorRemoved": true,
+      "unrelatedWorkloadsAndModelsPreserved": true
+    },
+    "reinstall": {
+      "qualifiedAt": "2026-10-16T02:11:44.457635+00:00",
+      "cleanedAt": "2026-10-16T02:11:50.266377+00:00",
+      "sixDeploymentsReady": true,
+      "passed": true,
+      "repeatPreservedPodUIDs": true,
+      "restartSessionResume": true,
+      "proxyIndependentGatewayVerification": true,
+      "accessSummaryContainsLocationsOnly": true,
+      "clusterRemoved": true,
+      "installDataAndCacheRemoved": true,
+      "helmAndGvisorRemoved": true,
+      "unrelatedWorkloadsAndModelsPreserved": true
+    }
+  },
+  "passed": true,
+  "finalEnvironmentClean": true,
+  "preserved": [
+    "/data/models",
+    "/var/backups/sudostack-before-arm64-20261015",
+    "Docker: openai-web (port 3000 HTTP 200)",
+    "Docker: sudowork-webui",
+    "Docker: sudowork-webui-postgres"
+  ],
+  "scope": "Offline bundle and mock routed model/session qualification; real upstream model credentials and production migration are separate.",
+  "githubReleaseCreated": false,
+  "arm64LatestPromoted": false,
+  "evidenceDirectoryOnHost": "/var/tmp/sudostack-rc9-acceptance-20261016",
+  "rootRegressionTestsPassed": 76,
+  "finalGatewayPortsFree": [
+    80,
+    443,
+    8443,
+    9443
+  ],
+  "temporarySourceAndAgentFixturesRemoved": true
+}

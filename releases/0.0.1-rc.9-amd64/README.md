@@ -22,6 +22,7 @@
 | PostgreSQL | `16` | `docker.io/library/postgres:16-alpine`，随 WebUI 归档交付 |
 | Nexus 基础镜像（Node.js） | `22.22.1` | `docker.io/library/node:22.22.1-trixie-slim`，由套件原生组装 |
 | SudoRouter | `0.0.1-rc.2` | [Router 镜像](https://github.com/sudoprivacy/new-api/releases/download/sudorouter-v0.0.1-rc.2/sudorouter-0.0.1-rc.2-linux-amd64.tar.gz) |
+| nexusd-cohost（随 Moss Runtime） | `0.2.32` | [Cohost 二进制](https://github.com/sudoprivacy/sudocode/releases/download/nexusd-cohost-v0.2.32/nexusd-cohost-linux-x64.tar.gz) |
 
 Sudocode 随 Moss Runtime；Nexus Vault 随 Nexus 镜像和 Moss Runtime。Moss Runtime 的 nexusd-cohost 为 `0.2.32`，详见 [Moss 运行时锁](https://github.com/sudoprivacy/moss/blob/server-v0.1.60-rc.arm64.20261015.2/src/server/nexus/runtime-versions.json)。kubectl 为 `v1.34.1`，随 Nexus 镜像。Chart / 安装器版本将跟随本套件版本。
 
@@ -59,7 +60,7 @@ sudo bash /data/atlas/cleanup-atlas.sh
 同版本重试：修复环境问题后重跑原来的安装命令，会复用校验通过的缓存并继续验证。
 
 ```bash
-# 使用该版原安装入口；候选离线包替换为实际解包路径
+# 在保存该版安装入口的目录运行
 sudo bash /path/to/unpacked/assets/install-atlas.sh --host "你的服务器IP或域名" --root /data/atlas --manage-k3s
 ```
 

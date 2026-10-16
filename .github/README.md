@@ -8,7 +8,7 @@
 
 | 版本 README | 平台 | 状态 | GitHub Release |
 | --- | --- | --- | --- |
-| [0.0.1-rc.9-arm64](../releases/0.0.1-rc.9-arm64/README.md) | Linux ARM64 | 安装器修复候选，原生 CI / 166 验收中 | 尚未发布 |
+| [0.0.1-rc.9-arm64](../releases/0.0.1-rc.9-arm64/README.md) | Linux ARM64 | COS 候选；原生 CI、166 首装及清空重装通过，测试环境已清理 | 尚未创建 |
 | [0.0.1-rc.9-amd64](../releases/0.0.1-rc.9-amd64/README.md) | Linux amd64 | 规划版本，组件组合待独立构建验收 | 尚未发布 |
 | [0.0.1-rc.8-arm64](../releases/0.0.1-rc.8-arm64/README.md) | Linux ARM64 | 固定整包已发布；latest 未推广 | [Release](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.8-arm64) |
 | [0.0.1-rc.7](../releases/0.0.1-rc.7/README.md) | Linux amd64 | 已发布候选 | [Release](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.7) |

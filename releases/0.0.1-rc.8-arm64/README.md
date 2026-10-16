@@ -1,6 +1,6 @@
 # Sudostack 0.0.1-rc.8-arm64
 
-**状态（2026-10-16）：原生 tag CI 和 COS 固定版发布成功；166 已验证整包下载，安装中发现旧 agent 与旧 WebUI 端口冲突，实机完整验收尚未完成。ARM64 latest 尚未推广。**
+**状态（2026-10-16）：原生 tag CI 和 COS 固定版发布成功。166 安装时发现旧 agent 与旧 WebUI 端口冲突，后续修复及首装 / 清空重装验收转至 [rc.9 ARM64](../0.0.1-rc.9-arm64/README.md)。本版制品保持原样，ARM64 latest 尚未推广。**
 
 平台：**Linux arm64**。完整包：**3,121,507,370 字节**（约 2.91 GiB）。
 
@@ -62,6 +62,7 @@ ARM64 要求 Linux、root、systemd 和 4 KB 页大小；企微会话存档 SDK 
 | kubectl（随 Nexus 镜像） | `v1.34.1` | [上游二进制](https://dl.k8s.io/release/v1.34.1/bin/linux/arm64/kubectl) |
 | Atlas Helm Chart | `0.0.1-rc.8-arm64` | [atlas-mvp-0.0.1-rc.8-arm64.tgz](https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.8-arm64/atlas-mvp-0.0.1-rc.8-arm64.tgz) |
 | 安装器与运维脚本 | `0.0.1-rc.8-arm64` | [install-atlas.sh](https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.8-arm64/install-atlas.sh)；详见下方文件清单 |
+| nexusd-cohost（随 Moss Runtime） | `0.2.32` | [Cohost 二进制](https://github.com/sudoprivacy/sudocode/releases/download/nexusd-cohost-v0.2.32/nexusd-cohost-linux-arm64.tar.gz) |
 
 Moss Runtime 内嵌依赖（含 nexusd-cohost）由 Moss 固定；详见 [该 Moss tag 的 runtime-versions.json](https://github.com/sudoprivacy/moss/blob/server-v0.1.60-rc.arm64.20261015.2/src/server/nexus/runtime-versions.json)。
 本版 nexusd-cohost ARM64 原始附件 SHA256：`60a6612c321d2e9acb37461b4c5b611feba4c31210d0c4ec032771aa8479f11b`。
@@ -88,7 +89,7 @@ sudo bash cleanup-atlas.sh
 同版本重试：修复环境问题后重跑原来的安装命令，会复用校验通过的缓存并继续验证。
 
 ```bash
-# 使用该版原安装入口；候选离线包替换为实际解包路径
+# 在保存该版安装入口的目录运行
 sudo bash ./install-cos.sh --host "你的服务器IP或域名" --root /data/atlas --manage-k3s
 ```
 

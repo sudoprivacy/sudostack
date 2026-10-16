@@ -59,6 +59,7 @@ sudo bash install-cos.sh --host "你的服务器IP或域名" --root /data/atlas 
 | kubectl（随 Nexus 镜像） | `v1.34.1` | [上游二进制](https://dl.k8s.io/release/v1.34.1/bin/linux/amd64/kubectl) |
 | Atlas Helm Chart | `0.0.1-rc.5` | [atlas-mvp-0.0.1-rc.5.tgz](https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.5/atlas-mvp-0.0.1-rc.5.tgz) |
 | 安装器与运维脚本 | `0.0.1-rc.5` | [install-atlas.sh](https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.5/install-atlas.sh)；详见下方文件清单 |
+| nexusd-cohost（随 Moss Runtime） | `0.2.26` | [Cohost 二进制](https://github.com/sudoprivacy/sudocode/releases/download/nexusd-cohost-v0.2.26/nexusd-cohost-linux-x64.tar.gz) |
 
 Moss Runtime 内嵌依赖（含 nexusd-cohost）由 Moss 固定；详见 [该 Moss tag 的 runtime-versions.json](https://github.com/sudoprivacy/moss/blob/server-v0.1.53-atlas.1/src/server/nexus/runtime-versions.json)。
 PostgreSQL 的锁为 `16-alpine` 一类镜像标签，未单独记录补丁版；实际交付内容由 WebUI 归档 SHA256 固定。
@@ -83,7 +84,7 @@ sudo bash cleanup-atlas.sh
 同版本重试：修复环境问题后重跑原来的安装命令，会复用校验通过的缓存并继续验证。
 
 ```bash
-# 使用该版原安装入口；候选离线包替换为实际解包路径
+# 在保存该版安装入口的目录运行
 sudo bash ./install-cos.sh --host "你的服务器IP或域名" --root /data/atlas --manage-k3s
 ```
 
