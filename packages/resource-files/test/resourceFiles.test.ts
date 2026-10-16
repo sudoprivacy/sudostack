@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { lstat, mkdir, mkdtemp, readFile, rm, symlink } from 'node:fs/promises'
+import { lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { test, type TestContext } from 'node:test'
 import JSZip from 'jszip'
-import { copyResourceDirectory, MAX_RESOURCE_ENTRIES, MAX_RESOURCE_FILE_BYTES, ownerFileMode,
+import { ResourceFilesError, copyResourceDirectory, MAX_RESOURCE_ENTRIES, MAX_RESOURCE_FILE_BYTES, ownerFileMode,
   readResourceArchive, readResourceDirectory, writeResourceFiles } from '../src/index.js'
 
 async function fixture(t: TestContext): Promise<string> {
@@ -64,9 +64,18 @@ test('the complete file batch is validated before the first destination write', 
     [{ path: 'parent', content: Buffer.alloc(0), mode: 0o600 }, { path: 'parent/child', content: Buffer.alloc(0), mode: 0o600 }],
     [{ path: '.', content: Buffer.alloc(0), mode: 0o600 }],
   ]) {
-    await assert.rejects(writeResourceFiles(target, files))
+    await assert.rejects(writeResourceFiles(target, files), ResourceFilesError)
     await assert.rejects(lstat(target), { code: 'ENOENT' })
   }
+})
+
+test('storage failures remain distinguishable from invalid resource input', async t => {
+  const root = await fixture(t)
+  const occupied = join(root, 'occupied')
+  await writeFile(occupied, 'existing file')
+  await assert.rejects(writeResourceFiles(occupied, [{ path: 'child', content: Buffer.from('data'), mode: 0o600 }]),
+    error => error instanceof Error && !(error instanceof ResourceFilesError) && 'code' in error)
+  assert.equal(await readFile(occupied, 'utf8'), 'existing file')
 })
 
 test('source and destination links cannot redirect a resource copy', async t => {

@@ -11,3 +11,5 @@ Common archive and directory I/O for imported resources. Callers authorize the r
 Limits: 5,000 entries, 50 MiB per file, 200 MiB total, and 32 directory levels. Archive errors occur before destination writes. Staging directories should be published through the caller's atomic publication step.
 
 `RESOURCE_FILES_FORMAT_VERSION` identifies this import representation for caches derived from source archives.
+
+Validation failures use `ResourceFilesError`; callers can map invalid input to their client error response. Filesystem I/O errors keep their native type and code so storage failures remain server failures.
