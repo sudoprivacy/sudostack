@@ -62,8 +62,8 @@
     "Docker: sudowork-webui-postgres"
   ],
   "scope": "Offline bundle and mock routed model/session qualification; real upstream model credentials and production migration are separate.",
-  "githubReleaseCreated": false,
-  "arm64LatestPromoted": false,
+  "githubReleaseCreatedAtAcceptance": false,
+  "arm64LatestPromotedAtAcceptance": false,
   "evidenceDirectoryOnHost": "/var/tmp/sudostack-rc9-acceptance-20261016",
   "rootRegressionTestsPassed": 76,
   "finalGatewayPortsFree": [

@@ -1,6 +1,6 @@
 # 修改组件版本并发布新的 Sudostack 整包
 
-一个套件版本锁对应一种架构、一组组件版本、一份通过安装验收的完整归档。从 [全部版本](../../DEPLOYMENT.md#选择版本) 进入各版本 README，查看组件、下载、安装、清理和更新命令。已发布的 ARM64 固定版见 [rc.8 发布清单](../../releases/0.0.1-rc.8-arm64/README.md)；安装器修复候选及实机验收状态见 [rc.9 ARM64](../../releases/0.0.1-rc.9-arm64/README.md)。ARM64 latest 尚未推广。
+一个套件版本锁对应一种架构、一组组件版本、一份通过安装验收的完整归档。从 [全部版本](../../DEPLOYMENT.md#选择版本) 进入各版本 README，查看组件、下载、安装、清理和更新命令。[rc.9 ARM64](../../releases/0.0.1-rc.9-arm64/README.md) 和 [rc.9 amd64](../../releases/0.0.1-rc.9-amd64/README.md) 均已发布 GitHub Release 与 COS 固定包，并自动同步仓库文档。ARM64 latest 尚未推广。
 
 ## 发布清单保存在哪里
 
@@ -49,7 +49,7 @@ gh release view "$SCODE_TAG" -R sudoprivacy/sudocode --json assets \
 
 ## 2. 新增套件版本锁
 
-在干净的 Sudostack 工作分支执行。`0.0.1-rc.9-arm64` 已用于本次安装器修复候选，且固定 COS 目录已占用，GitHub Release 尚未创建；下面用 `0.0.1-rc.10-arm64` 演示下一次发版，**本说明不表示该版本已经发布**。先确认版本/tag 和 COS 目录均未占用。一个 PR 只新增或修改一个套件锁；amd64 与 arm64 分别使用不同版本/tag。
+在干净的 Sudostack 工作分支执行。`0.0.1-rc.9-arm64` 和 `0.0.1-rc.9-amd64` 均已发布，版本锁、tag 和固定制品不可覆盖；下面用 `0.0.1-rc.10-arm64` 演示下一次发版，**本说明不表示该版本已经发布**。先确认版本/tag 和 COS 目录均未占用。一个 PR 只新增或修改一个套件锁；amd64 与 arm64 分别使用不同版本/tag。
 
 ```bash
 git switch -c release/sudostack-0.0.1-rc.10-arm64

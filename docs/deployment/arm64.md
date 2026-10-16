@@ -2,11 +2,11 @@
 
 [部署与发布总览](../../DEPLOYMENT.md) · [全部版本](../../DEPLOYMENT.md#选择版本)
 
-发布、离线包和安装流程支持 `amd64` 与 `arm64`，架构由版本锁中的 `architecture` 固定。[rc.8 ARM64](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.8-arm64) 已发布 GitHub Release 和 COS 固定包；[rc.9 ARM64](../../releases/0.0.1-rc.9-arm64/README.md) 是修复安装器后的 COS 测试候选，实机记录见下文。ARM64 latest 尚未推广。已有 `sudostack-v0.0.1-rc.7` 仍为 amd64 包。
+发布、离线包和安装流程支持 `amd64` 与 `arm64`，架构由版本锁中的 `architecture` 固定。[rc.9 ARM64](../../releases/0.0.1-rc.9-arm64/README.md) 和 [rc.9 amd64](../../releases/0.0.1-rc.9-amd64/README.md) 均已发布 GitHub Release 和 COS 固定包。rc.9 ARM64 修复了安装环境兼容问题，并完成 166 首装、清空重装和最终清理，实机记录见下文。ARM64 latest 尚未推广。
 
 ## 组件与来源
 
-全部组件（含 Helm、Caddy、PostgreSQL、Node.js、kubectl）的版本、直接下载地址及逐文件 SHA256 见 [rc.8 ARM64 发布清单](../../releases/0.0.1-rc.8-arm64/README.md)。后续更换组件并发布新整包，按 [发版操作手册](releasing.md) 执行。
+全部组件（含 Helm、Caddy、PostgreSQL、Node.js、kubectl）的版本、直接下载地址及逐文件 SHA256 见 [rc.9 ARM64 发布清单](../../releases/0.0.1-rc.9-arm64/README.md)。后续更换组件并发布新整包，按 [发版操作手册](releasing.md) 执行。
 
 各仓库按 commit → PR → 合并 → tag Release 发布，套件只使用正式发布的附件及其 SHA256。开发分支的临时 CI 附件不进入最终版本锁。
 
@@ -106,12 +106,12 @@ gh workflow run deployment-release.yml -R sudoprivacy/sudostack \
 - SudoWork 正式 RC 的 COS 双架构归档与 GitHub Release 摘要一致；166 上 ARM64 原生 PTY、PostgreSQL 初始化/迁移、HTTP 健康检查和页面资源通过。隔离测试资源已清理，旧服务保持运行。
 - Sudostack 的 76 项部署回归测试在 166 的 root 环境全部通过，覆盖 Runtime 版本匹配、root 入口、端口和 TLS 检查、发布清单生成。
 
-[最终 tag CI 38718729124](https://github.com/sudoprivacy/sudostack/actions/runs/38718729124) 已通过原生 ARM64 整包组装、干净安装、保持 Pod UID 的重复安装、同会话重启恢复及诊断采集，并将同一归档发布到 COS。完整归档 SHA256 为 `52599a8cfce055fbc4e0e9dfca026c2019d6a95f2df38d372dfe730ec10d07fc`。
+[rc.8 tag CI 38718729124](https://github.com/sudoprivacy/sudostack/actions/runs/38718729124) 已通过原生 ARM64 整包组装、干净安装、保持 Pod UID 的重复安装、同会话重启恢复及诊断采集，并将同一归档发布到 COS。rc.8 完整归档 SHA256 为 `52599a8cfce055fbc4e0e9dfca026c2019d6a95f2df38d372dfe730ec10d07fc`。
 
 2026-10-16，166 下载 rc.8 并通过包内文件校验；先遇到旧 `k3s-agent`，随后旧 Docker WebUI 入口占用 80/443 导致证书不匹配。用户完成 agent 卸载和旧入口停止；后续新安装器在 rc.9 ARM64 中验收。
 
 rc.9 使用 [原生 CI 38835398155](https://github.com/sudoprivacy/sudostack/actions/runs/38835398155) 的同一归档，经 [COS 上传运行](https://github.com/sudoprivacy/sudostack/actions/runs/38836691293) 原样发布。166 已完成两轮从空缓存下载、完整校验、离线安装、重复安装、重启与同会话恢复；每轮结束均完成清理。端口冲突和停止状态的 agent 残留均在部署前被正确拒绝，不可用的 shell 代理也未影响本机 TLS 验收。
 
-最终新集群、`/data/atlas`、`/var/cache/sudostack`、Helm 和 gVisor 已移除，80/443/8443/9443 端口可用。`/data/models` 的文件元数据、既有备份、`openai-web`、`sudowork-webui`、`sudowork-webui-postgres` 保留，`openai-web` 的 3000 端口仍返回 HTTP 200。新组件的凭据和访问摘要随测试环境删除，脱敏证据保存在 `/var/tmp/sudostack-rc9-acceptance-20261016`。
+2026-10-16 验收结束时，新集群、`/data/atlas`、`/var/cache/sudostack`、Helm 和 gVisor 已移除，80/443/8443/9443 端口可用。`/data/models` 的文件元数据、既有备份、`openai-web`、`sudowork-webui`、`sudowork-webui-postgres` 保留，`openai-web` 的 3000 端口返回 HTTP 200。新组件的凭据和访问摘要随测试环境删除，脱敏证据保存在 `/var/tmp/sudostack-rc9-acceptance-20261016`。
 
-详见 [rc.9 组件清单、下载与实测结果](../../releases/0.0.1-rc.9-arm64/README.md) 和 [验收记录 JSON](../../releases/0.0.1-rc.9-arm64/acceptance-166.json)。rc.9 为固定 COS 测试候选，GitHub tag Release 尚未创建；ARM64 latest 尚未推广。
+详见 [rc.9 组件清单、下载与实测结果](../../releases/0.0.1-rc.9-arm64/README.md) 和 [验收记录 JSON](../../releases/0.0.1-rc.9-arm64/acceptance-166.json)。[rc.9 ARM64 GitHub Release](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.9-arm64) 已复用上述验收归档完成发布，发布流程已自动更新 `DEPLOYMENT.md` 和版本 README；ARM64 latest 尚未推广。验收 JSON 中的 `*AtAcceptance` 字段记录验收当时的发布状态，实际发布时间见同目录的 [release.json](../../releases/0.0.1-rc.9-arm64/release.json)。

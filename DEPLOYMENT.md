@@ -13,9 +13,9 @@
 | 版本 README / 组件清单 | 架构 | 下载与发布状态 | 验收状态 |
 | --- | --- | --- | --- |
 | [0.0.1-rc.9-arm64](releases/0.0.1-rc.9-arm64/README.md) | arm64 | [GitHub Release](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.9-arm64) / COS 已发布 | 原生 CI、166 首装及清空重装通过；测试环境已清理 |
+| [0.0.1-rc.9-amd64](releases/0.0.1-rc.9-amd64/README.md) | amd64 | [GitHub Release](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.9-amd64) / COS 已发布 | 原生 CI 安装、重复安装及重启恢复通过；实机验收待记录 |
 | [0.0.1-rc.8-arm64](releases/0.0.1-rc.8-arm64/README.md) | ARM64 | GitHub Release 和 COS 固定包已发布 | 原生 CI 通过；166 发现的环境问题由 rc.9 安装器修复 |
 | [0.0.1-rc.7](releases/0.0.1-rc.7/README.md) | amd64 | GitHub Release 和 COS 固定包已发布 | 原生 Ubuntu 22.04 CI 安装、重复安装、重启恢复通过 |
-| [0.0.1-rc.9-amd64](releases/0.0.1-rc.9-amd64/README.md) | amd64 | [GitHub Release](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.9-amd64) / COS 已发布 | 原生 CI 安装、重复安装及重启恢复通过；实机验收待记录 |
 | [0.0.1-rc.6](releases/0.0.1-rc.6/README.md) | amd64 | GitHub Release / COS 历史候选 | 详见该版 README |
 | [0.0.1-rc.5](releases/0.0.1-rc.5/README.md) | amd64 | GitHub Release / COS 历史候选 | 详见该版 README |
 | [0.0.1-rc.2](releases/0.0.1-rc.2/README.md) | amd64 | GitHub 历史分项发布 | 详见该版 README |
@@ -25,7 +25,7 @@
 
 早期 rc.1～rc.7 无架构后缀的已发布版本均为 amd64，保留历史名称。`user-runtime-v*` 是独立 SDK，不是部署整包。ARM64 latest 尚未推广，测试应使用明确版本的下载入口。
 
-166 的 rc.9 [实机验收记录](releases/0.0.1-rc.9-arm64/acceptance-166.json) 已归档：两轮从空缓存下载安装、同版本重复安装、原会话重启恢复均通过，部署回归 76 项全部通过。最终已清理新 k3s、`/data/atlas`、下载缓存、Helm 和 gVisor；模型、既有备份及无关 Docker 应用保留。166 当前没有本次测试安装的服务或凭据。
+166 的 rc.9 [实机验收记录](releases/0.0.1-rc.9-arm64/acceptance-166.json) 已归档：两轮从空缓存下载安装、同版本重复安装、原会话重启恢复均通过，部署回归 76 项全部通过。2026-10-16 验收结束时，已清理新 k3s、`/data/atlas`、下载缓存、Helm、gVisor 及测试凭据；模型、既有备份及无关 Docker 应用保留。
 
 ## 文档导航
 
@@ -56,7 +56,7 @@ rc.9 安装器会提前报告运行中或停止但未卸载的 k3s-agent、网�
 
 ## 安装完整包
 
-以下示例用于已完成 166 验收的 **ARM64 rc.9 完整包**。在目标机执行，替换服务器地址；amd64 安装应将版本改为已发布的 `0.0.1-rc.7`。其他版本先核对上表的架构和发布状态。
+以下示例用于已完成 166 验收的 **ARM64 rc.9 完整包**。在目标机执行，替换服务器地址；amd64 安装应将版本改为已发布的 `0.0.1-rc.9-amd64`。其他版本先核对上表的架构和发布状态。
 
 ```bash
 ATLAS_VERSION="0.0.1-rc.9-arm64"
