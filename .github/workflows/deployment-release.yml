@@ -110,9 +110,9 @@ jobs:
           python3 tools/deploy/release_notes.py \
             --manifest dist/assets/atlas-release.json --bundle dist/cos-release/bundle.json \
             --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
-            --output dist/publish/RELEASE_NOTES.md
+            --output dist/publish/README.md
           cd dist/publish
-          sha256sum RELEASE_NOTES.md >> SHA256SUMS
+          sha256sum README.md >> SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
           name: sudostack-installation-candidate
@@ -206,7 +206,7 @@ jobs:
           sha256sum -c SHA256SUMS
           # gh release create refuses to overwrite an existing Release.
           gh release create "$GITHUB_REF_NAME" ./* --verify-tag --prerelease \
-            --title "$GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md
+            --title "$GITHUB_REF_NAME" --notes-file README.md
   publish-cos:
     if: >-
       always() && needs.select.result == 'success' &&

@@ -4,7 +4,7 @@
 
 ## 组件与来源
 
-全部组件（含 Helm、Caddy、PostgreSQL、Node.js、kubectl）的版本、直接下载地址及逐文件 SHA256 见 [rc.8 ARM64 发布清单](releases/0.0.1-rc.8-arm64.md)。后续更换组件并发布新整包，按 [发版操作手册](releasing.md) 执行。
+全部组件（含 Helm、Caddy、PostgreSQL、Node.js、kubectl）的版本、直接下载地址及逐文件 SHA256 见 [rc.8 ARM64 发布清单](../../releases/0.0.1-rc.8-arm64/README.md)。后续更换组件并发布新整包，按 [发版操作手册](releasing.md) 执行。
 
 各仓库按 commit → PR → 合并 → tag Release 发布，套件只使用正式发布的附件及其 SHA256。开发分支的临时 CI 附件不进入最终版本锁。
 

@@ -92,7 +92,7 @@ sudo /data/atlas/restore.sh --backup /var/backups/atlas/20261012-160000 \
 
 ## CI 发布与离线交付
 
-逐步操作见 [修改组件版本并发布新的整包](releasing.md)，当前 ARM64 交付见 [rc.8 发布清单](releases/0.0.1-rc.8-arm64.md)。
+逐步操作见 [修改组件版本并发布新的整包](releasing.md)，当前 ARM64 交付见 [rc.8 发布清单](../../releases/0.0.1-rc.8-arm64/README.md)。
 
 1. 在 `manifests/deployment/VERSION.json` 提交新的版本组合。组件的仓库、tag、版本必须对应，禁止 `latest`、分支名或漏填组件。
 2. 可先运行 `python3 tools/deploy/release.py --lock manifests/deployment/0.0.1.json --check`，检查上游固定版本的附件是否齐全。此命令只读取公开发布信息，不修改集群。

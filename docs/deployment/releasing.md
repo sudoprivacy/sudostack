@@ -1,6 +1,6 @@
 # 修改组件版本并发布新的 Sudostack 整包
 
-一个套件版本锁对应一种架构、一组组件版本、一份通过安装验收的完整归档。当前 ARM64 固定版的文件、组件版本、直接下载地址及 SHA256 见 [rc.8 ARM64 发布清单](releases/0.0.1-rc.8-arm64.md)。**166 实机首装和清空重装尚未完成，ARM64 latest 尚未推广。**
+一个套件版本锁对应一种架构、一组组件版本、一份通过安装验收的完整归档。当前 ARM64 固定版的文件、组件版本、直接下载地址及 SHA256 见 [rc.8 ARM64 发布清单](../../releases/0.0.1-rc.8-arm64/README.md)。**166 实机首装和清空重装尚未完成，ARM64 latest 尚未推广。**
 
 ## 发布清单保存在哪里
 
@@ -11,9 +11,9 @@
 | `atlas-release.json` | 实际镜像标签、registry digest、组件来源、包内文件 SHA256、Chart / 安装器版本 | GitHub Release / COS / 完整包 |
 | `bundle.json` | 完整包文件名、大小、SHA256，以及 COS 交付文件摘要 | COS |
 | `SHA256SUMS` | 同一下载目录中各文件的 SHA256 | GitHub 与 COS 分别生成，校验范围不同 |
-| `RELEASE_NOTES.md` | 由实际 manifest 和 bundle 自动生成的组件表、下载入口、逐文件清单 | 新版发布 CI 的 GitHub 附件与 Release 正文 |
+| `README.md` | 由实际 manifest 和 bundle 自动生成的组件表、下载入口、逐文件清单 | 新版发布 CI 的 GitHub 附件与 Release 正文 |
 
-rc.8 已发布制品保持原有字节；本次为其补充发布说明和仓库清单。后续包含本次流水线改动的 tag 会自动生成 `RELEASE_NOTES.md`。它作为 GitHub 交付说明，不加入运行时完整包，也不改变 COS descriptor 格式。
+rc.8 已发布制品保持原有字节；本次为其补充发布说明和仓库清单。后续包含本次流水线改动的 tag 会自动生成 `README.md`。它作为 GitHub 交付说明，不加入运行时完整包，也不改变 COS descriptor 格式。
 
 ## 1. 先在组件仓库发布新版本
 
@@ -164,7 +164,7 @@ python3 tools/deploy/publish_cos.py --directory /path/to/original-cos-release --
 ```bash
 python3 tools/deploy/release_notes.py \
   --manifest /path/to/atlas-release.json --bundle /path/to/bundle.json \
-  --output /tmp/RELEASE_NOTES.md
+  --output /tmp/README.md
 ```
 
-构建流程会将此文件加入 GitHub 交付目录的 `SHA256SUMS`，并用 `gh release create --notes-file RELEASE_NOTES.md` 发布。完整包、分项来源及 SHA256 均取自本次构建记录，避免手写版本表与实际交付不一致。
+构建流程会将此文件加入 GitHub 交付目录的 `SHA256SUMS`，并用 `gh release create --notes-file README.md` 发布。完整包、分项来源及 SHA256 均取自本次构建记录，避免手写版本表与实际交付不一致。
