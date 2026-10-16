@@ -12,7 +12,7 @@
 
 | 版本 README / 组件清单 | 架构 | 下载与发布状态 | 验收状态 |
 | --- | --- | --- | --- |
-| [0.0.1-rc.9-arm64](releases/0.0.1-rc.9-arm64/README.md) | ARM64 | COS 固定测试候选可下载；GitHub tag / Release 尚未创建 | 原生 CI、166 首装、清空重装及重启恢复通过；测试环境已清理 |
+| [0.0.1-rc.9-arm64](releases/0.0.1-rc.9-arm64/README.md) | arm64 | [GitHub Release](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.9-arm64) / COS 已发布 | 原生 CI、166 首装及清空重装通过；测试环境已清理 |
 | [0.0.1-rc.8-arm64](releases/0.0.1-rc.8-arm64/README.md) | ARM64 | GitHub Release 和 COS 固定包已发布 | 原生 CI 通过；166 发现的环境问题由 rc.9 安装器修复 |
 | [0.0.1-rc.7](releases/0.0.1-rc.7/README.md) | amd64 | GitHub Release 和 COS 固定包已发布 | 原生 Ubuntu 22.04 CI 安装、重复安装、重启恢复通过 |
 | [0.0.1-rc.9-amd64](releases/0.0.1-rc.9-amd64/README.md) | amd64 | [GitHub Release](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.9-amd64) / COS 已发布 | 原生 CI 安装、重复安装及重启恢复通过；实机验收待记录 |

@@ -1,0 +1,10 @@
+{
+  "release": "sudostack-v0.0.1-rc.9-arm64",
+  "architecture": "arm64",
+  "publishedAt": "2026-10-16T04:10:07Z",
+  "githubRelease": "https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.9-arm64",
+  "sourceRun": "https://github.com/sudoprivacy/sudostack/actions/runs/38835398155",
+  "manifestSha256": "ef36125faf2c24ba73f9f4ed4b842a0ba481fe14593bd7ea942ca491d167a936",
+  "bundle": "sudostack-0.0.1-rc.9-arm64-linux-arm64.tar.gz",
+  "bundleSha256": "3cd1652990bb84a869bc7f82f4fc44f949707b67b8e1e587f86e43e5e7808b51"
+}
