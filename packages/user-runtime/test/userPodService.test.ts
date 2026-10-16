@@ -12,33 +12,98 @@ const options: UserPodOptions = {
   issuer: { endpoint: 'https://control-plane', tls: { ca: '/ca', cert: '/moss', key: '/moss-key' } },
 }
 
-function platform() {
+function platform(isScopedByName = false) {
   const objects = new Map<string, K8sResource>()
+  const ports = new Map<string, number>()
+  const key = (kind: string, name: string) => isScopedByName ? `${kind}:${name}` : name.endsWith('-upgrade') ? 'upgrade-secret' : kind
   const writes: Array<{ kind: string; manifest: Record<string, unknown> }> = []
   const resources: UserPodResources = {
-    async read(kind, name) { return objects.get(name.endsWith('-upgrade') ? 'upgrade-secret' : kind) },
+    async read(kind, name) { return objects.get(key(kind, name)) },
     async write(manifest) {
       const kind = manifest.kind === 'PersistentVolumeClaim' ? 'pvc' : String(manifest.kind).toLowerCase()
       writes.push({ kind, manifest })
       const metadata = manifest.metadata as K8sResource['metadata']
       const previousData = manifest.data as Record<string, string> | undefined
-      objects.set(metadata.name.endsWith('-upgrade') ? 'upgrade-secret' : kind,
+      if (kind === 'service' && !ports.has(metadata.name)) ports.set(metadata.name, 31443 + ports.size)
+      objects.set(key(kind, metadata.name),
         { metadata: { ...metadata, uid: metadata.uid ?? randomUUID(), resourceVersion: String(Number(metadata.resourceVersion ?? 0) + 1) },
         ...(manifest.spec ? { spec: manifest.spec as Record<string, unknown> } : {}),
         ...(kind === 'secret' ? { data: { ...previousData, ...Object.fromEntries(Object.entries((manifest.stringData ?? {}) as Record<string, string>)
           .map(([key, value]) => [key, Buffer.from(value).toString('base64')])) } } : {}),
         ...(kind === 'service' ? { spec: { ...manifest.spec as object,
-          ports: [{ name: 'nexus', port: 8443, targetPort: 8443, nodePort: 31443 }] } } : {}),
+          ports: [{ name: 'nexus', port: 8443, targetPort: 8443, nodePort: isScopedByName ? ports.get(metadata.name)! : 31443 }] } } : {}),
         ...(kind === 'pod' ? { status: { phase: 'Running', conditions: [{ type: 'Ready', status: 'True' }] } } : {}) })
     },
     async remove(kind, name, uid) {
-      const key = name.endsWith('-upgrade') ? 'upgrade-secret' : kind === 'pods' ? 'pod' : 'secret'
-      assert.equal(objects.get(key)?.metadata.uid, uid, 'replacement must target the observed resource identity')
-      objects.delete(key)
+      const resourceKey = key(kind === 'pods' ? 'pod' : 'secret', name)
+      assert.equal(objects.get(resourceKey)?.metadata.uid, uid, 'replacement must target the observed resource identity')
+      objects.delete(resourceKey)
     },
   }
   return { objects, writes, resources }
 }
+
+void test('same owner allocations keep independent Pods and volumes through concurrent creation and one allocation upgrade', async t => {
+  const kube = platform(true)
+  const issuedOwners: string[] = []
+  t.mock.method(NexusZoneApiClient, 'withMtls', () => ({ mintUserRuntime: async (owner: string) => {
+    issuedOwners.push(owner); return runtimeCredential(owner)
+  }, close() {} }))
+  const runtime = new UserPodService(options, kube.resources, async () => {})
+  t.after(() => runtime.close())
+  const secondary = runtime.forAllocation('secondary')
+  assert.equal(runtime.forAllocation('secondary'), secondary)
+  assert.equal(secondary.forAllocation('primary'), runtime)
+  assert.equal(await secondary.find('alice'), undefined)
+  assert.equal(kube.writes.length, 0)
+  const [primaryConfig, ...secondaryConfigs] = await Promise.all([
+    runtime.resolve('alice'), ...Array.from({ length: 4 }, () => secondary.resolve('alice')),
+  ])
+  assert(secondaryConfigs.every(config => config.runtimeEndpoint === secondaryConfigs[0]!.runtimeEndpoint))
+  assert.notEqual(primaryConfig!.runtimeEndpoint, secondaryConfigs[0]!.runtimeEndpoint)
+  assert.deepEqual(issuedOwners, ['alice', 'alice'], 'placement must preserve the authenticated owner')
+  const primaryName = userPodName('alice'), secondaryName = userPodName('alice', 'secondary')
+  assert.notEqual(primaryName, secondaryName)
+  const primaryPod = kube.objects.get(`pod:${primaryName}`)!, secondaryPod = kube.objects.get(`pod:${secondaryName}`)!
+  const primaryVolume = kube.objects.get(`pvc:${primaryName}`), secondaryVolume = kube.objects.get(`pvc:${secondaryName}`)
+  assert.notEqual(primaryVolume?.metadata.uid, secondaryVolume?.metadata.uid)
+  for (const [name, pod] of [[primaryName, primaryPod], [secondaryName, secondaryPod]] as const) {
+    const volumes = pod.spec!.volumes as Array<{ name: string; persistentVolumeClaim?: { claimName: string } }>
+    assert.equal(volumes.find(volume => volume.name === 'data')?.persistentVolumeClaim?.claimName, name)
+  }
+  assert.equal(kube.writes.filter(write => write.kind === 'pod').length, 2)
+  await secondary.upgrade('alice', async previous => { assert.equal(previous?.runtimeEndpoint, secondaryConfigs[0]!.runtimeEndpoint) })
+  assert.equal(kube.objects.get(`pod:${primaryName}`), primaryPod)
+  assert.notEqual(kube.objects.get(`pod:${secondaryName}`)?.metadata.uid, secondaryPod.metadata.uid)
+  assert.equal(kube.objects.get(`pvc:${primaryName}`), primaryVolume)
+  assert.equal(kube.objects.get(`pvc:${secondaryName}`), secondaryVolume)
+  await runtime.close()
+  await assert.rejects(secondary.resolve('alice'), /closed/)
+  assert.throws(() => runtime.forAllocation('third'), /closed/)
+})
+
+void test('an allocation refuses same-owner resources attributed to another allocation before mutation', async t => {
+  const kube = platform(true)
+  const runtime = new UserPodService(options, kube.resources, async () => {})
+  t.after(() => runtime.close())
+  const secondary = runtime.forAllocation('secondary')
+  kube.objects.set(`pod:${userPodName('alice', 'secondary')}`, { metadata: {
+    name: userPodName('alice', 'secondary'), uid: randomUUID(),
+    annotations: { 'moss.sudo.dev/runtime-owner': 'alice', 'moss.sudo.dev/runtime-allocation': 'primary' },
+  } })
+  await assert.rejects(secondary.inspect('alice'), /another allocation/)
+  await assert.rejects(secondary.find('alice'), /another allocation/)
+  await assert.rejects(secondary.resolve('alice'), /another allocation/)
+  assert.equal(kube.writes.length, 0)
+})
+
+void test('primary placement names remain compatible and allocation IDs cannot become paths or resource names', () => {
+  assert.equal(userPodName('4ffb1be9-5bad-43ec-9db4-f09f10141a37'), 'moss-user-54caa08a51f8902ed6bc4bf9e384a5a5cef0d1f1')
+  assert.equal(userPodName('alice'), userPodName('alice', 'primary'))
+  for (const allocation of ['', '../primary', '/primary', 'UPPER', 'a/b', 'a'.repeat(65)]) {
+    assert.throws(() => userPodName('alice', allocation), /Invalid runtime allocation ID/)
+  }
+})
 
 void test('Agent discovery does not provision a missing box and refuses another owner before mutation', async t => {
   const kube = platform()
@@ -265,6 +330,7 @@ void test('a restarted controller reuses the owned Pod, Service and retained vol
   t.after(() => service.close())
   await service.resolve('alice')
   await service.close()
+  for (const resource of kube.objects.values()) delete resource.metadata.annotations?.['moss.sudo.dev/runtime-allocation']
   const restarted = new UserPodService(options, kube.resources, async () => {})
   t.after(() => restarted.close())
   const [a, b] = await Promise.all([restarted.resolve('alice'), restarted.resolve('alice')])

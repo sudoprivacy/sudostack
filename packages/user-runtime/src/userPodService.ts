@@ -15,6 +15,8 @@ export interface UserRuntimeConnectionConfig {
 export type UserRuntimeReady = (config: UserRuntimeConnectionConfig, ownerId: string, signal: AbortSignal) => Promise<void>
 
 const OWNER_ANNOTATION = 'moss.sudo.dev/runtime-owner'
+const ALLOCATION_ANNOTATION = 'moss.sudo.dev/runtime-allocation'
+const PRIMARY_ALLOCATION = 'primary'
 const SPEC_ANNOTATION = 'moss.sudo.dev/runtime-spec'
 const APP_LABEL = 'moss-user-runtime'
 const DATA_ROOT = '/data'
@@ -22,6 +24,7 @@ const RUNTIME_PORT = 8443
 const CREDENTIAL_VALIDITY_SECS = 300
 
 export interface UserPodOptions {
+  allocationId?: string
   image: string
   nodeHost: string
   namespace: string
@@ -65,9 +68,17 @@ function kubernetesResources(options: UserPodOptions): UserPodResources {
 }
 
 /** Stable Kubernetes resource names are placement; signed owner identity controls access. */
-export function userPodName(ownerId: string): string {
+export function userPodName(ownerId: string, allocationId = PRIMARY_ALLOCATION): string {
   userRuntimeServerName(ownerId)
-  return `moss-user-${createHash('sha256').update(ownerId).digest('hex').slice(0, 40)}`
+  const allocation = allocationName(allocationId)
+  const digest = createHash('sha256').update(ownerId)
+  if (allocation !== PRIMARY_ALLOCATION) digest.update('\0').update(allocation)
+  return `moss-user-${digest.digest('hex').slice(0, 40)}`
+}
+
+function allocationName(value: string): string {
+  if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(value)) throw new Error('Invalid runtime allocation ID')
+  return value
 }
 
 function userRuntimeCredentialData(ownerId: string, credential: SessionCredential): Record<string, string> {
@@ -76,11 +87,11 @@ function userRuntimeCredentialData(ownerId: string, credential: SessionCredentia
     ...Object.fromEntries(Object.entries(bundle.files).map(([name, bytes]) => [name, bytes.toString('utf8')])) }
 }
 
-/** Compose one native cohost and durable Nexus volume for the authenticated owner. */
+/** Compose one owner allocation with its own native cohost and durable Nexus volume. */
 function userPodManifests(ownerId: string, options: UserPodOptions) {
-  const name = userPodName(ownerId)
+  const name = userPodName(ownerId, options.allocationId)
   const metadata = { name, namespace: options.namespace, labels: { app: APP_LABEL, runtime: name },
-    annotations: { [OWNER_ANNOTATION]: ownerId } }
+    annotations: { [OWNER_ANNOTATION]: ownerId, [ALLOCATION_ANNOTATION]: options.allocationId ?? PRIMARY_ALLOCATION } }
   const container = {
     name: 'runtime', image: options.image, imagePullPolicy: options.imagePullPolicy ?? 'IfNotPresent',
     command: ['nexusd-cohost'],
@@ -138,13 +149,15 @@ function userPodManifests(ownerId: string, options: UserPodOptions) {
 
 /** Coordinates user boxes without storing addresses, credentials or PID presence in SQL. */
 export class UserPodService {
+  private readonly allocations = new Map<string, UserPodService>()
   private readonly connections = new Map<string, Promise<UserPodConnection>>()
   private readonly pendingResolutions = new Map<string, Promise<UserPodConnection>>()
   private readonly lifecycle = new AbortController()
   private readonly runtimeHost: string
 
   constructor(private readonly options: UserPodOptions, private readonly resources = kubernetesResources(options),
-    private readonly ready: UserRuntimeReady) {
+    private readonly ready: UserRuntimeReady, private readonly allocationRoot?: UserPodService) {
+    this.options = { ...options, allocationId: allocationName(options.allocationId ?? PRIMARY_ALLOCATION) }
     if (typeof ready !== 'function') throw new Error('User runtimes require authenticated readiness verification')
     if (!options.image || !options.storageClass) throw new Error('User Pods require an image and retained storage')
     if (!options.nodeHost) throw new Error('User Pods require a private compute node host')
@@ -156,12 +169,35 @@ export class UserPodService {
     if (options.release && options.release.image.reference !== options.image) throw new Error('User runtime image differs from the shared release manifest')
   }
 
+  /** Scope placement and retained storage while preserving the signed user identity. */
+  forAllocation(allocationId: string): UserPodService {
+    const root = this.allocationRoot ?? this
+    if (root.lifecycle.signal.aborted) throw new Error('User Pod service is closed')
+    allocationName(allocationId)
+    if (allocationId === (root.options.allocationId ?? PRIMARY_ALLOCATION)) return root
+    let service = root.allocations.get(allocationId)
+    if (!service || service.lifecycle.signal.aborted) {
+      service = new UserPodService({ ...root.options, allocationId }, root.resources, root.ready, root)
+      root.allocations.set(allocationId, service)
+    }
+    return service
+  }
+
+  private async readAllocationResource(kind: string, name: string): Promise<K8sResource | undefined> {
+    const resource = await this.resources.read(kind, name)
+    const allocation = resource?.metadata.annotations?.[ALLOCATION_ANNOTATION] ?? PRIMARY_ALLOCATION
+    if (resource && allocation !== (this.options.allocationId ?? PRIMARY_ALLOCATION)) {
+      throw new Error('User runtime resource belongs to another allocation')
+    }
+    return resource
+  }
+
   /** Report version drift without provisioning a missing runtime. */
   async inspect(ownerId: string) {
-    const pod = await this.resources.read('pod', userPodName(ownerId))
+    const pod = await this.readAllocationResource('pod', userPodName(ownerId, this.options.allocationId))
     if (pod && pod.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) throw new Error('User Pod belongs to another owner')
     const expected = userPodManifests(ownerId, this.options).pod
-    return { ownerId, isPresent: Boolean(pod), isDrifted: Boolean(pod && (pod.metadata.annotations?.[SPEC_ANNOTATION] !== expected.metadata.annotations[SPEC_ANNOTATION] ||
+    return { ownerId, allocationId: this.options.allocationId ?? PRIMARY_ALLOCATION, isPresent: Boolean(pod), isDrifted: Boolean(pod && (pod.metadata.annotations?.[SPEC_ANNOTATION] !== expected.metadata.annotations[SPEC_ANNOTATION] ||
       (this.options.release && pod.status?.phase === 'Running' && !this.isReleaseImage(pod)))),
       phase: pod?.status?.phase ?? 'absent', expectedImage: this.options.image,
       observedImageDigest: pod?.status?.containerStatuses?.find(container => container.name === 'runtime')?.imageID ?? null,
@@ -184,19 +220,19 @@ export class UserPodService {
   async upgrade(ownerId: string, drain: (previous?: UserRuntimeConnectionConfig) => Promise<void>, configuration?: Record<string, string>): Promise<UserRuntimeConnectionConfig> {
     if (this.lifecycle.signal.aborted) throw new Error('User Pod service is closed')
     if (!this.resources.remove) throw new Error('Runtime replacement is unavailable')
-    const name = userPodName(ownerId)
+    const name = userPodName(ownerId, this.options.allocationId)
     const lockName = `${name}-upgrade`
     const operation = randomUUID()
     await this.resources.write({ apiVersion: 'v1', kind: 'Secret', type: 'Opaque',
       metadata: { name: lockName, namespace: this.options.namespace,
-        annotations: { [OWNER_ANNOTATION]: ownerId, 'moss.sudo.dev/upgrade-operation': operation } }, stringData: {} }, 'create')
-    const lock = await this.resources.read('secret', lockName)
+        annotations: { [OWNER_ANNOTATION]: ownerId, [ALLOCATION_ANNOTATION]: this.options.allocationId ?? PRIMARY_ALLOCATION, 'moss.sudo.dev/upgrade-operation': operation } }, stringData: {} }, 'create')
+    const lock = await this.readAllocationResource('secret', lockName)
     if (!lock?.metadata.uid || lock.metadata.annotations?.['moss.sudo.dev/upgrade-operation'] !== operation) throw new Error('Runtime upgrade lock was not acquired')
     try {
       await this.pendingResolutions.get(ownerId)
       const pending = this.connections.get(ownerId)
       if (pending) await pending
-      const pod = await this.resources.read('pod', name)
+      const pod = await this.readAllocationResource('pod', name)
       if (pod && (pod.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId || !pod.metadata.uid)) throw new Error('User Pod belongs to another owner or lacks an identity')
       // A restarted controller may discover an older image whose short-lived
       // server identity has expired. Restore authenticated access to that same
@@ -215,7 +251,7 @@ export class UserPodService {
       this.connections.delete(ownerId)
       // Join configuration delivery and certificate renewal before capturing
       // rollback state or replacing the Secret with the next runtime's data.
-      const savedSecret = await this.resources.read('secret', name)
+      const savedSecret = await this.readAllocationResource('secret', name)
       if (savedSecret && savedSecret.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) throw new Error('User Pod Secret belongs to another owner')
       const saved: Record<string, string> = {}
       for (const key of ['sudocode.json', 'backend-config.json']) {
@@ -232,7 +268,7 @@ export class UserPodService {
         this.connections.delete(ownerId)
         if (pod?.spec) {
           try {
-            const failed = await this.resources.read('pod', name)
+            const failed = await this.readAllocationResource('pod', name)
             if (failed) {
               const expected = userPodManifests(ownerId, this.options).pod
               if (failed.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId || !failed.metadata.uid ||
@@ -259,22 +295,22 @@ export class UserPodService {
 
   private async waitForPodRemoval(name: string): Promise<void> {
     const deadline = Date.now() + 90_000
-    while (await this.resources.read('pod', name)) {
+    while (await this.readAllocationResource('pod', name)) {
       if (Date.now() >= deadline) throw new Error('User runtime did not finish draining within 90 seconds')
       await delay(1000)
     }
   }
 
   private async assertUpgradePod(ownerId: string, observed: K8sResource): Promise<void> {
-    const current = await this.resources.read('pod', userPodName(ownerId))
+    const current = await this.readAllocationResource('pod', userPodName(ownerId, this.options.allocationId))
     if (!current || current.metadata.uid !== observed.metadata.uid || current.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) {
       throw new Error('User Pod identity changed during runtime upgrade')
     }
   }
 
   private async refreshUpgradeIdentity(ownerId: string, pod: K8sResource): Promise<void> {
-    const name = userPodName(ownerId)
-    const secret = await this.resources.read('secret', name)
+    const name = userPodName(ownerId, this.options.allocationId)
+    const secret = await this.readAllocationResource('secret', name)
     if (!secret?.metadata.uid || secret.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) {
       throw new Error('User Pod Secret belongs to another owner or lacks an identity')
     }
@@ -303,8 +339,8 @@ export class UserPodService {
   }
 
   private async runtimeConnection(ownerId: string): Promise<UserRuntimeConnectionConfig> {
-    const name = userPodName(ownerId)
-    const service = await this.resources.read('service', name)
+    const name = userPodName(ownerId, this.options.allocationId)
+    const service = await this.readAllocationResource('service', name)
     if (service?.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) throw new Error('User Pod Service belongs to another owner')
     const serviceSpec = z.object({ type: z.literal('NodePort'), selector: z.record(z.string(), z.string()),
       ports: z.array(z.object({ name: z.literal('nexus'), port: z.literal(RUNTIME_PORT),
@@ -316,7 +352,7 @@ export class UserPodService {
 
   /** Discover an existing owner box without creating a Pod or workspace for a list request. */
   async find(ownerId: string): Promise<UserRuntimeConnectionConfig | undefined> {
-    const pod = await this.resources.read('pod', userPodName(ownerId))
+    const pod = await this.readAllocationResource('pod', userPodName(ownerId, this.options.allocationId))
     if (!pod) return undefined
     if (pod.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) throw new Error('User Pod belongs to another owner')
     return this.resolve(ownerId)
@@ -324,7 +360,7 @@ export class UserPodService {
 
   async resolve(ownerId: string, configuration?: Record<string, string>): Promise<UserRuntimeConnectionConfig> {
     if (this.lifecycle.signal.aborted) throw new Error('User Pod service is closed')
-    userPodName(ownerId)
+    userPodName(ownerId, this.options.allocationId)
     let resolution = this.pendingResolutions.get(ownerId)
     if (!resolution) {
       resolution = this.resolveConnection(ownerId, configuration)
@@ -340,10 +376,10 @@ export class UserPodService {
   }
 
   private async resolveConnection(ownerId: string, configuration?: Record<string, string>): Promise<UserPodConnection> {
-    const name = userPodName(ownerId)
+    const name = userPodName(ownerId, this.options.allocationId)
     const [lock, pod] = await Promise.all([
-      this.resources.read('secret', `${name}-upgrade`),
-      this.resources.read('pod', name),
+      this.readAllocationResource('secret', `${name}-upgrade`),
+      this.readAllocationResource('pod', name),
     ])
     if (lock) throw new Error('User runtime is draining for an upgrade')
     if (pod && pod.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) throw new Error('User Pod belongs to another owner')
@@ -374,7 +410,7 @@ export class UserPodService {
     }
     const name = manifests.pod.metadata.name
     const assertOwner = async (kind: string) => {
-      const existing = await this.resources.read(kind, name)
+      const existing = await this.readAllocationResource(kind, name)
       if (existing && existing.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) {
         throw new Error(`User Pod ${kind} belongs to another owner`)
       }
@@ -495,6 +531,10 @@ export class UserPodService {
   /** Disconnect controller transports while retaining owned Pods and user volumes. */
   async close(): Promise<void> {
     this.lifecycle.abort()
+    if (!this.allocationRoot) {
+      await Promise.allSettled([...this.allocations.values()].map(service => service.close()))
+      this.allocations.clear()
+    }
     await Promise.allSettled(this.pendingResolutions.values())
     await Promise.allSettled([...this.connections.values()].map(async connection => (await connection).close()))
     this.connections.clear()
