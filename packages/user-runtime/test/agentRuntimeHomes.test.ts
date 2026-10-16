@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { test } from 'node:test'
 import { NexusZoneApiClient } from '@nexus-ai-fs/vfs-client'
-import { AgentRuntimeHomes, type AgentRuntimeHome, type AgentRuntimeHomeStore } from '../src/agentRuntimeHomes.js'
+import { AgentRuntimeHomes, runtimeAllocationId, type AgentRuntimeHome, type AgentRuntimeHomeStore } from '../src/agentRuntimeHomes.js'
 import { UserPodService, userPodName } from '../src/userPodService.js'
 import { runtimeCredential } from './runtimeCredential.js'
 import { userPodPlatform } from './userPodPlatform.js'
@@ -107,6 +107,10 @@ void test('existing storage adoption is durable and malformed or foreign store r
   await assert.rejects(homes.resolve('alice', 'invalid', '../sibling'), /Invalid runtime allocation/)
   assert.equal(await homes.find('alice', 'invalid'), undefined)
   for (const capacity of [0, -1, 1.5, Infinity]) assert.throws(() => new AgentRuntimeHomes(fixture.store, capacity))
+  for (const invalid of [null, undefined, 1, {}]) {
+    assert.throws(() => runtimeAllocationId(invalid as string), /Invalid runtime allocation/)
+    await assert.rejects(homes.resolve(invalid as string, 'agent'), /requires owner/)
+  }
   const foreign = new AgentRuntimeHomes({
     ...fixture.store,
     claim: async () => ({ ownerId: 'bob', agentId: 'agent-a', allocationId: 'primary' }),

@@ -4,7 +4,7 @@ export const PRIMARY_RUNTIME_ALLOCATION = 'primary'
 
 /** An allocation identifies durable storage independently of a Pod's current UID or address. */
 export function runtimeAllocationId(value: string): string {
-  if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(value)) throw new Error('Invalid runtime allocation ID')
+  if (typeof value !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(value)) throw new Error('Invalid runtime allocation ID')
   return value
 }
 
@@ -31,7 +31,7 @@ export class AgentRuntimeHomes {
   }
 
   async resolve(ownerId: string, agentId: string, existingAllocationId?: string): Promise<AgentRuntimeHome> {
-    if (!ownerId || !agentId) throw new Error('Agent home requires owner and Agent identities')
+    this.requireIdentities(ownerId, agentId)
     if (existingAllocationId !== undefined) runtimeAllocationId(existingAllocationId)
     const home = await this.store.claim(ownerId, agentId, homes => {
       const counts = new Map<string, number>()
@@ -53,6 +53,7 @@ export class AgentRuntimeHomes {
   }
 
   async find(ownerId: string, agentId: string): Promise<AgentRuntimeHome | undefined> {
+    this.requireIdentities(ownerId, agentId)
     const home = await this.store.find(ownerId, agentId)
     if (home) this.validate(home, ownerId, agentId)
     return home
@@ -60,16 +61,23 @@ export class AgentRuntimeHomes {
 
   /** Discovery includes the original namespace and never provisions a missing allocation. */
   async allocations(ownerId: string): Promise<string[]> {
+    this.requireIdentities(ownerId)
     const homes = await this.store.list(ownerId)
     for (const home of homes) this.validate(home, ownerId)
     return this.sortedAllocations(new Set([PRIMARY_RUNTIME_ALLOCATION, ...homes.map(home => home.allocationId)]))
   }
 
   private validate(home: AgentRuntimeHome, ownerId: string, agentId?: string): void {
-    if (home.ownerId !== ownerId || !home.agentId || (agentId !== undefined && home.agentId !== agentId)) {
+    if (home.ownerId !== ownerId || typeof home.agentId !== 'string' || !home.agentId || (agentId !== undefined && home.agentId !== agentId)) {
       throw new Error('Agent runtime home identity mismatch')
     }
     runtimeAllocationId(home.allocationId)
+  }
+
+  private requireIdentities(...identities: string[]): void {
+    if (identities.some(value => typeof value !== 'string' || !value)) {
+      throw new Error('Agent home requires owner and Agent identities')
+    }
   }
 
   private sortedAllocations(values: Iterable<string>): string[] {
