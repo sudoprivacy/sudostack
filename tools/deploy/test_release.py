@@ -207,7 +207,7 @@ class ReleaseTests(unittest.TestCase):
 
     def test_unreadable_active_server_cluster_is_not_treated_as_a_clean_host(self):
         responses = [subprocess.CompletedProcess([], 3), subprocess.CompletedProcess([], 1), subprocess.CompletedProcess([], 0)]
-        with patch.object(atlas.shutil, 'which', side_effect=lambda name: '/usr/bin/' + name), \
+        with patch.object(atlas.shutil, 'which', side_effect=lambda name: None if name == 'k3s-agent-uninstall.sh' else '/usr/bin/' + name), \
              patch.object(atlas.subprocess, 'run', side_effect=responses):
             with self.assertRaisesRegex(ValueError, 'Cannot inspect the existing active k3s cluster'):
                 atlas.preflight_existing_cluster()

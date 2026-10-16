@@ -6,7 +6,6 @@ import json
 import os
 from pathlib import Path
 import secrets
-import ssl
 import subprocess
 import time
 import urllib.request
@@ -23,7 +22,6 @@ atlas=importlib.util.module_from_spec(spec);spec.loader.exec_module(atlas)
 values=json.loads((root/'values.json').read_text())
 credentials=json.loads((root/'credentials.json').read_text())
 evidence=root/'acceptance';evidence.mkdir(exist_ok=True)
-context=ssl.create_default_context(cafile=str(root/'tls/ca.crt'))
 base=values['gateway']['mossOrigin']
 token=None
 
@@ -31,7 +29,7 @@ def api(path,body=None,method='GET'):
     headers={'Content-Type':'application/json'}
     if token:headers['Authorization']='Bearer '+token
     request=urllib.request.Request(base+path,headers=headers,method=method,data=None if body is None else json.dumps(body).encode())
-    with urllib.request.urlopen(request,context=context,timeout=120) as response:return json.load(response)
+    with atlas.gateway_open(root,request,timeout=120) as response:return json.load(response)
 
 token=api('/api/v1/auth/login',{'grant_type':'password','username':credentials['adminUsername'],'password':credentials['adminPassword']},'POST')['access_token']
 original=api('/api/v1/settings/system?scope=organization')

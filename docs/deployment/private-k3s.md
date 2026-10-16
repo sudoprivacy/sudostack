@@ -92,9 +92,11 @@ sudo /data/atlas/restore.sh --backup /var/backups/atlas/20261012-160000 \
 
 ## CI 发布与离线交付
 
+逐步操作见 [修改组件版本并发布新的整包](releasing.md)，当前 ARM64 交付见 [rc.8 发布清单](releases/0.0.1-rc.8-arm64.md)。
+
 1. 在 `manifests/deployment/VERSION.json` 提交新的版本组合。组件的仓库、tag、版本必须对应，禁止 `latest`、分支名或漏填组件。
 2. 可先运行 `python3 tools/deploy/release.py --lock manifests/deployment/0.0.1.json --check`，检查上游固定版本的附件是否齐全。此命令只读取公开发布信息，不修改集群。
-3. `.github/workflows/deployment-release.yml` 的 PR 和手动运行生成 CI artifact 并执行全新安装、相同版本重复安装及重启后的完整会话测试；PR 默认验收 `0.0.1`，手动运行可选择版本。推送 `sudostack-vVERSION` tag 才创建该版本的 GitHub prerelease 并发布 COS 完整包。CI 从对应 tag 的版本清单拉取制品，不执行本地手工组件构建。发布 job 必须等待组装和安装验收通过，现有 Release 不会被覆盖。
+3. `.github/workflows/deployment-release.yml` 的 PR 和手动运行生成 CI artifact 并执行全新安装、相同版本重复安装及重启后的完整会话测试；PR 自动选择唯一变更的版本锁，没有变更锁时回退 `0.0.1`，手动运行可选择版本。推送 `sudostack-vVERSION` tag 才创建该版本的 GitHub prerelease 并发布 COS 完整包。CI 从对应 tag 的版本清单拉取制品，不执行本地手工组件构建。发布 job 必须等待组装和安装验收通过，现有 Release 不会被覆盖。
 4. 发布资产包括安装入口、Chart、运维脚本、`components.lock.json`、`atlas-release.json`、SHA256，以及 sudostack 组装的 Nexus/Caddy 镜像包和基础设施离线文件。Moss/WebUI/SudoRouter 镜像保留其原仓库的 Release URL；`baseRelease` 固定旧套件清单的 SHA256，复用其未变动制品。
 5. COS 入口下载完整压缩包，缓存于 `/var/cache/sudostack/sudostack-vVERSION`；校验后解压到 `assets/` 并调用本地安装器。资源内容、断点续传、手动解包安装和 COS 发布见 [COS 与离线交付](cos.md)。GitHub 的原始 `install-atlas.sh` 仍提供按来源逐项下载的旧入口。
 

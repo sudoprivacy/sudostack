@@ -4,7 +4,6 @@ from pathlib import Path
 import secrets
 import re
 import socket
-import ssl
 import subprocess
 import time
 import urllib.error
@@ -115,15 +114,14 @@ def moss_settings(root, patch=None):
     values = json.loads((root / 'values.json').read_text())
     creds = json.loads((root / 'credentials.json').read_text())
     base = values['gateway']['mossOrigin']
-    context = ssl.create_default_context(cafile=str(root / 'tls/ca.crt'))
     request = urllib.request.Request(base + '/api/v1/auth/login', headers={'Content-Type': 'application/json'},
         data=json.dumps({'grant_type': 'password', 'username': creds['adminUsername'], 'password': creds['adminPassword']}).encode())
-    with urllib.request.urlopen(request, context=context, timeout=30) as response:
+    with atlas.gateway_open(root, request, timeout=30) as response:
         token = json.load(response)['access_token']
     request = urllib.request.Request(base + '/api/v1/settings/system?scope=organization',
         headers={'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
         data=None if patch is None else json.dumps(patch).encode(), method='GET' if patch is None else 'PATCH')
-    with urllib.request.urlopen(request, context=context, timeout=30) as response:
+    with atlas.gateway_open(root, request, timeout=30) as response:
         return json.load(response)
 
 
