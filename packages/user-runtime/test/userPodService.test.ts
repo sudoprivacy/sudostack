@@ -2,45 +2,14 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { randomUUID } from 'node:crypto'
 import { NexusZoneApiClient } from '@nexus-ai-fs/vfs-client'
-import { UserPodService, userPodName, type UserPodOptions, type UserPodResources } from '../src/userPodService.js'
-import type { K8sResource } from '../src/k8sResources.js'
+import { UserPodService, userPodName, type UserPodOptions } from '../src/userPodService.js'
 import type { RuntimeRelease } from '../src/runtimeRelease.js'
 import { runtimeCredential } from './runtimeCredential.js'
+import { userPodPlatform as platform } from './userPodPlatform.js'
 
 const options: UserPodOptions = {
   image: 'runtime:verified', nodeHost: 'compute.internal', namespace: 'private-runtimes', storageClass: 'retained-local',
   issuer: { endpoint: 'https://control-plane', tls: { ca: '/ca', cert: '/moss', key: '/moss-key' } },
-}
-
-function platform(isScopedByName = false) {
-  const objects = new Map<string, K8sResource>()
-  const ports = new Map<string, number>()
-  const key = (kind: string, name: string) => isScopedByName ? `${kind}:${name}` : name.endsWith('-upgrade') ? 'upgrade-secret' : kind
-  const writes: Array<{ kind: string; manifest: Record<string, unknown> }> = []
-  const resources: UserPodResources = {
-    async read(kind, name) { return objects.get(key(kind, name)) },
-    async write(manifest) {
-      const kind = manifest.kind === 'PersistentVolumeClaim' ? 'pvc' : String(manifest.kind).toLowerCase()
-      writes.push({ kind, manifest })
-      const metadata = manifest.metadata as K8sResource['metadata']
-      const previousData = manifest.data as Record<string, string> | undefined
-      if (kind === 'service' && !ports.has(metadata.name)) ports.set(metadata.name, 31443 + ports.size)
-      objects.set(key(kind, metadata.name),
-        { metadata: { ...metadata, uid: metadata.uid ?? randomUUID(), resourceVersion: String(Number(metadata.resourceVersion ?? 0) + 1) },
-        ...(manifest.spec ? { spec: manifest.spec as Record<string, unknown> } : {}),
-        ...(kind === 'secret' ? { data: { ...previousData, ...Object.fromEntries(Object.entries((manifest.stringData ?? {}) as Record<string, string>)
-          .map(([key, value]) => [key, Buffer.from(value).toString('base64')])) } } : {}),
-        ...(kind === 'service' ? { spec: { ...manifest.spec as object,
-          ports: [{ name: 'nexus', port: 8443, targetPort: 8443, nodePort: isScopedByName ? ports.get(metadata.name)! : 31443 }] } } : {}),
-        ...(kind === 'pod' ? { status: { phase: 'Running', conditions: [{ type: 'Ready', status: 'True' }] } } : {}) })
-    },
-    async remove(kind, name, uid) {
-      const resourceKey = key(kind === 'pods' ? 'pod' : 'secret', name)
-      assert.equal(objects.get(resourceKey)?.metadata.uid, uid, 'replacement must target the observed resource identity')
-      objects.delete(resourceKey)
-    },
-  }
-  return { objects, writes, resources }
 }
 
 void test('same owner allocations keep independent Pods and volumes through concurrent creation and one allocation upgrade', async t => {
@@ -80,6 +49,26 @@ void test('same owner allocations keep independent Pods and volumes through conc
   await runtime.close()
   await assert.rejects(secondary.resolve('alice'), /closed/)
   assert.throws(() => runtime.forAllocation('third'), /closed/)
+})
+
+void test('a newly created Pod receives projection notifications on later credential updates', async t => {
+  const kube = platform()
+  const projected: Array<{ name: string; uid: string; ownerId: string }> = []
+  kube.resources.refreshProjection = async (name, uid, ownerId) => {
+    assert.equal(uid, kube.objects.get('pod')!.metadata.uid)
+    projected.push({ name, uid, ownerId })
+  }
+  t.mock.method(NexusZoneApiClient, 'withMtls', () => ({
+    mintUserRuntime: async (owner: string) => runtimeCredential(owner), close() {},
+  }))
+  const service = new UserPodService(options, kube.resources, async () => {})
+  t.after(() => service.close())
+  await service.resolve('alice')
+  assert.equal(projected.length, 0, 'initial credentials precede Pod creation')
+  const pod = kube.objects.get('pod')!
+  await service.resolve('alice', { 'sudocode.json': '{"model":"next-model"}', 'backend-config.json': '{"mounts":[]}' })
+  assert.deepEqual(projected, [{ name: userPodName('alice'), uid: pod.metadata.uid!, ownerId: 'alice' }])
+  assert.equal(kube.objects.get('pod'), pod)
 })
 
 void test('an allocation refuses same-owner resources attributed to another allocation before mutation', async t => {

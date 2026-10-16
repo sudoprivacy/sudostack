@@ -314,7 +314,7 @@ export class UserPodService {
 
   private async assertUpgradePod(ownerId: string, observed: K8sResource): Promise<void> {
     const current = await this.readAllocationResource('pod', userPodName(ownerId, this.options.allocationId))
-    if (!current || current.metadata.uid !== observed.metadata.uid || current.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) {
+    if (!current || !observed.metadata.uid || current.metadata.uid !== observed.metadata.uid || current.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) {
       throw new Error('User Pod identity changed during runtime upgrade')
     }
   }
@@ -332,12 +332,11 @@ export class UserPodService {
       await this.assertUpgradePod(ownerId, pod)
       // Keep projected model configuration and use the observed Secret version
       // so a concurrent replacement cannot receive another Pod's update.
-      await this.updateCredentialSecret(ownerId, secret, userRuntimeCredentialData(ownerId, credential), credential.caPem)
-      await this.resources.refreshProjection?.(name, pod.metadata.uid!, ownerId)
+      await this.updateCredentialSecret(ownerId, secret, userRuntimeCredentialData(ownerId, credential), credential.caPem, pod.metadata.uid!)
     } finally { issuer.close() }
   }
 
-  private async updateCredentialSecret(ownerId: string, secret: K8sResource, values: Record<string, string>, ca: Buffer): Promise<void> {
+  private async updateCredentialSecret(ownerId: string, secret: K8sResource, values: Record<string, string>, ca: Buffer, podUid?: string): Promise<void> {
     if (!secret.metadata.uid || !secret.metadata.resourceVersion || secret.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) throw new Error('Credential update requires the observed owner Secret identity and version')
     const annotations = { ...secret.metadata.annotations }
     // JSON Patch tests the identity/version/owner and updates data atomically,
@@ -347,6 +346,8 @@ export class UserPodService {
         uid: secret.metadata.uid, resourceVersion: secret.metadata.resourceVersion,
         annotations, labels: secret.metadata.labels },
       data: renewRuntimeSecretData(ownerId, secret.data ?? {}, values, ca) }, 'patch')
+    // A Pod update asks kubelet to project the new generation before readiness.
+    if (podUid) await this.resources.refreshProjection?.(secret.metadata.name, podUid, ownerId)
   }
 
   private async runtimeConnection(ownerId: string): Promise<UserRuntimeConnectionConfig> {
@@ -435,6 +436,8 @@ export class UserPodService {
       }
     }
     const existingPod = await assertOwner('pod')
+    if (existingPod && !existingPod.metadata.uid) throw new Error('Existing user Pod lacks an observed identity')
+    let projectionPodUid = existingPod?.metadata.uid
     if (existingPod && existingPod.metadata.annotations?.[SPEC_ANNOTATION] !== manifests.pod.metadata.annotations[SPEC_ANNOTATION]) {
       throw new Error('User Pod image or configuration requires an explicit runtime upgrade')
     }
@@ -463,7 +466,7 @@ export class UserPodService {
         try {
           const credential = await issuer.mintUserRuntime(ownerId, { validitySecs: CREDENTIAL_VALIDITY_SECS })
           const values = { ...next, ...userRuntimeCredentialData(ownerId, credential) }
-          if (observed) await this.updateCredentialSecret(ownerId, observed, values, credential.caPem)
+          if (observed) await this.updateCredentialSecret(ownerId, observed, values, credential.caPem, projectionPodUid)
           else await this.resources.write({ ...manifests.secret, stringData: values }, 'create')
           configuration = next
         } finally { issuer.close() }
@@ -505,6 +508,7 @@ export class UserPodService {
         build.nexusVersion !== expected.cohost.nexusVersion || build.pluginAbi !== expected.cohost.pluginAbi ||
         observed.binaryDigest !== expected.cohost.binaryDigest) throw new Error('Running user runtime differs from the verified release manifest')
     }
+    projectionPodUid = readyPod.metadata.uid
     await this.ready(config, ownerId, this.lifecycle.signal)
     let timer: ReturnType<typeof setTimeout> | undefined
     let isActive = true
