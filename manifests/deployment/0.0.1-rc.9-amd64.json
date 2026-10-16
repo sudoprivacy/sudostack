@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 2,
+  "version": "0.0.1-rc.9-amd64",
+  "architecture": "amd64",
+  "repository": "sudoprivacy/sudostack",
+  "components": {
+    "moss": {
+      "repository": "sudoprivacy/moss",
+      "tag": "server-v0.1.60-rc.arm64.20261015.2",
+      "version": "0.1.60-rc.arm64.20261015.2"
+    },
+    "webui": {
+      "repository": "sudoprivacy/sudowork",
+      "tag": "v0.2.32-rc.arm64.20261015",
+      "version": "0.2.32-rc.arm64.20261015"
+    },
+    "nexus": {
+      "repository": "nexi-lab/nexus-vfs",
+      "tag": "v0.8.15",
+      "version": "0.8.15",
+      "pluginABI": 7
+    },
+    "vault": {
+      "repository": "nexi-lab/nexus",
+      "tag": "vault-v0.5.68",
+      "version": "0.5.68"
+    },
+    "sudocode": {
+      "repository": "sudoprivacy/sudocode",
+      "tag": "v0.2.32",
+      "version": "0.2.32",
+      "sha256": "9c89402b7b86af2a7c532650cc08ba30581047549dde7955fc18434e7c36c281"
+    },
+    "k3s": {
+      "version": "v1.34.1+k3s1"
+    },
+    "gvisor": {
+      "version": "release-20261005.0"
+    },
+    "helm": {
+      "version": "v3.19.0"
+    },
+    "caddy": {
+      "version": "2.10.2",
+      "image": "docker.io/library/caddy:2.10.2-alpine"
+    },
+    "postgres": {
+      "version": "16",
+      "image": "docker.io/library/postgres:16-alpine",
+      "bundledWith": "webui"
+    },
+    "nexusBase": {
+      "version": "22.22.1",
+      "image": "docker.io/library/node:22.22.1-trixie-slim"
+    },
+    "router": {
+      "repository": "sudoprivacy/new-api",
+      "tag": "sudorouter-v0.0.1-rc.2",
+      "version": "0.0.1-rc.2",
+      "sourceBranch": "sudo/rc24",
+      "sourceCommit": "3fb660a15163917123e194fb995940040b80f658",
+      "baseCommit": "591b59f56e6170e5ae3e32a45b6e0ccc103396ed"
+    }
+  }
+}
