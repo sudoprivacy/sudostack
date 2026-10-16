@@ -65,7 +65,8 @@ void test('a restarted controller renews an expired runtime over real mTLS befor
     (error, port) => error ? reject(error) : resolve(port)))
   const bundle = createUserRuntimeCredentialBundle(owner, runtimeCredential(owner))
   const pod: K8sResource = { metadata: { name, uid: randomUUID(), annotations },
-    spec: { containers: [{ name: 'runtime', image: 'runtime:old' }] } }
+    spec: { containers: [{ name: 'runtime', image: 'runtime:old' }],
+      volumes: [{ name: 'data', persistentVolumeClaim: { claimName: name } }] } }
   const volume: K8sResource = { metadata: { name, uid: randomUUID(), annotations } }
   const objects = new Map<string, K8sResource>([
     ['pod', pod], ['pvc', volume],

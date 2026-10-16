@@ -105,6 +105,22 @@ void test('primary placement names remain compatible and allocation IDs cannot b
   }
 })
 
+void test('cached readiness cannot hide an allocation mounting a sibling volume', async t => {
+  const kube = platform(true)
+  t.mock.method(NexusZoneApiClient, 'withMtls', () => ({ mintUserRuntime: async () => runtimeCredential('alice'), close() {} }))
+  const runtime = new UserPodService(options, kube.resources, async () => {})
+  t.after(() => runtime.close())
+  const secondary = runtime.forAllocation('secondary')
+  await secondary.resolve('alice')
+  const pod = kube.objects.get(`pod:${userPodName('alice', 'secondary')}`)!
+  const volumes = pod.spec!.volumes as Array<{ name: string; persistentVolumeClaim?: { claimName: string } }>
+  volumes.find(volume => volume.name === 'data')!.persistentVolumeClaim!.claimName = userPodName('alice')
+  const writes = kube.writes.length
+  await assert.rejects(secondary.resolve('alice'), /data volume does not belong/)
+  await assert.rejects(secondary.inspect('alice'), /data volume does not belong/)
+  assert.equal(kube.writes.length, writes, 'identity annotations cannot override the actual mounted PVC')
+})
+
 void test('Agent discovery does not provision a missing box and refuses another owner before mutation', async t => {
   const kube = platform()
   const service = new UserPodService(options, kube.resources, async () => {})
