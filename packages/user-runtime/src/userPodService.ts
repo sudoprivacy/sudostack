@@ -189,6 +189,15 @@ export class UserPodService {
     if (resource && allocation !== (this.options.allocationId ?? PRIMARY_ALLOCATION)) {
       throw new Error('User runtime resource belongs to another allocation')
     }
+    if (kind === 'pod' && resource?.spec) {
+      const volumes = z.array(z.object({ name: z.string(), persistentVolumeClaim: z.object({
+        claimName: z.string(), readOnly: z.boolean().optional(),
+      }).optional() })).parse(resource.spec.volumes)
+      const claims = volumes.filter(volume => volume.persistentVolumeClaim)
+      if (claims.length !== 1 || claims[0]!.name !== 'data' || claims[0]!.persistentVolumeClaim!.claimName !== name || claims[0]!.persistentVolumeClaim!.readOnly) {
+        throw new Error('User runtime data volume does not belong to this allocation')
+      }
+    }
     return resource
   }
 
