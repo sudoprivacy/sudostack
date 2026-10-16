@@ -1,0 +1,68 @@
+name: resource-files
+
+on:
+  pull_request:
+    paths: ['packages/resource-files/**', '.github/workflows/resource-files.yml']
+  push:
+    branches: [main]
+    tags: ['resource-files-v*']
+    paths: ['packages/resource-files/**', '.github/workflows/resource-files.yml']
+
+jobs:
+  package-checks:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: packages/resource-files
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.21.0'
+          cache: npm
+          cache-dependency-path: packages/resource-files/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm pack
+      - name: Record package checksum
+        shell: bash
+        run: sha256sum sudo-resource-files-*.tgz > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: resource-files-package-${{ matrix.os }}
+          path: |
+            packages/resource-files/sudo-resource-files-*.tgz
+            packages/resource-files/SHA256SUMS.txt
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/resource-files-v')
+    needs: package-checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify release tag matches the package
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          VERSION=$(node -p 'require("./packages/resource-files/package.json").version')
+          test "$RELEASE_TAG" = "resource-files-v$VERSION"
+      - uses: actions/download-artifact@v4
+        with:
+          name: resource-files-package-ubuntu-latest
+          path: release
+      - name: Publish verified package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          cd release
+          sha256sum -c SHA256SUMS.txt
+          gh release create "$RELEASE_TAG" sudo-resource-files-*.tgz SHA256SUMS.txt \
+            --verify-tag --title "$RELEASE_TAG" \
+            --notes 'Resource file imports. The archive and checksum come from passing Linux package checks.'
