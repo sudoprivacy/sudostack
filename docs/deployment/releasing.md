@@ -133,12 +133,21 @@ GitHub Release 与 COS 都发布成功后，`sync-docs` 读取实际已发布 ma
 ```bash
 ATLAS_VERSION="实际已验收的套件版本"
 ATLAS_SOURCE_RUN="原始成功的run-id"
+ATLAS_SOURCE_SHA="$(gh run view "$ATLAS_SOURCE_RUN" -R sudoprivacy/sudostack --json headSha --jq .headSha)"
+# 在维护者已登录 gh 的终端创建尚不存在的 tag；已有 tag 须核对提交一致，不可移动。
+gh api repos/sudoprivacy/sudostack/git/refs \
+  -f ref="refs/tags/sudostack-v$ATLAS_VERSION" -f sha="$ATLAS_SOURCE_SHA"
+```
+
+新 tag 会触发普通 tag 构建。此处已有同版本原始归档，先在 Actions 中取消该 tag 刚触发的重复构建，再启动下面的复用发布；原始成功 run 保留作为验收来源：
+
+```bash
 gh workflow run deployment-release.yml -R sudoprivacy/sudostack \
   --ref main -f version="$ATLAS_VERSION" -f publish_run="$ATLAS_SOURCE_RUN" \
   -f publish_github=true -f cos_mode=release-only
 ```
 
-该路径校验来源仓库、workflow、成功作业、当前版本锁、GitHub 附件摘要和 COS manifest。它原样复用安装制品，仅生成外层发布文档；tag 指向原始 CI 的源码提交。使用工作流的 `GITHUB_TOKEN` 创建 tag / Release，不触发再次构建同版本的递归流水线。此选项仅接受 `release-only`，不推广 latest；随后同样自动同步 `DEPLOYMENT.md`。普通 latest 复用仍要求来源 run 与所选 tag 一致。
+该路径校验来源仓库、workflow、成功作业、当前版本锁、GitHub 附件摘要和 COS manifest。它原样复用安装制品，仅生成外层发布文档；tag 必须已经指向原始 CI 的源码提交。历史提交的 tag 由维护者创建，Actions 使用 `--verify-tag` 发布已有 tag，避免 `target_commitish` 触发内置令牌的额外 workflow 权限限制。此选项仅接受 `release-only`，不推广 latest；随后同样自动同步 `DEPLOYMENT.md`。普通 latest 复用仍要求来源 run 与所选 ref 一致。
 
 ## 5. 实机首装、清空重装，再推广 latest
 
