@@ -4,6 +4,7 @@ set -euo pipefail
 
 ATLAS_CLEANUP_DRY_RUN=0
 ATLAS_K3S_UNINSTALLER=/usr/local/bin/k3s-uninstall.sh
+ATLAS_K3S_AGENT_UNINSTALLER=/usr/local/bin/k3s-agent-uninstall.sh
 
 usage() {
   cat <<'HELP'
@@ -37,6 +38,11 @@ run() {
 }
 
 uninstall_k3s() {
+  # An old worker is a cluster migration, not an Atlas single-node cleanup.
+  # Report its actual uninstaller without silently deleting the worker's data.
+  if [[ ! -f "$ATLAS_K3S_UNINSTALLER" && -f "$ATLAS_K3S_AGENT_UNINSTALLER" ]]; then
+    die "检测到 k3s-agent 节点。请先备份旧节点数据并完成退群安排，再执行 sudo sh ${ATLAS_K3S_AGENT_UNINSTALLER}；该操作删除本机 k3s 数据，保留整包下载缓存。退出旧 agent 后可继续安装；如需清空 Atlas 和缓存，再运行本脚本。"
+  fi
   if (( ATLAS_CLEANUP_DRY_RUN )) || [[ -f "$ATLAS_K3S_UNINSTALLER" ]]; then
     run sh "$ATLAS_K3S_UNINSTALLER" || die 'k3s 卸载失败，尚未继续删除 Atlas 配置和凭据。'
     if (( ! ATLAS_CLEANUP_DRY_RUN )); then

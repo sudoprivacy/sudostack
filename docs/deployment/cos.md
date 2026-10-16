@@ -1,6 +1,10 @@
 # COS 完整离线包
 
+[部署与发布总览](../../DEPLOYMENT.md) · [全部版本](../../DEPLOYMENT.md#选择版本)
+
 目标机通过 COS 下载一份完整压缩包，校验后本地安装。部署阶段不再访问 GitHub、Docker Hub、npm 或 Helm 下载站。Python、curl、openssl 等系统基础依赖需预先安装；Ubuntu 软件源与部署制品下载是两个独立步骤。
+
+本页文件名示例为 amd64 rc.7；ARM64 请从 [部署总览](../../DEPLOYMENT.md#选择版本) 选择版本。组件版本变更和新整包发布步骤见 [发版操作手册](releasing.md)。
 
 发布桶沿用 Moss 的 `sudowork-release-1309794936`，sudostack 使用独立前缀：
 
@@ -47,7 +51,7 @@ rc.7 安装地址由 [tag CI](https://github.com/sudoprivacy/sudostack/actions/w
 
 在 Ubuntu 22.04 / x86_64 服务器以 root 执行，替换第一行 IP：
 
-下面的 rc.7 地址只提供 amd64 制品。ARM64 构建流程与尚待补齐的上游制品见 [ARM64 部署](arm64.md)，目前不能用该地址在 aarch64 主机安装。
+下面的 rc.7 地址只提供 amd64 制品。aarch64 主机请使用 [ARM64 rc.8 安装入口](arm64.md#从-cos-安装)。
 
 ```bash
 ATLAS_HOST="你的服务器IP"
@@ -116,7 +120,7 @@ CI 使用与 Moss 一致的 `TENCENT_SECRET_ID`、`TENCENT_SECRET_KEY` Actions s
 
 ```bash
 python3 tools/deploy/cos_bundle.py create --assets /path/to/verified/assets --output dist/cos-release
-python3 tools/deploy/publish_cos.py --directory dist/cos-release
+python3 tools/deploy/publish_cos.py --directory dist/cos-release --mode release-only
 ```
 
 发布命令使用已配置的 `coscmd` 凭据，显式指定发布桶，不改写开发机现有配置。可以用 `--bucket`、`--region`、`--prefix`、`--public-base`、`--config` 覆盖；客户端使用对应的 `ATLAS_COS_BASE`（包含 `sudostack` 前缀）。`--mode release-only` 仅发布固定版本，`--mode latest-only` 在校验固定版本后更新入口。

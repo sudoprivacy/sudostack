@@ -2,6 +2,7 @@
 """Single-node OCI/Helm assembly. All application lifecycle operations use k3s."""
 import argparse
 import base64
+import errno
 import hashlib
 import importlib.util
 import json
@@ -10,11 +11,13 @@ from pathlib import Path
 import platform
 import secrets
 import shutil
+import socket
 import subprocess
 import sys
 import tarfile
 import time
 import urllib.request
+import urllib.error
 import ssl
 
 os.umask(0o077)
@@ -142,9 +145,12 @@ def validate_host(manifest):
 
 def preflight_existing_cluster():
     systemctl = shutil.which('systemctl')
-    if systemctl and subprocess.run([systemctl, 'is-active', '--quiet', 'k3s-agent'],
-                                   capture_output=True, timeout=10).returncode == 0:
-        raise ValueError('An existing k3s-agent is running; detach this host from its cluster before installing the single-node profile')
+    agent_running = systemctl and subprocess.run([systemctl, 'is-active', '--quiet', 'k3s-agent'],
+                                                capture_output=True, timeout=10).returncode == 0
+    if agent_running or shutil.which('k3s-agent-uninstall.sh'):
+        raise ValueError('An existing k3s-agent is running or still installed; back up local cluster data and detach this host '
+                         'before installing the single-node profile. The standard agent uninstaller is '
+                         '/usr/local/bin/k3s-agent-uninstall.sh (removes local k3s data; keeps the COS download cache).')
     if not shutil.which('k3s'):
         return
     probe = subprocess.run(['k3s', 'kubectl', 'get', 'nodes', '--request-timeout=10s', '-o', 'json'],
@@ -156,6 +162,52 @@ def preflight_existing_cluster():
         raise ValueError('This profile supports one k3s node; the existing multi-node cluster cannot be managed by this installer')
 
 
+def preflight_gateway_ports(ports):
+    """Catch host listeners before importing images or changing k3s configuration."""
+    conflicts = set()
+    for port in ports:
+        for family, address in ((socket.AF_INET, '0.0.0.0'), (socket.AF_INET6, '::')):
+            try:
+                with socket.socket(family, socket.SOCK_STREAM) as probe:
+                    # Linux can ignore TIME_WAIT without sharing a listener.
+                    # BSD permits overlapping wildcard binds with this option.
+                    if platform.system() == 'Linux':
+                        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    if family == socket.AF_INET6:
+                        probe.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+                    probe.bind((address, port))
+                    probe.listen(1)
+            except OSError as error:
+                if error.errno == errno.EADDRINUSE:
+                    conflicts.add(port)
+                elif family == socket.AF_INET6 and error.errno in (
+                        errno.EAFNOSUPPORT, errno.EPROTONOSUPPORT, errno.EADDRNOTAVAIL):
+                    continue  # IPv4-only kernels are valid hosts for this profile.
+                else:
+                    raise RuntimeError(f'Cannot check gateway TCP port {port}: {error}') from error
+    if conflicts:
+        raise ValueError('Gateway TCP ports already in use: ' + ', '.join(map(str, sorted(conflicts)))
+                         + '. Stop or move the existing web server/container before installation. '
+                         'Inspect with sudo ss -ltnp and docker ps. No existing service was stopped.')
+
+
+def gateway_open(root, request, timeout=15):
+    """Access the installation directly with its own CA, regardless of shell proxies."""
+    context = ssl.create_default_context(cafile=str(root / 'tls/ca.crt'))
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}),
+                                        urllib.request.HTTPSHandler(context=context))
+    url = request.full_url if isinstance(request, urllib.request.Request) else request
+    try:
+        return opener.open(request, timeout=timeout)
+    except urllib.error.URLError as error:
+        if isinstance(error.reason, ssl.SSLCertVerificationError):
+            raise RuntimeError(f'Gateway TLS verification failed at {url}. The endpoint must present a certificate '
+                               f'trusted by {root / "tls/ca.crt"}. Check for an old service on 443/8443/9443, '
+                               'wrong DNS/host, or mismatched supplied certificates; TLS verification remains enabled. '
+                               'After correcting the endpoint, rerun the same installer to resume verification.') from error
+        raise
+
+
 def install(args):
     root, assets, chart = args.root.resolve(), args.assets.resolve(), args.chart.resolve()
     if root == Path('/') or not (chart / 'Chart.yaml').exists():
@@ -163,6 +215,11 @@ def install(args):
     manifest = json.loads((assets / 'atlas-release.json').read_text())
     architecture = validate_host(manifest)
     preflight_existing_cluster()
+    # An identical-release retry already owns its gateway; it proceeds to HTTPS
+    # checks below instead of treating its own host ports as a fresh conflict.
+    if not (root / 'release-manifest.json').exists():
+        ports = [80, 443, 8443] + ([9443] if 'router' in manifest['components'] else [])
+        preflight_gateway_ports(ports)
     root.mkdir(parents=True, exist_ok=True)
     root.chmod(0o700)
     import fcntl
@@ -190,6 +247,7 @@ def install(args):
             raise ValueError('Host differs from installed gateway; certificate/configuration change required')
         report(root)
         qualify(root)
+        print_access_info(root)
         return
     if args.add_router:
         raise ValueError('--add-router requires an existing installation of the pinned base release')
@@ -321,6 +379,7 @@ def install(args):
         router.configure_moss(root)
     finalize_install(root, assets, chart, manifest, images)
     qualify(root)
+    print_access_info(root)
 
 
 def validate_router_addition(previous, manifest):
@@ -355,6 +414,7 @@ def add_router(root, assets, chart, manifest, host):
     router.configure_moss(root)
     finalize_install(root, assets, chart, manifest, values['images'])
     qualify(root)
+    print_access_info(root)
 
 
 def finalize_install(root, assets, chart, manifest, images):
@@ -397,9 +457,53 @@ def qualify(root):
         run(*command)
         report(root)
 
+
+def print_access_info(root):
+    values = json.loads((root / 'values.json').read_text())
+    installed = json.loads((root / 'release-manifest.json').read_text())
+    credentials = json.loads((root / 'credentials.json').read_text())
+    gateway = values['gateway']
+    admin = credentials['adminUsername']
+    items = [
+        ('SudoWork WebUI', gateway['webuiOrigin'], admin, str(root / 'admin-credentials.txt')),
+        ('Moss 管理后台', gateway['mossOrigin'] + '/admin/', admin, str(root / 'admin-credentials.txt')),
+    ]
+    if 'router' in values['images']:
+        router_credentials = json.loads((root / 'router-credentials.json').read_text())
+        items.append(('SudoRouter', gateway['routerOrigin'], router_credentials['adminUsername'],
+                      str(root / 'router-admin-credentials.txt')))
+    items += [
+        ('Sudocode / Moss Runtime', '从 SudoWork 创建会话', '使用 WebUI 登录身份', '无独立登录密码'),
+        ('Nexus broker', 'nexus-broker.atlas-system.svc.cluster.local:2126（集群内 mTLS）',
+         'Moss agent 证书身份', 'Kubernetes Secret: atlas-system/atlas-nexus-client'),
+        ('Vault', 'Nexus / Runtime 内嵌插件，无独立 Web 入口', '随 Nexus 身份授权', '无独立登录密码'),
+        ('PostgreSQL', 'webui-postgres.atlas-system.svc.cluster.local:5432 / sudowork_webui（集群内）',
+         'atlas', str(root / 'credentials.json') + ' 的 postgresPassword；Secret: atlas-system/atlas-postgres'),
+        ('Caddy', '上述 HTTPS 入口的网关', '无独立登录用户', 'TLS 文件：' + str(root / 'tls')),
+        ('k3s / kubectl', '本机 sudo k3s kubectl', 'kubeconfig 中的证书身份', '/etc/rancher/k3s/k3s.yaml'),
+        ('gVisor', '集群 RuntimeClass: gvisor', '无独立登录用户', '无独立登录密码'),
+        ('Helm', '本机 helm；使用 k3s kubeconfig', 'kubeconfig 中的证书身份', '/etc/rancher/k3s/k3s.yaml'),
+        ('Node.js（Nexus 基础镜像）', 'Nexus 镜像内运行环境', '无独立登录用户', '无独立登录密码'),
+    ]
+    info = {'release': installed['release'], 'architecture': installed['architecture'],
+            'components': [dict(zip(('component', 'address', 'username', 'credentialsLocation'), item)) for item in items],
+            'caCertificate': str(root / 'tls/ca.crt')}
+    write(root / 'access-info.json', info)
+    lines = [f'套件：{installed["release"]}（{installed["architecture"]}）', '组件访问与凭据位置：']
+    for name, address, username, location in items:
+        lines += [f'  {name}: {address}', f'    用户：{username}；密码/凭据位置：{location}']
+    lines += [f'浏览器测试 CA：{root / "tls/ca.crt"}',
+              f'凭据文件仅 root 可读；本摘要不包含密码。摘要：{root / "access-info.txt"}',
+              f'状态：sudo {root / "status.sh"}；验证：sudo {root / "verify.sh"}',
+              '实际模型调用需在 SudoRouter 配置上游渠道和 API Key。' if 'router' in values['images'] else '']
+    text = '\n'.join(lines).rstrip() + '\n'
+    summary = root / 'access-info.txt'
+    summary.write_text(text)
+    summary.chmod(0o600)
+    print(text, end='', flush=True)
+
 def report(root):
     values = json.loads((root / 'values.json').read_text())
-    context = ssl.create_default_context(cafile=str(root / 'tls/ca.crt'))
     endpoints = [(values['gateway']['mossOrigin'], '/readyz'), (values['gateway']['webuiOrigin'], '/health/live')]
     expected = {'moss-server', 'nexus-broker', 'sudowork-webui', 'webui-postgres', 'atlas-gateway'}
     router_status = None
@@ -409,7 +513,7 @@ def report(root):
         expected.add('sudorouter')
         router_status = router.status(root)
     for base, path in endpoints:
-        with urllib.request.urlopen(base + path, context=context, timeout=15) as response:
+        with gateway_open(root, base + path) as response:
             if response.status != 200:
                 raise RuntimeError('Gateway health check failed')
     deployments = json.loads(kube('-n', NAMESPACE, 'get', 'deployments', '-o', 'json'))['items']
@@ -429,6 +533,7 @@ def manage(args):
     root = args.root.resolve()
     if args.action == 'verify':
         report(root)
+        print_access_info(root)
         return
     if args.action == 'status':
         print(kube('-n', NAMESPACE, 'get', 'deployment,pods,pvc,job', '-o', 'wide'))

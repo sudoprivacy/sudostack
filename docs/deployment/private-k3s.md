@@ -1,12 +1,14 @@
 # sudostack 版本化交付与单节点 k3s 部署
 
+[部署与发布总览](../../DEPLOYMENT.md) · [全部版本](../../DEPLOYMENT.md#选择版本)
+
 每个 sudostack 版本固定一套子组件及其部署文件。`manifests/deployment/0.0.1.json` 是 `0.0.1` 的版本组合；Git tag `sudostack-v0.0.1` 冻结该清单及本仓库的 Chart、安装器和运维脚本。升级任一组件或部署文件均应发布新的 sudostack 版本。
 
 CI 生成的 `atlas-release.json` 进一步记录各资源的来源 URL、组件版本、Release asset ID、SHA256，以及构建 Nexus/Caddy 时取得的 registry digest。客户安装时只读取该 Release 的清单，不解析任何子组件的 `latest`。构建输入清单随同发布为 `components.lock.json`。
 
-当前候选是 [`sudostack-v0.0.1-rc.7`](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.7)，其冻结清单为 `manifests/deployment/0.0.1-rc.7.json`；正式 `0.0.1` 尚未发布。rc.7 包含 SudoRouter，提供 CI 构建并验收的 COS 完整离线包，复用 rc.2 的既有制品，锁定 Moss 集成候选 `server-v0.1.53-atlas.1`。该候选由 Moss CI 生成拆分 Server 镜像、部署助手和 Nexus 引导脚本。CI 在下载大文件前检查上游 Release 附件，并检查 Runtime 内实际 Sudocode 版本；不能用开发机手工打包文件填补发布缺口。
+本页使用 amd64 候选 [`sudostack-v0.0.1-rc.7`](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.7)，其冻结清单为 `manifests/deployment/0.0.1-rc.7.json`；正式 `0.0.1` 尚未发布。rc.7 包含 SudoRouter，提供 CI 构建并验收的 COS 完整离线包，复用 rc.2 的既有制品，锁定 Moss 集成候选 `server-v0.1.53-atlas.1`。该候选由 Moss CI 生成拆分 Server 镜像、部署助手和 Nexus 引导脚本。CI 在下载大文件前检查上游 Release 附件，并检查 Runtime 内实际 Sudocode 版本；不能用开发机手工打包文件填补发布缺口。
 
-| 组件 | `0.0.1` 的版本组合 | 资源归属 |
+| 组件 | amd64 rc.7 的版本组合 | 资源归属 |
 | --- | --- | --- |
 | Moss Server / Session Runtime | `server-v0.1.53-atlas.1` | `sudoprivacy/moss` 的 CI Release 镜像包 |
 | Sudocode | `v0.2.23` | `sudoprivacy/sudocode`；CI 检查 Runtime 内实际版本 |
@@ -22,9 +24,9 @@ Nexus Broker 的部署镜像由 sudostack CI 组装上述固定 daemon、Vault �
 
 本入口装配 Moss Server、Nexus Broker、SudoWork WebUI、PostgreSQL、Caddy、SudoRouter；Sudocode 随 Runtime 镜像运行在按需创建的 gVisor Pod 中。业务服务使用 Helm/k3s 管理。宿主机 systemd 只管理 k3s 基础设施。
 
-适用范围：单节点 Linux amd64、本地 local-path 存储、独立命名空间 `atlas-system` 和 `moss-sessions`。CI 在全新 Ubuntu 22.04 runner 上执行安装、登录/会话、重复安装和重启恢复，全部通过后才发布到 COS。各版本状态见 [部署发布 CI](https://github.com/sudoprivacy/sudostack/actions/workflows/deployment-release.yml)，验收报告保存在对应运行的 `sudostack-installation-evidence` artifact 中。Ubuntu 24.04 验收及正式供应链签名尚未完成。
+适用范围：单节点 Linux amd64、本地 local-path 存储、独立命名空间 `atlas-system` 和 `moss-sessions`。CI 在全新 Ubuntu 22.04 runner 上执行安装、登录/会话、重复安装和重启恢复，全部通过后才发布到 COS。各版本状态见 [部署发布 CI](https://github.com/sudoprivacy/sudostack/actions/workflows/deployment-release.yml)，验收报告保存在对应运行的 `sudostack-installation-evidence` artifact 中。本页 amd64 示例的 CI 使用 Ubuntu 22.04；正式供应链签名尚未完成。
 
-ARM64 版本的组装和原生 Ubuntu 24.04 ARM runner 验收流程已接入，尚未完成完整制品发布，见 [ARM64 部署](arm64.md)。两种架构均沿用单节点要求；安装器会在修改 k3s 配置前拒绝已有的多节点集群。
+ARM64 的 rc.8 完整包已发布，rc.9 安装器修复候选及 166 实机记录见 [ARM64 部署](arm64.md)。两种架构均沿用单节点要求；安装器会在修改 k3s 配置前拒绝已有的多节点集群。
 
 ## 一键安装
 
@@ -92,9 +94,11 @@ sudo /data/atlas/restore.sh --backup /var/backups/atlas/20261012-160000 \
 
 ## CI 发布与离线交付
 
+逐步操作见 [修改组件版本并发布新的整包](releasing.md)，当前 ARM64 交付见 [rc.8 发布清单](../../releases/0.0.1-rc.8-arm64/README.md)。
+
 1. 在 `manifests/deployment/VERSION.json` 提交新的版本组合。组件的仓库、tag、版本必须对应，禁止 `latest`、分支名或漏填组件。
 2. 可先运行 `python3 tools/deploy/release.py --lock manifests/deployment/0.0.1.json --check`，检查上游固定版本的附件是否齐全。此命令只读取公开发布信息，不修改集群。
-3. `.github/workflows/deployment-release.yml` 的 PR 和手动运行生成 CI artifact 并执行全新安装、相同版本重复安装及重启后的完整会话测试；PR 默认验收 `0.0.1`，手动运行可选择版本。推送 `sudostack-vVERSION` tag 才创建该版本的 GitHub prerelease 并发布 COS 完整包。CI 从对应 tag 的版本清单拉取制品，不执行本地手工组件构建。发布 job 必须等待组装和安装验收通过，现有 Release 不会被覆盖。
+3. `.github/workflows/deployment-release.yml` 的 PR 和手动运行生成 CI artifact 并执行全新安装、相同版本重复安装及重启后的完整会话测试；PR 自动选择唯一变更的版本锁，没有变更锁时回退 `0.0.1`，手动运行可选择版本。推送 `sudostack-vVERSION` tag 才创建该版本的 GitHub prerelease 并发布 COS 完整包。CI 从对应 tag 的版本清单拉取制品，不执行本地手工组件构建。发布 job 必须等待组装和安装验收通过，现有 Release 不会被覆盖。
 4. 发布资产包括安装入口、Chart、运维脚本、`components.lock.json`、`atlas-release.json`、SHA256，以及 sudostack 组装的 Nexus/Caddy 镜像包和基础设施离线文件。Moss/WebUI/SudoRouter 镜像保留其原仓库的 Release URL；`baseRelease` 固定旧套件清单的 SHA256，复用其未变动制品。
 5. COS 入口下载完整压缩包，缓存于 `/var/cache/sudostack/sudostack-vVERSION`；校验后解压到 `assets/` 并调用本地安装器。资源内容、断点续传、手动解包安装和 COS 发布见 [COS 与离线交付](cos.md)。GitHub 的原始 `install-atlas.sh` 仍提供按来源逐项下载的旧入口。
 

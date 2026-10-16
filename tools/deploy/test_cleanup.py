@@ -83,6 +83,19 @@ class CleanupTests(unittest.TestCase):
         self.assertIn('缺少', result.stderr)
         self.assertFalse(self.log.exists())
 
+    def test_agent_node_reports_its_uninstaller_without_deleting_data_or_cache(self):
+        (self.root / 'agent-uninstall.sh').write_text('# must not execute')
+        for preview in (0, 1):
+            with self.subTest(preview=preview):
+                result = self.shell('ATLAS_K3S_UNINSTALLER="$PWD/missing.sh"\n'
+                                    'ATLAS_K3S_AGENT_UNINSTALLER="$PWD/agent-uninstall.sh"\n'
+                                    f'ATLAS_CLEANUP_DRY_RUN={preview}\n'
+                                    'uninstall_k3s\nremove_atlas_files\n')
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('sudo sh ' + str(self.root.resolve() / 'agent-uninstall.sh'), result.stderr)
+                self.assertIn('保留整包下载缓存', result.stderr)
+                self.assertFalse(self.log.exists())
+
     def test_running_service_stops_after_uninstaller_reports_success(self):
         (self.root / 'fake-uninstaller.sh').write_text('# mocked by sh')
         self.stub('sh', 'exit 0\n')

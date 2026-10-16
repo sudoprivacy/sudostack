@@ -23,6 +23,10 @@ on:
         description: 'Reuse the complete bundle from an already successful run (optional run ID)'
         type: string
         required: false
+      publish_github:
+        description: 'Create a GitHub Release from the original successful run, without rebuilding (requires publish_run and release-only)'
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -43,10 +47,16 @@ jobs:
         id: suite
         env:
           REQUESTED_VERSION: ${{ inputs.version }}
+          PUBLISH_GITHUB: ${{ inputs.publish_github }}
+          SOURCE_RUN: ${{ inputs.publish_run }}
+          COS_MODE: ${{ inputs.cos_mode }}
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
+          if [[ "$PUBLISH_GITHUB" == true ]]; then
+            [[ "$SOURCE_RUN" =~ ^[0-9]+$ && "$COS_MODE" == release-only ]]
+          fi
           if [[ "$GITHUB_REF" == refs/tags/sudostack-v* ]]; then
             VERSION="${GITHUB_REF_NAME#sudostack-v}"
           else
@@ -105,6 +115,14 @@ jobs:
         run: python3 tools/deploy/package.py --assets dist/assets --publish dist/publish
       - name: Build the complete COS delivery once for qualification and publication
         run: python3 tools/deploy/cos_bundle.py create --assets dist/assets --output dist/cos-release
+      - name: Generate the component inventory and download links from the exact bundle
+        run: |
+          python3 tools/deploy/release_notes.py \
+            --manifest dist/assets/atlas-release.json --bundle dist/cos-release/bundle.json \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --output dist/publish/README.md
+          cd dist/publish
+          sha256sum README.md >> SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
           name: sudostack-installation-candidate
@@ -198,7 +216,7 @@ jobs:
           sha256sum -c SHA256SUMS
           # gh release create refuses to overwrite an existing Release.
           gh release create "$GITHUB_REF_NAME" ./* --verify-tag --prerelease \
-            --title "$GITHUB_REF_NAME" --notes 'Pinned component releases and deployment files. See atlas-release.json and components.lock.json. Deployment qualification is required before production use.'
+            --title "$GITHUB_REF_NAME" --notes-file README.md
   publish-cos:
     if: >-
       always() && needs.select.result == 'success' &&
@@ -207,6 +225,8 @@ jobs:
     needs: [select, assemble, qualify]
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    outputs:
+      source-sha: ${{ steps.source.outputs.commit }}
     permissions:
       actions: read
       contents: read
@@ -216,28 +236,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify the source run passed installation qualification
+        id: source
         if: inputs.publish_run != ''
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           SOURCE_RUN: ${{ inputs.publish_run }}
+          PUBLISH_GITHUB: ${{ inputs.publish_github }}
         run: |
           [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
           gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN" > source-run.json
-          python3 - <<'PYRUN'
-          import json, os
-          source = json.load(open('source-run.json'))
-          assert source['status'] == 'completed' and source['conclusion'] == 'success'
-          assert source['path'] == '.github/workflows/deployment-release.yml'
-          assert source['head_repository']['full_name'] == os.environ['GH_REPO']
-          assert source['head_branch'] == os.environ['GITHUB_REF_NAME']
-          PYRUN
           gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN/jobs?per_page=100&filter=all" > source-jobs.json
-          python3 - <<'PYJOBS'
-          import json
-          jobs = json.load(open('source-jobs.json'))['jobs']
-          assert any(job['name'] == 'qualify' and job['conclusion'] == 'success' for job in jobs)
-          PYJOBS
+          python3 - <<'PYRUN'
+          import json, os, sys
+          sys.path.insert(0, 'tools/deploy')
+          from prepare_publication import source_commit
+          commit = source_commit(json.load(open('source-run.json')), json.load(open('source-jobs.json')),
+                                 os.environ['GH_REPO'], os.environ['GITHUB_REF_NAME'],
+                                 allow_cross_ref=os.environ['PUBLISH_GITHUB'] == 'true')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('commit=' + commit + '\n')
+          PYRUN
       - uses: actions/download-artifact@v4
         with:
           name: sudostack-installation-candidate
@@ -280,3 +299,116 @@ jobs:
           print(f'Bundle: {base}/{data["bundle"]}\n')
           print('SHA256: `' + data['files'][data['bundle']]['sha256'] + '`')
           PY
+  publish-reused:
+    if: always() && inputs.publish_github && needs.publish-cos.result == 'success'
+    needs: [select, publish-cos]
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: write
+    env:
+      ATLAS_LOCK: ${{ needs.select.outputs.lock }}
+      SOURCE_RUN: ${{ inputs.publish_run }}
+      SOURCE_SHA: ${{ needs.publish-cos.outputs.source-sha }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: sudostack-deployment-release
+          path: release
+          run-id: ${{ inputs.publish_run }}
+          github-token: ${{ github.token }}
+      - name: Verify the original GitHub assets against the already published COS bundle
+        run: |
+          set -euo pipefail
+          VERSION="$(python3 -c 'import json,os; print(json.load(open(os.environ["ATLAS_LOCK"]))["version"])')"
+          TAG="sudostack-v$VERSION"
+          curl --retry 3 --retry-all-errors -fsSL \
+            "https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/$TAG/bundle.json" -o bundle.json
+          python3 tools/deploy/prepare_publication.py --directory release --bundle bundle.json --lock "$ATLAS_LOCK" \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN"
+          # The tag points at the exact source of the qualified archive.
+          if git rev-parse --verify "refs/tags/$TAG" >/dev/null 2>&1; then
+            test "$(git rev-parse "refs/tags/$TAG^{}")" = "$SOURCE_SHA"
+          fi
+          cd release
+          sha256sum -c SHA256SUMS
+          # GITHUB_TOKEN creates the tag with this Release; it does not trigger
+          # a recursive tag workflow that would rebuild the immutable bundle.
+          gh release create "$TAG" ./* --target "$SOURCE_SHA" --prerelease \
+            --title "$TAG" --notes-file README.md
+  sync-docs:
+    if: >-
+      always() && needs.publish-cos.result == 'success' &&
+      (needs.publish.result == 'success' || needs.publish-reused.result == 'success')
+    needs: [select, publish, publish-cos, publish-reused]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    concurrency:
+      group: sudostack-release-documentation
+      cancel-in-progress: false
+    env:
+      ATLAS_LOCK: ${{ needs.select.outputs.lock }}
+      SOURCE_RUN: ${{ inputs.publish_run || github.run_id }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+      - name: Read the actual published metadata and pinned runtime versions
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/release-docs"
+          python3 - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          from urllib.parse import quote
+          lock = json.load(open(os.environ['ATLAS_LOCK']))
+          tag = 'sudostack-v' + lock['version']
+          output = Path(os.environ['RUNNER_TEMP']) / 'release-docs'
+          base = 'https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/' + tag
+          for name in ('atlas-release.json', 'bundle.json'):
+              subprocess.run(['curl', '--retry', '3', '--retry-all-errors', '-fsSL', base + '/' + name,
+                              '-o', str(output / name)], check=True)
+          publication = subprocess.check_output(['gh', 'release', 'view', tag, '--json', 'tagName,url,isDraft,publishedAt'])
+          (output / 'publication.json').write_bytes(publication)
+          moss = lock['components']['moss']
+          runtime = subprocess.check_output(['gh', 'api', 'repos/' + moss['repository']
+              + '/contents/src/server/nexus/runtime-versions.json?ref=' + quote(moss['tag'], safe=''),
+              '-H', 'Accept: application/vnd.github.raw+json'])
+          (output / 'runtime-versions.json').write_bytes(runtime)
+          PY
+      - name: Commit the version README and DEPLOYMENT index together
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          DOCS_INPUT="$RUNNER_TEMP/release-docs"
+          VERSION="$(python3 -c 'import json,os; print(json.load(open(os.environ["ATLAS_LOCK"]))["version"])')"
+          for attempt in 1 2 3; do
+            git fetch origin "$DEFAULT_BRANCH"
+            git checkout -B published-release-docs "origin/$DEFAULT_BRANCH"
+            python3 tools/deploy/release_docs.py --root . \
+              --manifest "$DOCS_INPUT/atlas-release.json" --bundle "$DOCS_INPUT/bundle.json" \
+              --publication "$DOCS_INPUT/publication.json" --runtime-versions "$DOCS_INPUT/runtime-versions.json" \
+              --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN"
+            git diff --check
+            git add DEPLOYMENT.md "releases/$VERSION/README.md" "releases/$VERSION/release.json"
+            if git diff --cached --quiet; then
+              exit 0
+            fi
+            git commit -m "docs(deploy): publish $VERSION inventory and deployment index"
+            if git push origin "HEAD:$DEFAULT_BRANCH"; then
+              exit 0
+            fi
+          done
+          echo 'Release published, but documentation push failed; rerun sync-docs after resolving the branch update.' >&2
+          exit 1
