@@ -1,0 +1,10 @@
+{
+  "release": "sudostack-v0.0.1-rc.9-amd64",
+  "architecture": "amd64",
+  "publishedAt": "2026-10-16T04:07:04Z",
+  "githubRelease": "https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.9-amd64",
+  "sourceRun": "https://github.com/sudoprivacy/sudostack/actions/runs/38846866432",
+  "manifestSha256": "8980d80fd37c048bd687218a2fbcc952798f9f1028fce52452d1294227d243cb",
+  "bundle": "sudostack-0.0.1-rc.9-amd64-linux-amd64.tar.gz",
+  "bundleSha256": "9e288dc6ba44b8e9e1122f70f84c927fca15a158d5f6f703db7cdc7b9689abdb"
+}
