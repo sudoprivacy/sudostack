@@ -149,6 +149,7 @@ function userPodManifests(ownerId: string, options: UserPodOptions) {
 
 /** Coordinates user boxes without storing addresses, credentials or PID presence in SQL. */
 export class UserPodService {
+  private allocationRoot?: UserPodService
   private readonly allocations = new Map<string, UserPodService>()
   private readonly connections = new Map<string, Promise<UserPodConnection>>()
   private readonly pendingResolutions = new Map<string, Promise<UserPodConnection>>()
@@ -156,7 +157,7 @@ export class UserPodService {
   private readonly runtimeHost: string
 
   constructor(private readonly options: UserPodOptions, private readonly resources = kubernetesResources(options),
-    private readonly ready: UserRuntimeReady, private readonly allocationRoot?: UserPodService) {
+    private readonly ready: UserRuntimeReady) {
     this.options = { ...options, allocationId: allocationName(options.allocationId ?? PRIMARY_ALLOCATION) }
     if (typeof ready !== 'function') throw new Error('User runtimes require authenticated readiness verification')
     if (!options.image || !options.storageClass) throw new Error('User Pods require an image and retained storage')
@@ -177,7 +178,8 @@ export class UserPodService {
     if (allocationId === (root.options.allocationId ?? PRIMARY_ALLOCATION)) return root
     let service = root.allocations.get(allocationId)
     if (!service || service.lifecycle.signal.aborted) {
-      service = new UserPodService({ ...root.options, allocationId }, root.resources, root.ready, root)
+      service = new UserPodService({ ...root.options, allocationId }, root.resources, root.ready)
+      service.allocationRoot = root
       root.allocations.set(allocationId, service)
     }
     return service
