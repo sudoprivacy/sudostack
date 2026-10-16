@@ -1,10 +1,12 @@
-# 0.0.1-rc.2（Linux amd64）
+# Sudostack 0.0.1-rc.2
 
-[GitHub Release](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.2) · [返回全部版本](../../README.md#整包版本与组件清单)
+[GitHub Release](https://github.com/sudoprivacy/sudostack/releases/tag/sudostack-v0.0.1-rc.2) · [返回全部版本](../../.github/README.md#整包版本与组件清单)
 
 历史分项发布。未发现该版本的 COS 完整包 descriptor；请使用该版 GitHub 发布清单中的来源下载，不能套用新版 COS 整包地址。
 
 [组件锁](https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.2/components.lock.json) · [完整发布清单](https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.2/atlas-release.json) · [安装入口](https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.2/install-atlas.sh) · [校验表](https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.2/SHA256SUMS)
+
+## 组件版本与下载
 
 | 组件 | 版本 | 来源 |
 | --- | --- | --- |
@@ -21,6 +23,9 @@
 | Nexus 基础镜像（Node.js） | `22.22.1` | docker.io/library/node:22.22.1-trixie-slim |
 
 各版本独立锁定。Helm Chart 与安装器版本均为 `0.0.1-rc.2`；依赖的镜像和原始文件摘要以下面 manifest 为准。
+
+<details>
+<summary>分项文件、下载与 SHA256</summary>
 
 | 包内文件 | 直接下载 | SHA256 |
 | --- | --- | --- |
@@ -58,6 +63,48 @@
 | `sudowork-webui-0.2.28-linux-amd64.tar.gz` | [下载](https://github.com/sudoprivacy/sudowork/releases/download/v0.2.28/sudowork-webui-0.2.28-linux-amd64.tar.gz) | `57519f1a15d7a58c562aa7fb5a28e140c5b6a33c245df56f52f4e333109fe379` |
 | `webui-smoke.cjs` | [下载](https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.2/webui-smoke.cjs) | `fb8aadbe4665e90808514e7afc7b01a6698ef3c545d607040e5fe4ed9e6ed2af` |
 
+
+</details>
+
 安装与主机要求见 [部署文档](../../DEPLOYMENT.md)；该历史包的架构固定为 amd64。
 
-后续发版见 [首页快速发布](../../README.md#快速发布新整包)。
+后续发版见 [首页快速发布](../../.github/README.md#快速发布新整包)。
+
+## 清理环境
+
+该历史 Release 没有独立清理附件，以下使用当前维护脚本的固定提交；它不属于旧版原始制品。
+
+**仅用于已确认可清空的专用测试环境。** 清理会删除整个本机 k3s 集群、Atlas 数据、凭据、默认下载缓存、Helm 和 gVisor；先保存需要的备份及验收报告。
+
+```bash
+curl -fL "https://raw.githubusercontent.com/sudoprivacy/sudostack/62aa996e76ffb512e566ed366679d9badda0ca58/tools/deploy/cleanup-atlas.sh" -o cleanup-atlas.sh
+bash cleanup-atlas.sh --dry-run
+sudo bash cleanup-atlas.sh
+```
+
+旧 worker 退出集群应先备份并执行 `sudo sh /usr/local/bin/k3s-agent-uninstall.sh`；此步骤与 Atlas 整体清理不同，详见 [agent 与端口冲突处理](../../docs/deployment/arm64.md)。
+
+## 更新到新的完整包
+
+**当前支持同版本重试，不支持通用跨版本原地升级。** 保留业务数据的实例先制定备份、数据迁移和恢复方案；以下跨版本命令用于已完成备份和上述清理的测试机。必须先选择一个已发布的 amd64 版本，不使用规划版本或其他架构。
+
+同版本重试：修复环境问题后重跑原来的安装命令，会复用校验通过的缓存并继续验证。
+
+```bash
+# 使用该版原安装入口；候选离线包替换为实际解包路径
+sudo bash ./install-atlas.sh --host "你的服务器IP或域名" --root /data/atlas --manage-k3s
+```
+
+清理后安装新版（将变量替换为实际已发布版本和目标地址）：
+
+```bash
+ATLAS_NEXT_VERSION="替换为已发布的同架构版本"
+ATLAS_HOST="你的服务器IP或域名"
+ATLAS_NEXT_BASE="https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v$ATLAS_NEXT_VERSION"
+curl -fL "$ATLAS_NEXT_BASE/install-cos.sh" -o "install-$ATLAS_NEXT_VERSION.sh"
+sudo bash "install-$ATLAS_NEXT_VERSION.sh" --host "$ATLAS_HOST" --root /data/atlas --manage-k3s
+```
+
+更新后执行 `sudo /data/atlas/verify.sh`，核对 `/data/atlas/release-manifest.json` 中的版本。新安装器还会输出入口、用户名和密码文件位置，保存到 `access-info.txt` / `access-info.json`。
+
+组件变更、版本锁和 tag 发布命令见 [发版操作手册](../../docs/deployment/releasing.md)。

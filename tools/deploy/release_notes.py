@@ -3,6 +3,7 @@
 import argparse
 import json
 from pathlib import Path
+import re
 from urllib.parse import quote
 
 from cos_bundle import checksum, descriptor, https_base
@@ -17,6 +18,58 @@ LABELS = {'moss': 'Moss Server / Runtime / 部署助手', 'webui': 'SudoWork Web
 
 def link(label, url):
     return '[' + label + '](' + url + ')'
+
+
+def maintenance_sections(version, architecture, cleanup_url=None, cos_base=COS_BASE):
+    lines = ['## 清理环境', '',
+             '**仅用于已确认可清空的专用测试环境。** 清理会删除整个本机 k3s 集群、Atlas 数据、'
+             '凭据、默认下载缓存、Helm 和 gVisor；先保存需要的备份及验收报告。', '', '```bash']
+    if cleanup_url:
+        lines += [f'curl -fL "{cleanup_url}" -o cleanup-atlas.sh',
+                  'bash cleanup-atlas.sh --dry-run', 'sudo bash cleanup-atlas.sh']
+    else:
+        lines += ['# 候选包成功安装后，使用它自带的清理脚本',
+                  'sudo bash /data/atlas/cleanup-atlas.sh --dry-run',
+                  'sudo bash /data/atlas/cleanup-atlas.sh']
+    lines += ['```', '',
+              '旧 worker 退出集群应先备份并执行 `sudo sh /usr/local/bin/k3s-agent-uninstall.sh`；'
+              '此步骤与 Atlas 整体清理不同，详见 '
+              + link('agent 与端口冲突处理', GUIDE.replace('releasing.md', 'arm64.md')) + '。', '',
+              '## 更新到新的完整包', '',
+              '**当前支持同版本重试，不支持通用跨版本原地升级。** 保留业务数据的实例先制定备份、数据迁移和恢复方案；'
+              '以下跨版本命令用于已完成备份和上述清理的测试机。必须先选择一个已发布的 '
+              + architecture + ' 版本，不使用规划版本或其他架构。', '',
+              '同版本重试：修复环境问题后重跑原来的安装命令，会复用校验通过的缓存并继续验证。', '',
+              '```bash',
+              '# 在保存该版安装入口的目录运行；离线安装使用解包后的 install-atlas.sh',
+              'sudo bash ./install-cos.sh --host "你的服务器IP或域名" --root /data/atlas --manage-k3s',
+              '```', '',
+              '清理后安装新版（将变量替换为实际已发布版本和目标地址）：', '', '```bash',
+              'ATLAS_NEXT_VERSION="替换为已发布的同架构版本"',
+              'ATLAS_HOST="你的服务器IP或域名"',
+              f'ATLAS_NEXT_BASE="{cos_base}/releases/sudostack-v$ATLAS_NEXT_VERSION"',
+              'curl -fL "$ATLAS_NEXT_BASE/install-cos.sh" -o "install-$ATLAS_NEXT_VERSION.sh"',
+              'sudo bash "install-$ATLAS_NEXT_VERSION.sh" --host "$ATLAS_HOST" --root /data/atlas --manage-k3s',
+              '```', '',
+              '更新后执行 `sudo /data/atlas/verify.sh`，核对 `/data/atlas/release-manifest.json` 中的版本。'
+              '新安装器还会输出入口、用户名和密码文件位置，保存到 `access-info.txt` / `access-info.json`。', '',
+              '组件变更、版本锁和 tag 发布命令见 ' + link('发版操作手册', GUIDE) + '。', '']
+    return '\n'.join(lines)
+
+
+def format_notes(text):
+    labels = {'moss-server-image-': 'Server 镜像', 'moss-runtime-': 'Runtime 镜像', 'moss-deploy-': '部署助手',
+              'sudowork-webui-': 'WebUI + PostgreSQL', 'nexusd-cluster-': 'Nexus 原始包',
+              'nexus-vault-': 'Vault 插件', 'atlas-nexus-': '套件 Nexus 镜像', 'sudorouter-': 'Router 镜像',
+              'scode-linux-': 'Sudocode 二进制'}
+    for prefix, label in labels.items():
+        text = re.sub(r'\[' + re.escape(prefix) + r'[^\]]+\]\(([^)]+)\)',
+                      lambda match: link(label, match[1]), text)
+    start, end = text.index('## 下载与安装'), text.index('## 清理环境')
+    install = text[start:end]
+    text = text[:start] + text[end:]
+    before = text.index('## 组件版本与下载')
+    return text[:before] + install + text[before:]
 
 
 def render(manifest_path, bundle_path, cos_base=COS_BASE, run_url=None):
@@ -47,7 +100,7 @@ def render(manifest_path, bundle_path, cos_base=COS_BASE, run_url=None):
         return ' / '.join(link(filename, item['url'])
                           for filename, item in manifest['buildInputs'][name].items())
 
-    lines = [f'# {data["release"]} 发布清单', '',
+    lines = [f'# Sudostack {lock["version"]}', '',
              f'平台：**Linux {data["architecture"]}**。完整包：**{info["size"]:,} 字节**'
              f'（约 {info["size"] / 1024**3:.2f} GiB）。', '',
              '## 整包与交付文件', '', '| 文件 | 下载地址 |', '| --- | --- |']
@@ -112,6 +165,7 @@ def render(manifest_path, bundle_path, cos_base=COS_BASE, run_url=None):
               + link('安装与清理边界', GUIDE) + '。', '']
     if data['architecture'] == 'arm64':
         lines += ['ARM64 要求 Linux、root、systemd 和 4 KB 页大小；企微会话存档 SDK 暂不支持 ARM64。', '']
+    lines += [maintenance_sections(lock['version'], data['architecture'], base + '/cleanup-atlas.sh', https_base(cos_base))]
     lines += ['## 验收与后续发布', '',
               'GitHub Release 在原生 CI 安装、同版本重复安装和会话重启恢复验收通过后创建；'
               '上述 COS 地址在该次 `publish-cos` 成功后可用。']
@@ -127,7 +181,7 @@ def render(manifest_path, bundle_path, cos_base=COS_BASE, run_url=None):
     for name, digest in sorted(manifest['archives'].items()):
         lines.append(f'| `{name}` | {link("下载", sources[name]["url"])} | `{digest}` |')
     lines += ['', '包内路径保留 `offline/`；GitHub 附件名可能以 `--` 代替 `/`，请使用清单中的实际 URL。', '', '</details>', '']
-    return '\n'.join(lines)
+    return format_notes('\n'.join(lines))
 
 
 def main():

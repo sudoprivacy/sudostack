@@ -1,4 +1,4 @@
-# sudostack-v0.0.1-rc.7 发布清单
+# Sudostack 0.0.1-rc.7
 
 **历史已发布候选；本页按已发布 manifest / COS descriptor 还原，后续流程改进不代表该旧版本已经包含。**
 
@@ -27,30 +27,6 @@
 完整包包含全部运行镜像、离线工具与安装文件；目标机仍须预装 Python、curl、openssl 等系统依赖。
 GitHub Release 附件用于清单和分项下载，完整 `.tar.gz` 从上述 COS 地址下载。
 
-## 组件版本与下载
-
-| 组件 | 锁定版本 | 分项下载 / 包含关系 |
-| --- | --- | --- |
-| Moss Server / Runtime / 部署助手 | [`0.1.53-atlas.1`](https://github.com/sudoprivacy/moss/releases/tag/server-v0.1.53-atlas.1) | [moss-server-image-0.1.53-atlas.1-linux-amd64.tar.gz](https://github.com/sudoprivacy/moss/releases/download/server-v0.1.53-atlas.1/moss-server-image-0.1.53-atlas.1-linux-amd64.tar.gz) / [moss-runtime-0.1.53-atlas.1-linux-amd64.tar.gz](https://github.com/sudoprivacy/moss/releases/download/server-v0.1.53-atlas.1/moss-runtime-0.1.53-atlas.1-linux-amd64.tar.gz) / [moss-deploy-0.1.53-atlas.1-linux-amd64.tar.gz](https://github.com/sudoprivacy/moss/releases/download/server-v0.1.53-atlas.1/moss-deploy-0.1.53-atlas.1-linux-amd64.tar.gz) |
-| SudoWork WebUI | [`0.2.28`](https://github.com/sudoprivacy/sudowork/releases/tag/v0.2.28) | [sudowork-webui-0.2.28-linux-amd64.tar.gz](https://github.com/sudoprivacy/sudowork/releases/download/v0.2.28/sudowork-webui-0.2.28-linux-amd64.tar.gz) |
-| Nexus cluster | [`0.8.4`](https://github.com/nexi-lab/nexus-vfs/releases/tag/v0.8.4) | [nexusd-cluster-linux-x86_64.tar.gz](https://github.com/nexi-lab/nexus-vfs/releases/download/v0.8.4/nexusd-cluster-linux-x86_64.tar.gz)；整包使用 [atlas-nexus-0.0.1-rc.2-linux-amd64.tar.gz](https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.2/atlas-nexus-0.0.1-rc.2-linux-amd64.tar.gz)；plugin ABI 7 |
-| Nexus Vault | [`0.5.68`](https://github.com/nexi-lab/nexus/releases/tag/vault-v0.5.68) | [nexus-vault-linux-x86_64.tar.gz](https://github.com/nexi-lab/nexus/releases/download/vault-v0.5.68/nexus-vault-linux-x86_64.tar.gz)；集成于 Nexus 镜像 |
-| Sudocode | [`0.2.23`](https://github.com/sudoprivacy/sudocode/releases/tag/v0.2.23) | [scode-linux-x64-bundle.tar.gz](https://github.com/sudoprivacy/sudocode/releases/download/v0.2.23/scode-linux-x64-bundle.tar.gz)；集成于 Moss Runtime |
-| k3s | `v1.34.1+k3s1` | [k3s](https://github.com/k3s-io/k3s/releases/download/v1.34.1%2Bk3s1/k3s) / [k3s-airgap-images-amd64.tar.zst](https://github.com/k3s-io/k3s/releases/download/v1.34.1%2Bk3s1/k3s-airgap-images-amd64.tar.zst) / [sha256sum-amd64.txt](https://github.com/k3s-io/k3s/releases/download/v1.34.1%2Bk3s1/sha256sum-amd64.txt) |
-| gVisor | `release-20261005.0` | [gvisor-x86_64.tar.bz2](https://github.com/google/gvisor/releases/download/release-20261005.0/gvisor-x86_64.tar.bz2) |
-| Helm | `v3.19.0` | [helm-v3.19.0-linux-amd64.tar.gz](https://get.helm.sh/helm-v3.19.0-linux-amd64.tar.gz) |
-| Caddy | `2.10.2` | [caddy-2.10.2-linux-amd64.tar.gz](https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.2/caddy-2.10.2-linux-amd64.tar.gz)；`docker.io/library/caddy:2.10.2-alpine` |
-| PostgreSQL | `16` | `docker.io/library/postgres:16-alpine`；随 [sudowork-webui-0.2.28-linux-amd64.tar.gz](https://github.com/sudoprivacy/sudowork/releases/download/v0.2.28/sudowork-webui-0.2.28-linux-amd64.tar.gz) 交付 |
-| Nexus 基础镜像（Node.js） | `22.22.1` | `docker.io/library/node:22.22.1-trixie-slim`；集成于 [atlas-nexus-0.0.1-rc.2-linux-amd64.tar.gz](https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.2/atlas-nexus-0.0.1-rc.2-linux-amd64.tar.gz) |
-| SudoRouter | [`0.0.1-rc.1`](https://github.com/sudoprivacy/new-api/releases/tag/sudorouter-v0.0.1-rc.1) | [sudorouter-0.0.1-rc.1-linux-amd64.tar.gz](https://github.com/sudoprivacy/new-api/releases/download/sudorouter-v0.0.1-rc.1/sudorouter-0.0.1-rc.1-linux-amd64.tar.gz) |
-| kubectl（随 Nexus 镜像） | `v1.34.1` | [上游二进制](https://dl.k8s.io/release/v1.34.1/bin/linux/amd64/kubectl) |
-| Atlas Helm Chart | `0.0.1-rc.7` | [atlas-mvp-0.0.1-rc.7.tgz](https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.7/atlas-mvp-0.0.1-rc.7.tgz) |
-| 安装器与运维脚本 | `0.0.1-rc.7` | [install-atlas.sh](https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.7/install-atlas.sh)；详见下方文件清单 |
-
-Moss Runtime 内嵌依赖（含 nexusd-cohost）由 Moss 固定；详见 [该 Moss tag 的 runtime-versions.json](https://github.com/sudoprivacy/moss/blob/server-v0.1.53-atlas.1/src/server/nexus/runtime-versions.json)。
-PostgreSQL 的锁为 `16-alpine` 一类镜像标签，未单独记录补丁版；实际交付内容由 WebUI 归档 SHA256 固定。
-Nexus 基础镜像和 Caddy 的 registry digest 见 `atlas-release.json.registryInputs`；其余上游附件摘要见 `buildInputs`。
-
 ## 下载与安装
 
 ```bash
@@ -62,14 +38,75 @@ bash install-cos.sh --download-only
 sudo bash install-cos.sh --host "你的服务器IP或域名" --root /data/atlas --manage-k3s
 ```
 
-清理脚本会删除整个 k3s 集群及安装数据。仅在已确认清空范围的专用测试机执行；详见 [安装与清理边界](https://github.com/sudoprivacy/sudostack/blob/main/docs/deployment/releasing.md)。
+清理脚本会删除整个 k3s 集群及安装数据。仅在已确认清空范围的专用测试机执行；详见 [安装与清理边界](../../docs/deployment/releasing.md)。
+
+## 组件版本与下载
+
+| 组件 | 锁定版本 | 分项下载 / 包含关系 |
+| --- | --- | --- |
+| Moss Server / Runtime / 部署助手 | [`0.1.53-atlas.1`](https://github.com/sudoprivacy/moss/releases/tag/server-v0.1.53-atlas.1) | [Server 镜像](https://github.com/sudoprivacy/moss/releases/download/server-v0.1.53-atlas.1/moss-server-image-0.1.53-atlas.1-linux-amd64.tar.gz) / [Runtime 镜像](https://github.com/sudoprivacy/moss/releases/download/server-v0.1.53-atlas.1/moss-runtime-0.1.53-atlas.1-linux-amd64.tar.gz) / [部署助手](https://github.com/sudoprivacy/moss/releases/download/server-v0.1.53-atlas.1/moss-deploy-0.1.53-atlas.1-linux-amd64.tar.gz) |
+| SudoWork WebUI | [`0.2.28`](https://github.com/sudoprivacy/sudowork/releases/tag/v0.2.28) | [WebUI + PostgreSQL](https://github.com/sudoprivacy/sudowork/releases/download/v0.2.28/sudowork-webui-0.2.28-linux-amd64.tar.gz) |
+| Nexus cluster | [`0.8.4`](https://github.com/nexi-lab/nexus-vfs/releases/tag/v0.8.4) | [Nexus 原始包](https://github.com/nexi-lab/nexus-vfs/releases/download/v0.8.4/nexusd-cluster-linux-x86_64.tar.gz)；整包使用 [套件 Nexus 镜像](https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.2/atlas-nexus-0.0.1-rc.2-linux-amd64.tar.gz)；plugin ABI 7 |
+| Nexus Vault | [`0.5.68`](https://github.com/nexi-lab/nexus/releases/tag/vault-v0.5.68) | [Vault 插件](https://github.com/nexi-lab/nexus/releases/download/vault-v0.5.68/nexus-vault-linux-x86_64.tar.gz)；集成于 Nexus 镜像 |
+| Sudocode | [`0.2.23`](https://github.com/sudoprivacy/sudocode/releases/tag/v0.2.23) | [Sudocode 二进制](https://github.com/sudoprivacy/sudocode/releases/download/v0.2.23/scode-linux-x64-bundle.tar.gz)；集成于 Moss Runtime |
+| k3s | `v1.34.1+k3s1` | [k3s](https://github.com/k3s-io/k3s/releases/download/v1.34.1%2Bk3s1/k3s) / [k3s-airgap-images-amd64.tar.zst](https://github.com/k3s-io/k3s/releases/download/v1.34.1%2Bk3s1/k3s-airgap-images-amd64.tar.zst) / [sha256sum-amd64.txt](https://github.com/k3s-io/k3s/releases/download/v1.34.1%2Bk3s1/sha256sum-amd64.txt) |
+| gVisor | `release-20261005.0` | [gVisor amd64](https://github.com/google/gvisor/releases/download/release-20261005.0/gvisor-x86_64.tar.bz2) |
+| Helm | `v3.19.0` | [helm-v3.19.0-linux-amd64.tar.gz](https://get.helm.sh/helm-v3.19.0-linux-amd64.tar.gz) |
+| Caddy | `2.10.2` | [caddy-2.10.2-linux-amd64.tar.gz](https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.2/caddy-2.10.2-linux-amd64.tar.gz)；`docker.io/library/caddy:2.10.2-alpine` |
+| PostgreSQL | `16` | `docker.io/library/postgres:16-alpine`；随 [WebUI + PostgreSQL](https://github.com/sudoprivacy/sudowork/releases/download/v0.2.28/sudowork-webui-0.2.28-linux-amd64.tar.gz) 交付 |
+| Nexus 基础镜像（Node.js） | `22.22.1` | `docker.io/library/node:22.22.1-trixie-slim`；集成于 [套件 Nexus 镜像](https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.2/atlas-nexus-0.0.1-rc.2-linux-amd64.tar.gz) |
+| SudoRouter | [`0.0.1-rc.1`](https://github.com/sudoprivacy/new-api/releases/tag/sudorouter-v0.0.1-rc.1) | [Router 镜像](https://github.com/sudoprivacy/new-api/releases/download/sudorouter-v0.0.1-rc.1/sudorouter-0.0.1-rc.1-linux-amd64.tar.gz) |
+| kubectl（随 Nexus 镜像） | `v1.34.1` | [上游二进制](https://dl.k8s.io/release/v1.34.1/bin/linux/amd64/kubectl) |
+| Atlas Helm Chart | `0.0.1-rc.7` | [atlas-mvp-0.0.1-rc.7.tgz](https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.7/atlas-mvp-0.0.1-rc.7.tgz) |
+| 安装器与运维脚本 | `0.0.1-rc.7` | [install-atlas.sh](https://github.com/sudoprivacy/sudostack/releases/download/sudostack-v0.0.1-rc.7/install-atlas.sh)；详见下方文件清单 |
+
+Moss Runtime 内嵌依赖（含 nexusd-cohost）由 Moss 固定；详见 [该 Moss tag 的 runtime-versions.json](https://github.com/sudoprivacy/moss/blob/server-v0.1.53-atlas.1/src/server/nexus/runtime-versions.json)。
+PostgreSQL 的锁为 `16-alpine` 一类镜像标签，未单独记录补丁版；实际交付内容由 WebUI 归档 SHA256 固定。
+Nexus 基础镜像和 Caddy 的 registry digest 见 `atlas-release.json.registryInputs`；其余上游附件摘要见 `buildInputs`。
+
+## 清理环境
+
+**仅用于已确认可清空的专用测试环境。** 清理会删除整个本机 k3s 集群、Atlas 数据、凭据、默认下载缓存、Helm 和 gVisor；先保存需要的备份及验收报告。
+
+```bash
+curl -fL "https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.7/cleanup-atlas.sh" -o cleanup-atlas.sh
+bash cleanup-atlas.sh --dry-run
+sudo bash cleanup-atlas.sh
+```
+
+旧 worker 退出集群应先备份并执行 `sudo sh /usr/local/bin/k3s-agent-uninstall.sh`；此步骤与 Atlas 整体清理不同，详见 [agent 与端口冲突处理](../../docs/deployment/arm64.md)。
+
+## 更新到新的完整包
+
+**当前支持同版本重试，不支持通用跨版本原地升级。** 保留业务数据的实例先制定备份、数据迁移和恢复方案；以下跨版本命令用于已完成备份和上述清理的测试机。必须先选择一个已发布的 amd64 版本，不使用规划版本或其他架构。
+
+同版本重试：修复环境问题后重跑原来的安装命令，会复用校验通过的缓存并继续验证。
+
+```bash
+# 使用该版原安装入口；候选离线包替换为实际解包路径
+sudo bash ./install-cos.sh --host "你的服务器IP或域名" --root /data/atlas --manage-k3s
+```
+
+清理后安装新版（将变量替换为实际已发布版本和目标地址）：
+
+```bash
+ATLAS_NEXT_VERSION="替换为已发布的同架构版本"
+ATLAS_HOST="你的服务器IP或域名"
+ATLAS_NEXT_BASE="https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v$ATLAS_NEXT_VERSION"
+curl -fL "$ATLAS_NEXT_BASE/install-cos.sh" -o "install-$ATLAS_NEXT_VERSION.sh"
+sudo bash "install-$ATLAS_NEXT_VERSION.sh" --host "$ATLAS_HOST" --root /data/atlas --manage-k3s
+```
+
+更新后执行 `sudo /data/atlas/verify.sh`，核对 `/data/atlas/release-manifest.json` 中的版本。新安装器还会输出入口、用户名和密码文件位置，保存到 `access-info.txt` / `access-info.json`。
+
+组件变更、版本锁和 tag 发布命令见 [发版操作手册](../../docs/deployment/releasing.md)。
 
 ## 验收与后续发布
 
 GitHub Release 在原生 CI 安装、同版本重复安装和会话重启恢复验收通过后创建；上述 COS 地址在该次 `publish-cos` 成功后可用。
 目标机首装、清空重装及 `latest` 推广须单独记录；tag 发布默认只写固定版本目录。
 修改组件版本后：先发布上游组件 → 新增套件版本锁 → PR 原生验收 → 合并并推送新 tag → 发布固定 COS 整包 → 目标机首装 / 清空重装 → 复用同一包推广 `latest`。
-[逐步发版操作手册](https://github.com/sudoprivacy/sudostack/blob/main/docs/deployment/releasing.md)。
+[逐步发版操作手册](../../docs/deployment/releasing.md)。
 
 <details>
 <summary>完整包内文件：atlas-release.json + 36 项资源（下载与 SHA256）</summary>
@@ -119,4 +156,4 @@ GitHub Release 在原生 CI 安装、同版本重复安装和会话重启恢复�
 
 </details>
 
-[返回全部版本](../../README.md#整包版本与组件清单)
+[返回全部版本](../../.github/README.md#整包版本与组件清单)
