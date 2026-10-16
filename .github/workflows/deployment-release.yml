@@ -332,14 +332,16 @@ jobs:
           python3 tools/deploy/prepare_publication.py --directory release --bundle bundle.json --lock "$ATLAS_LOCK" \
             --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN"
           # The tag points at the exact source of the qualified archive.
-          if git rev-parse --verify "refs/tags/$TAG" >/dev/null 2>&1; then
-            test "$(git rev-parse "refs/tags/$TAG^{}")" = "$SOURCE_SHA"
-          fi
+          git rev-parse --verify "refs/tags/$TAG" >/dev/null 2>&1 || {
+            echo 'Create the source tag with a maintainer identity before promoting this historical CI artifact.' >&2
+            exit 1
+          }
+          test "$(git rev-parse "refs/tags/$TAG^{}")" = "$SOURCE_SHA"
           cd release
           sha256sum -c SHA256SUMS
-          # GITHUB_TOKEN creates the tag with this Release; it does not trigger
-          # a recursive tag workflow that would rebuild the immutable bundle.
-          gh release create "$TAG" ./* --target "$SOURCE_SHA" --prerelease \
+          # The tag is already verified. Sending a historical target_commitish
+          # can require workflow permissions unavailable to GITHUB_TOKEN.
+          gh release create "$TAG" ./* --verify-tag --prerelease \
             --title "$TAG" --notes-file README.md
   sync-docs:
     if: >-
