@@ -5,6 +5,7 @@ import { NexusZoneApiClient, userRuntimeServerName, createUserRuntimeCredentialB
 import { buildKubectlBaseArgs, kubectlApply, readK8sResource, deleteK8sResource, observeK8sRuntime, refreshK8sPodProjection, type K8sResource } from './k8sResources.js'
 import { parseCohostBuild, type RuntimeRelease } from './runtimeRelease.js'
 import { renewRuntimeSecretData } from './runtimeSecret.js'
+import { PRIMARY_RUNTIME_ALLOCATION as PRIMARY_ALLOCATION, runtimeAllocationId as allocationName } from './agentRuntimeHomes.js'
 export interface UserRuntimeConnectionConfig {
   endpoint: string
   authToken: string
@@ -16,7 +17,6 @@ export type UserRuntimeReady = (config: UserRuntimeConnectionConfig, ownerId: st
 
 const OWNER_ANNOTATION = 'moss.sudo.dev/runtime-owner'
 const ALLOCATION_ANNOTATION = 'moss.sudo.dev/runtime-allocation'
-const PRIMARY_ALLOCATION = 'primary'
 const SPEC_ANNOTATION = 'moss.sudo.dev/runtime-spec'
 const APP_LABEL = 'moss-user-runtime'
 const DATA_ROOT = '/data'
@@ -74,11 +74,6 @@ export function userPodName(ownerId: string, allocationId = PRIMARY_ALLOCATION):
   const digest = createHash('sha256').update(ownerId)
   if (allocation !== PRIMARY_ALLOCATION) digest.update('\0').update(allocation)
   return `moss-user-${digest.digest('hex').slice(0, 40)}`
-}
-
-function allocationName(value: string): string {
-  if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(value)) throw new Error('Invalid runtime allocation ID')
-  return value
 }
 
 function userRuntimeCredentialData(ownerId: string, credential: SessionCredential): Record<string, string> {
