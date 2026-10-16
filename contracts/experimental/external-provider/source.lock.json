@@ -2,7 +2,7 @@
   "maturity": "experimental-synthetic-pilot",
   "semanticOwner": "moss",
   "repository": "https://github.com/sudoprivacy/moss",
-  "revision": "ca1ab5cdad399393dce4145e42f682fb9e1aa22a",
+  "revision": "da6ced75933bf358416b3d68b01cb8328b9782db",
   "path": "contracts/external-provider/v1/contract.ts",
-  "digest": "sha256:804867118dfad5b103dbab8287b1269b5ff49d99caa79bc18310d48850f0813a"
+  "digest": "sha256:1fb0ac4fde2e4dd47901ac2581d397faaa58456fca37b7899515938a8ba5a33b"
 }
