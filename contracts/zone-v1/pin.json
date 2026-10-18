@@ -53,7 +53,7 @@
     "fixtures_dir": "contracts/fixtures/"
   },
   "moss": {
-    "rev": "b7cea27998e8eaf3e520f66eabc104c8ea611497",
+    "rev": "c8974192f58ac55b061bdb2d85ceba77d2bdede5",
     "metadata_only": true,
     "schemas": [
       "contracts/iam/v1/org-zone-binding.schema.json"

@@ -19,7 +19,7 @@
   "pinned_owner_revisions": {
     "nexus-vfs": "f070d0faa7328a1fbde2c66418290b584d128bf3",
     "nexus": "ffe782f68231cdbd875e068773f4ab48d72598b7",
-    "moss (metadata only)": "b7cea27998e8eaf3e520f66eabc104c8ea611497"
+    "moss (metadata only)": "c8974192f58ac55b061bdb2d85ceba77d2bdede5"
   },
   "schemas": [
     {
@@ -168,7 +168,7 @@
     },
     {
       "path": "contracts/zone-v1/provenance.gen.json",
-      "sha256": "02fcd640d637a70ff9dd52030b2a83fafa72356c759e8c06081eed644ee008af"
+      "sha256": "e48ebe0dbfbc23aefb69ca27170eef882a43f697976fd38a9d89e58180f6f485"
     },
     {
       "path": "contracts/zone-v1/runtime/v2/index.gen.d.ts",
@@ -180,7 +180,7 @@
     },
     {
       "path": "contracts/zone-v1/schema-bundle.gen.json",
-      "sha256": "92fd925bfb7d0707ad6da23a818b1a73f825ff7c60d2d375ad9329f81cec87a0"
+      "sha256": "b2850b4520914505598acbd88ee407819a0c851e9bc3b87eb58a2a734a3d0594"
     },
     {
       "path": "contracts/zone-v1/validators.gen.js",

@@ -17,7 +17,7 @@ zone_v1:
   owner_revisions:
     nexus_vfs: f070d0faa7328a1fbde2c66418290b584d128bf3
     nexus: ffe782f68231cdbd875e068773f4ab48d72598b7
-    moss_metadata_only: b7cea27998e8eaf3e520f66eabc104c8ea611497
+    moss_metadata_only: c8974192f58ac55b061bdb2d85ceba77d2bdede5
   families:
     common.sudo.dev/v1: [PrincipalRef, ResourceRef]
     auth.sudo.dev/v1: [Zone, ZoneCreateRequest, ZonePatchRequest, ZoneGrant, ZoneGrantCreateRequest, ZoneOperation, ErrorInfo, ZoneDelegation, ZoneDelegationIssueRequest, ZoneDelegationScopeRule]
@@ -27,14 +27,13 @@ consumers:
     language: typescript
     pin: "github:sudoprivacy/sudostack#3385ab2bc7cdcc8f73a3be24a38baf93a022e3ff"
     pin_status: >-
-      upgrade pending: the zone-v1 family re-pin (nexus-vfs f070d0faa,
-      nexus ffe782f68) changed the moss consumption surface — the four
-      imported entry files (auth/v1 and common/v1 index.gen.js/.d.ts)
-      differ in the pin-hash header plus the action enum and
-      resource_prefixes typing carried from the new nexus schemas. moss
-      still installs 3385ab2 until its repin commit lands; this record is
-      finalized to the new sudostack revision afterwards.
-    implementation_revision: b7cea27998e8eaf3e520f66eabc104c8ea611497
+      repinned: moss PR#311 now installs this revision — the four imported
+      entry files changed with the zone-v1 family re-pin (pin-hash header,
+      the join action enum, resource_prefixes typing), every
+      contractsActivation digest was resnapshotted from the freshly
+      installed package, and the full moss suite (273+138 server, 1063
+      node tests) plus PR#311 checks are green at c8974192.
+    implementation_revision: c8974192f58ac55b061bdb2d85ceba77d2bdede5
     consumes: { zone-id: [v0.1-shape], "common.sudo.dev/v1": [v1], "auth.sudo.dev/v1": [v1] }
   sudocode:
     language: rust
@@ -62,7 +61,7 @@ pin_alignment_gate:
   covered_now:
     - "sudostack derivation pin -> same compatible owner rev (provenance.gen.json)"
     - "Nexus source Cargo pin -> nexus-vfs exact rev (nexus source-lock.gen.json; single rev verified in nexus tests)"
-    - "Moss @sudo/contracts pin -> derived package source manifest 3385ab2bc7cdcc8f73a3be24a38baf93a022e3ff (upgrade pending, see consumers.moss)"
+    - "Moss @sudo/contracts pin -> derived package source manifest 68371480fddb7912cfa3b406039f235e15f9e6df (repinned at moss c8974192, see consumers.moss)"
     - "sudocode nexus-vfs pin -> f070d0faa7328a1fbde2c66418290b584d128bf3 (Cargo.toml tag v0.8.21)"
     - "Moss nexusd-cluster topology -> three-line machine-readable record below"
   deferred_to_step_10_assembly: []
