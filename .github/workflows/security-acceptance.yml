@@ -28,6 +28,10 @@ jobs:
           bash security/egress-gate/acceptance/workspace-safety.sh
       - name: Failed resource creation cannot clean up existing resources
         run: python3 -m unittest discover -s security/egress-gate/acceptance -p 'test_business_wire*.py' -v
+      - name: Managed session acceptance owns only successfully created units
+        run: |
+          python3 -m unittest discover -s security/egress-gate/acceptance -p 'test_managed_session*.py' -v
+          node --check security/egress-gate/acceptance/managed-session.mjs
 
   chinese-analyzer-quality:
     runs-on: ubuntu-latest
