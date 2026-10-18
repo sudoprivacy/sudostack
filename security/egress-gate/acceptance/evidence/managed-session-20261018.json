@@ -1,0 +1,80 @@
+{
+  "passed": true,
+  "scope": "managed_session_content_gate",
+  "upstream": "synthetic_loopback",
+  "daemon_sha256": "09049e4a43a797544afa035232e82b6dbf04b547b65d3c8f8795a6d22fb61674",
+  "cases": [
+    {
+      "scenario": "clean",
+      "passed": true,
+      "managed_session": true,
+      "authenticated_controller": true,
+      "caller_received_error": false,
+      "visible_answer": true,
+      "local_original_retained": true,
+      "error": null,
+      "model": "managed-fixture",
+      "upstream_requests": 1
+    },
+    {
+      "scenario": "redact",
+      "passed": true,
+      "managed_session": true,
+      "authenticated_controller": true,
+      "caller_received_error": false,
+      "visible_answer": true,
+      "local_original_retained": true,
+      "error": null,
+      "model": "managed-fixture",
+      "upstream_requests": 1
+    },
+    {
+      "scenario": "deny",
+      "passed": true,
+      "managed_session": true,
+      "authenticated_controller": true,
+      "caller_received_error": true,
+      "visible_answer": false,
+      "local_original_retained": true,
+      "error": {
+        "code": -32603,
+        "data": "provider configuration error: Nexus model write: PermissionDenied(\"egress gate: 1 sensitive item(s) [\\\"API-KEY\\\"] may not leave this node (path /cloud-model/78f2f3d0-17bd-4642-9b3e-82ed8b3adbb3.prompt, classifier deterministic-prc+credentials)\")",
+        "message": "Internal error"
+      },
+      "model": "managed-fixture",
+      "upstream_requests": 0
+    },
+    {
+      "scenario": "outage",
+      "passed": true,
+      "managed_session": true,
+      "authenticated_controller": true,
+      "caller_received_error": true,
+      "visible_answer": false,
+      "local_original_retained": true,
+      "error": {
+        "code": -32603,
+        "data": "provider configuration error: Nexus model write: PermissionDenied(\"egress gate: classifier deterministic-prc+credentials+presidio could not answer for /cloud-model/9312b9d6-99a1-4592-b748-6d75c99774d2.prompt: presidio: connect 127.0.0.1:49787: Connection refused (os error 111)\")",
+        "message": "Internal error"
+      },
+      "model": "managed-fixture",
+      "upstream_requests": 0
+    },
+    {
+      "scenario": "malformed",
+      "passed": true,
+      "managed_session": true,
+      "authenticated_controller": true,
+      "caller_received_error": true,
+      "visible_answer": false,
+      "local_original_retained": true,
+      "error": {
+        "code": -32603,
+        "data": "provider configuration error: Nexus model write: PermissionDenied(\"egress gate: classifier deterministic-prc+credentials+presidio could not answer for /cloud-model/ee27278e-b8a1-48d1-88b9-029162a4a898.prompt: presidio: analyzer response is not a findings list: invalid value: integer `-1`, expected usize at line 1 column 35\")",
+        "message": "Internal error"
+      },
+      "model": "managed-fixture",
+      "upstream_requests": 0
+    }
+  ]
+}

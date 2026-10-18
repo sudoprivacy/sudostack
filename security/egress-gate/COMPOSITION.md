@@ -118,6 +118,46 @@ phone, card and credential rules. Choose a deployment's real external token and
 verify its upstream channel to establish cloud inference; a loopback local model
 does not establish that fact.
 
+## Managed-session refusal acceptance
+
+`business-wire.py` checks model writes. `acceptance/managed-session.py` adds
+the real caller path: mTLS controller → ManagedAgentService → in-process
+scode ACP turn → Nexus model mount → the same native `egress_gate` service.
+It installs no replacement hook or production service. Its loopback model and
+invalid-analyzer endpoints are test fixtures.
+
+```bash
+export GATE_BIN=/path/to/released/nexusd-cohost
+export NEXUS_PROTO_ROOT=/path/to/proto
+export NODE_MODULES=/path/to/grpc-client/node_modules
+export NODE=/path/to/node
+export WORK=/path/to/new-evidence-directory
+python3 acceptance/managed-session.py
+```
+
+Use a binary built with `daemon,driver-ai,egress-gate-presidio`; provide both
+`nexus/grpc/vfs/vfs.proto` and `nexus/raft/transport.proto` under the proto root.
+The runner creates independent data/config/TLS directories and transient user
+units with random names. It refuses an existing evidence directory before
+starting resources and stops only units whose creation succeeded.
+
+The five scenarios require a terminal ACP response and retained original local
+history. Clean and native-credential redaction each emit one request and a
+visible answer. Sensitive-content denial, analyzer connection failure and
+malformed findings each return the gate error to the authenticated controller
+and emit zero model requests. Each scenario starts a fresh managed session.
+On 2026-10-18 all five passed on DGX using the same released cohost bytes as
+the device (`592c7cb8e839`, Nexus v0.8.3; SHA-256
+`09049e4a43a797544afa035232e82b6dbf04b547b65d3c8f8795a6d22fb61674`).
+This acceptance uses a deterministic loopback model and does not establish
+production browser error rendering, a permanent cloud mount or NER quality.
+
+Cloud and Edge configure their sending kernel's outbound mounts and policy;
+they share this implementation. A standalone scode CLI may use direct model
+transport without Nexus; DLP on that form is outside this integration. When
+the CLI connects to a gate-bearing nexusd-cluster, its configured outbound
+model writes use this same hook. Actual CLI acceptance remains to be run.
+
 ## Minimum bar and remaining admission gaps
 
 Hard gates for the supported text/model path are: all explicit protected-list
