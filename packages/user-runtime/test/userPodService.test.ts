@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { randomUUID } from 'node:crypto'
 import { NexusZoneApiClient } from '@nexus-ai-fs/vfs-client'
-import { UserPodService, userPodName, type UserPodOptions } from '../src/userPodService.js'
+import { UserPodService, UserRuntimeUpdateRequiredError, userPodName, type UserPodOptions } from '../src/userPodService.js'
 import type { RuntimeRelease } from '../src/runtimeRelease.js'
 import { runtimeCredential } from './runtimeCredential.js'
 import { userPodPlatform as platform } from './userPodPlatform.js'
@@ -403,8 +403,31 @@ void test('controller restart preserves projected configuration and refuses a li
   t.after(() => changed.close())
   const before = kube.writes.length
   await assert.rejects(changed.resolve('alice', { ...configuration,
-    'backend-config.json': '{"mounts":[]}' }), /explicit runtime restart/)
+    'backend-config.json': '{"mounts":[]}' }), error => error instanceof UserRuntimeUpdateRequiredError && error.reason === 'model-backend')
   assert.equal(kube.writes.length, before, 'restart cannot bypass the active backend configuration check')
+})
+
+void test('cached and restarted controllers report controlled update requirements without changing a live owner', async t => {
+  const kube = platform()
+  t.mock.method(NexusZoneApiClient, 'withMtls', () => ({ mintUserRuntime: async () => runtimeCredential('alice'), close() {} }))
+  const service = new UserPodService(options, kube.resources, async () => {})
+  t.after(() => service.close())
+  await service.resolve('alice')
+  const pod = kube.objects.get('pod')!
+  const secret = structuredClone(kube.objects.get('secret'))
+  const writes = kube.writes.length
+  await assert.rejects(service.resolve('alice', { 'backend-config.json': '{"mounts":[{"path":"/model"}]}' }),
+    error => error instanceof UserRuntimeUpdateRequiredError && error.reason === 'model-backend')
+  assert.equal(kube.objects.get('pod'), pod)
+  assert.deepEqual(kube.objects.get('secret'), secret)
+  assert.equal(kube.writes.length, writes)
+  const changedRuntime = new UserPodService({ ...options, image: 'runtime:next' }, kube.resources, async () => {})
+  t.after(() => changedRuntime.close())
+  await assert.rejects(changedRuntime.resolve('alice'),
+    error => error instanceof UserRuntimeUpdateRequiredError && error.reason === 'runtime')
+  assert.equal(kube.objects.get('pod'), pod)
+  assert.deepEqual(kube.objects.get('secret'), secret)
+  assert.equal(kube.writes.length, writes)
 })
 
 void test('placement waits for authenticated readiness and controller closure cancels the wait', async t => {

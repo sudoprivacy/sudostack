@@ -15,6 +15,16 @@ export interface UserRuntimeConnectionConfig {
 
 export type UserRuntimeReady = (config: UserRuntimeConnectionConfig, ownerId: string, signal: AbortSignal) => Promise<void>
 
+/** A running owner's configuration can change only through the controlled upgrade path. */
+export class UserRuntimeUpdateRequiredError extends Error {
+  constructor(readonly reason: 'runtime' | 'model-backend') {
+    super(reason === 'runtime'
+      ? 'User Pod image or configuration requires an explicit runtime upgrade'
+      : 'User Pod model backend changes require an explicit runtime restart')
+    this.name = 'UserRuntimeUpdateRequiredError'
+  }
+}
+
 const OWNER_ANNOTATION = 'moss.sudo.dev/runtime-owner'
 const ALLOCATION_ANNOTATION = 'moss.sudo.dev/runtime-allocation'
 const SPEC_ANNOTATION = 'moss.sudo.dev/runtime-spec'
@@ -434,7 +444,7 @@ export class UserPodService {
     if (existingPod && !existingPod.metadata.uid) throw new Error('Existing user Pod lacks an observed identity')
     let projectionPodUid = existingPod?.metadata.uid
     if (existingPod && existingPod.metadata.annotations?.[SPEC_ANNOTATION] !== manifests.pod.metadata.annotations[SPEC_ANNOTATION]) {
-      throw new Error('User Pod image or configuration requires an explicit runtime upgrade')
+      throw new UserRuntimeUpdateRequiredError('runtime')
     }
     const defaults = { 'sudocode.json': '{}', 'backend-config.json': '{"mounts":[]}' }
     const savedSecret = await assertOwner('secret')
@@ -449,7 +459,7 @@ export class UserPodService {
     const requested = suppliedConfiguration ?? await this.options.configuration?.(ownerId)
     let configuration: Record<string, string> = { ...defaults, ...saved, ...requested }
     if (existingPod && saved['backend-config.json'] !== configuration['backend-config.json']) {
-      throw new Error('User Pod model backend changes require an explicit runtime restart')
+      throw new UserRuntimeUpdateRequiredError('model-backend')
     }
     await ensureCreated('pvc', manifests.claim)
     let updates = Promise.resolve()
@@ -473,7 +483,7 @@ export class UserPodService {
     await ensureCreated('pod', manifests.pod)
     const pod = await assertOwner('pod')
     if (pod?.metadata.annotations?.[SPEC_ANNOTATION] !== manifests.pod.metadata.annotations[SPEC_ANNOTATION]) {
-      throw new Error('User Pod image or configuration requires an explicit runtime upgrade')
+      throw new UserRuntimeUpdateRequiredError('runtime')
     }
     const deadline = Date.now() + 90_000
     let readyPod: K8sResource
@@ -524,7 +534,7 @@ export class UserPodService {
         if (!isActive || this.lifecycle.signal.aborted) throw new Error('User Pod connection is closed')
         const replacement = { ...defaults, ...next }
         if (configuration['backend-config.json'] !== replacement['backend-config.json']) {
-          throw new Error('User Pod model backend changes require an explicit runtime restart')
+          throw new UserRuntimeUpdateRequiredError('model-backend')
         }
         if (JSON.stringify(configuration) === JSON.stringify(replacement)) return
         await refresh(replacement)
