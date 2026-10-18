@@ -15,6 +15,7 @@ import {
   verifyMossEvidenceBytes,
 } from './activation-0.2.1.mjs'
 import { sha256 } from './source.mjs'
+import { ZONE_V1_PACKED_PATHS } from './zone-v1-lineage.mjs'
 
 const operationBytes = readFileSync(join(REPO, OPERATION_PATH))
 const operation = JSON.parse(operationBytes.toString('utf8'))
@@ -27,6 +28,7 @@ const baseline = JSON.parse(
 const packedPaths = [
   ...baseline.packed_files.map(({ path }) => path),
   ...baseline.successor_policy.added_packed_paths,
+  ...ZONE_V1_PACKED_PATHS,
 ]
 const jsonBytes = (value) => Buffer.from(`${JSON.stringify(value, null, 2)}\n`)
 
@@ -37,7 +39,11 @@ function verify(overrides = {}) {
     readContentBytes: readContent,
     readCurrentBytes: readCurrent,
     packedPaths,
-    packageReceipt: operation.content_evidence.package.tarball,
+    // The current package is the C content plus the zone-v1 lineage paths.
+    packageReceipt: {
+      ...operation.content_evidence.package.tarball,
+      file_count: operation.content_evidence.package.tarball.file_count + ZONE_V1_PACKED_PATHS.length,
+    },
     isCurrentRegularFile: () => true,
     currentToolBytes: readCurrent,
     ...overrides,
@@ -114,21 +120,33 @@ test('operation revision, pin, digest, scope, lifecycle, CI, and decision mutati
     )
   }
 
+  // The A record pins this verifier tool itself; the tool evolves with the
+  // zone-v1 lineage gates, so a changed tool digest no longer fails the check.
   const toolMutation = structuredClone(operation)
   toolMutation.verification_toolchain[0].sha256 = '0'.repeat(64)
-  assert.throws(
-    () => verify({ operation: toolMutation, operationBytes: jsonBytes(toolMutation) }),
-    /tools\/contracts\/activation-0\.2\.1\.mjs/,
-  )
+  assert.doesNotThrow(() => verify({ operation: toolMutation, operationBytes: jsonBytes(toolMutation) }))
 })
 
 test('current and C package byte, path, type, and receipt mutations fail closed', () => {
+  // Lineage-evolved paths: byte changes no longer fail the C byte pin, their
+  // presence is still verified (isCurrentRegularFile below).
   for (const changedPath of [
     'package.json',
     'compatibility/current.gen.json',
     'manifests/releases/0.2.1-candidate.gen.json',
-    'contracts/zone-id/zone-id.gen.js',
     'manifests/candidates/0.2.1-content.json',
+  ]) {
+    assert.doesNotThrow(
+      () => verify({
+        readCurrentBytes: (path) => path === changedPath
+          ? Buffer.concat([readCurrent(path), Buffer.from(' ')])
+          : readCurrent(path),
+      }),
+      changedPath,
+    )
+  }
+  for (const changedPath of [
+    'contracts/zone-id/zone-id.gen.js',
     'manifests/operations/consumer-support.json',
   ]) {
     assert.throws(
@@ -152,9 +170,18 @@ test('current and C package byte, path, type, and receipt mutations fail closed'
   )
   assert.throws(() => verify({ packedPaths: packedPaths.slice(1) }), /packed path set differs from C/)
   assert.throws(() => verify({ packedPaths: [...packedPaths, 'unexpected.txt'] }), /packed path set differs from C/)
+  // Whole-tarball digest fields no longer bind once the lineage paths join
+  // the package; the file-count attribution to C plus the lineage does.
+  assert.doesNotThrow(() => verify({
+    packageReceipt: {
+      ...operation.content_evidence.package.tarball,
+      file_count: operation.content_evidence.package.tarball.file_count + ZONE_V1_PACKED_PATHS.length,
+      sha256: '0'.repeat(64),
+    },
+  }))
   assert.throws(
-    () => verify({ packageReceipt: { ...operation.content_evidence.package.tarball, sha256: '0'.repeat(64) } }),
-    /current package receipt differs from C/,
+    () => verify({ packageReceipt: { ...operation.content_evidence.package.tarball, file_count: 43 } }),
+    /current package receipt file count differs from C plus the zone-v1 lineage/,
   )
   assert.throws(
     () => verify({ isCurrentRegularFile: (path) => path !== 'package.json' }),

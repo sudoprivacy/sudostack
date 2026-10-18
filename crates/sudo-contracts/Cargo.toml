@@ -1,0 +1,14 @@
+[package]
+name = "sudo-contracts"
+version = "0.2.0-rc.1"
+edition = "2021"
+description = "Derived zone-v1 product contract DTOs and validators (auth/common v1), assembled by sudostack from the pinned owner revisions. Not a canonical source: nexus owns the product schemas, nexus-vfs owns zone-id/zone-path."
+license = "UNLICENSED"
+publish = false
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[build-dependencies]
+serde_json = "1"

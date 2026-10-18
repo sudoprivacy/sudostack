@@ -39,6 +39,37 @@ jobs:
       - name: Packed artifacts are deterministic, exact-delta, installable, and importable
         run: npm run package:smoke
 
+  # The zone-v1 family (contracts/zone-v1, crates/sudo-contracts, the offline
+  # release bundle) derives through its own generator pinned by
+  # contracts/zone-v1/pin.json — a second lineage alongside the candidate
+  # system above. Its gates mirror the family-gates jobs of that lineage:
+  # regenerate-and-compare, shared-fixture conformance in TS and Rust, the
+  # compatibility baseline, and release reproducibility.
+  zone-v1-family-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.21.0'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: zone-v1 derived artifacts match the pinned specs
+        run: node contracts/zone-v1/generate.mjs --check
+      - name: zone-v1 TS conformance and the compatibility checker self-tests
+        run: node --test contracts/zone-v1/conformance/conformance.test.mjs compatibility/check-compatibility.test.mjs
+      - name: No breaking changes vs the compatibility baseline
+        run: node compatibility/check-compatibility.mjs
+      - name: sudo-contracts agrees with the shared fixtures
+        run: cargo test --manifest-path crates/sudo-contracts/Cargo.toml
+      - name: Release bundle is reproducible
+        run: |
+          node contracts/zone-v1/release.mjs
+          git diff --exit-code -- releases/zone-v1
+          node contracts/zone-v1/verify-offline-bundle.mjs
+
   owner-source-availability:
     runs-on: ubuntu-latest
     steps:
@@ -89,6 +120,20 @@ jobs:
           repository: sudoprivacy/moss
           ref: e9660ed1483cf01f96fe06c45ba7e070e0223ec3
           path: .enforcement/moss
+          persist-credentials: false
+
+      # ADR-004's task-resolution tags point into the nexus e2e suite at the
+      # same immutable revision the zone-v1 family derives from.
+      - name: Read nexus pin
+        id: pins
+        run: |
+          echo "nexus=$(node -p "JSON.parse(require('fs').readFileSync('contracts/zone-v1/pin.json','utf8')).nexus.rev")" >> "$GITHUB_OUTPUT"
+      - name: Check out exact nexus enforcement targets
+        uses: actions/checkout@v4
+        with:
+          repository: nexi-lab/nexus
+          ref: ${{ steps.pins.outputs.nexus }}
+          path: .enforcement/nexus
           persist-credentials: false
 
       - name: The enforcement checker catches what it claims to
