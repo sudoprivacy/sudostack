@@ -118,7 +118,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: sudoprivacy/moss
-          ref: e9660ed1483cf01f96fe06c45ba7e070e0223ec3
+          ref: a2bbdd905b501aae5878f2490d6d3849697d9c43
           path: .enforcement/moss
           persist-credentials: false
 

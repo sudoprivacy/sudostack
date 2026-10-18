@@ -94,7 +94,7 @@ const REVIEWED_EVIDENCE = {
 // zone-v1-family-gates job and a pinned nexus checkout in every-clause; every
 // step this review bound (job name, fetch-depth 0, both commands, all
 // pre-existing jobs and checkouts) is retained verbatim — additions only.
-const REVIEWED_WORKFLOW_SHA256 = 'fcc13b96bfe3c8b0b8547cc2632ddaa961847c7423a8da142ee8c41a8de74c96'
+const REVIEWED_WORKFLOW_SHA256 = 'edf3a38d56af0802a82900f8fde0e3d74fa911ed862273521a3c9beff4d08d9d'
 const REVIEWED_LOCAL_BYTES = {
   'package.json': '8850564f8216b1030ddd9cbff07d81fb237013c3d8e9ce68c7dc2f6c67d9cbdf',
   'tools/contracts/successor-compatibility.mjs': 'a23974e5571344c406de61a88ad7a2f2851f430dda1a60710248206b5dc38ad5',
