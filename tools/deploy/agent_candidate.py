@@ -48,6 +48,16 @@ def export_source(repo, revision, output):
     full_revision(revision)
     with tarfile.open(output, 'w') as target:
         def append(checkout, pin, prefix=''):
+            # Git otherwise searches parent directories for an uninitialized
+            # submodule and attempts to archive its pin from the wrong repository.
+            root = subprocess.run(['git', '-C', str(checkout), 'rev-parse', '--show-toplevel'],
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            if root.returncode or Path(root.stdout.strip()).resolve() != checkout.resolve():
+                raise ValueError(f'Initialize pinned submodule checkout: {checkout} at {pin}')
+            tree = subprocess.run(['git', '-C', str(checkout), 'cat-file', '-e', pin + '^{tree}'],
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if tree.returncode:
+                raise ValueError(f'Missing pinned source tree: {checkout} at {pin}')
             proc = subprocess.Popen(['git', '-C', str(checkout), 'archive', '--format=tar', pin], stdout=subprocess.PIPE)
             try:
                 with tarfile.open(fileobj=proc.stdout, mode='r|') as source:
@@ -88,8 +98,6 @@ def export_source(repo, revision, output):
                 if mode == b'160000' and kind == b'commit':
                     name = path.decode()
                     submodule = asset_path(checkout, name)
-                    if not submodule.is_dir():
-                        raise ValueError('Initialize pinned submodule: ' + name)
                     append(submodule, full_revision(object_id.decode()), prefix + name + '/')
         append(repo, revision)
 

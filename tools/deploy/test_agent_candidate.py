@@ -91,6 +91,39 @@ class AgentCandidateTests(unittest.TestCase):
         with tarfile.open(path) as archive:
             self.assertEqual(archive.extractfile('asset').read(), raw)
 
+    def test_nested_submodule_requires_its_own_checkout_and_exact_tree(self):
+        inner = self.root / 'inner'
+        middle = self.root / 'middle'
+        for repo in (inner, middle):
+            repo.mkdir()
+            candidate.git(repo, 'init', '-q')
+            candidate.git(repo, 'config', 'user.name', 'Candidate Test')
+            candidate.git(repo, 'config', 'user.email', 'candidate@example.test')
+            candidate.git(repo, 'config', 'commit.gpgsign', 'false')
+        (inner / 'inner-file').write_text('pinned inner bytes')
+        candidate.git(inner, 'add', '.')
+        candidate.git(inner, 'commit', '-qm', 'Inner fixture')
+        candidate.git(middle, '-c', 'protocol.file.allow=always', 'submodule', 'add', '-q', str(inner), 'nested')
+        candidate.git(middle, 'commit', '-qam', 'Middle fixture')
+        self.git('-c', 'protocol.file.allow=always', 'submodule', 'add', '-q', str(middle), 'vendor')
+        self.git('commit', '-qam', 'Outer fixture')
+        revision = self.git('rev-parse', 'HEAD').decode().strip()
+        path = self.root / 'source.tar'
+        with self.assertRaisesRegex(ValueError, r'Initialize pinned submodule checkout: .*vendor/nested at [a-f0-9]{40}'):
+            candidate.export_source(self.repo, revision, path)
+        self.git('-c', 'protocol.file.allow=always', 'submodule', 'update', '--init', '--recursive')
+        candidate.export_source(self.repo, revision, path)
+        with tarfile.open(path) as archive:
+            self.assertEqual(archive.extractfile('vendor/nested/inner-file').read(), b'pinned inner bytes')
+        missing = '1' * 40
+        candidate.git(self.repo / 'vendor', 'update-index', '--cacheinfo', '160000,' + missing + ',nested')
+        candidate.git(self.repo / 'vendor', '-c', 'user.name=Candidate Test', '-c', 'user.email=candidate@example.test',
+                      '-c', 'commit.gpgsign=false', 'commit', '-qm', 'Missing pin fixture')
+        self.git('add', 'vendor')
+        self.git('commit', '-qm', 'Update fixture')
+        with self.assertRaisesRegex(ValueError, 'Missing pinned source tree: .*vendor/nested at ' + missing):
+            candidate.export_source(self.repo, self.git('rev-parse', 'HEAD').decode().strip(), path)
+
     def test_changed_archives_artifacts_and_foreign_owners_fail_before_build(self):
         lock = self.lock()
         self.assertEqual(candidate.load_lock(self.root), lock)
