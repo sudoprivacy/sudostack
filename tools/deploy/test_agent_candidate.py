@@ -48,10 +48,14 @@ class AgentCandidateTests(unittest.TestCase):
         candidate.json_write(self.root / 'candidate.lock.json', lock)
         return lock
 
-    def image(self, component, lock):
-        config = json.dumps({'architecture': 'arm64', 'os': 'linux', 'rootfs': {'type': 'layers', 'diff_ids': ['sha256:' + hashlib.sha256(b'fixture').hexdigest()]}}).encode()
+    def image(self, component, lock, image_revision=None):
+        source = lock['sources'][candidate.COMPONENTS[component][0]]
+        config = json.dumps({'architecture': 'arm64', 'os': 'linux',
+                             'config': {'Labels': {'org.opencontainers.image.revision': image_revision or source['revision'],
+                                                   'org.opencontainers.image.source': source['repository']}},
+                             'rootfs': {'type': 'layers', 'diff_ids': ['sha256:' + hashlib.sha256(b'fixture').hexdigest()]}}).encode()
         image_id = 'sha256:' + hashlib.sha256(config).hexdigest()
-        reference = 'sudo-agent-candidate/' + component + ':fixture'
+        reference = 'sudo-agent-candidate/' + component + ':' + checksum(self.root / 'candidate.lock.json')[:16] + '-arm64'
         entries = [{'Config': 'config.json', 'RepoTags': [reference], 'Layers': ['layer.tar']}]
         path = self.root / (component + '-image.tar.gz')
         with tarfile.open(path, 'w:gz') as archive:
@@ -178,6 +182,15 @@ class AgentCandidateTests(unittest.TestCase):
             stream.write(b'tampered')
         with self.assertRaisesRegex(ValueError, 'Changed image'):
             candidate.assemble(self.root)
+
+    def test_valid_archive_checksums_do_not_override_wrong_source_labels(self):
+        lock = self.lock()
+        for component in candidate.COMPONENTS:
+            self.image(component, lock)
+        self.image('moss', lock, image_revision='0' * 40)
+        with self.assertRaisesRegex(ValueError, 'source labels'):
+            candidate.assemble(self.root)
+        self.assertFalse((self.root / 'candidate-images.json').exists())
 
 
 if __name__ == '__main__':

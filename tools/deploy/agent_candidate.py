@@ -169,7 +169,7 @@ def load_lock(directory):
     return lock
 
 
-def inspect_archive(path, reference, architecture, image_id):
+def inspect_archive(path, reference, architecture, image_id, source):
     verify_image_archive(path, [reference], architecture)
     with tarfile.open(path) as archive:
         entries = json.load(archive.extractfile('manifest.json'))
@@ -178,7 +178,12 @@ def inspect_archive(path, reference, architecture, image_id):
         config = archive.extractfile(entries[0]['Config']).read()
         if 'sha256:' + hashlib.sha256(config).hexdigest() != image_id:
             raise ValueError('Image config digest mismatch')
-        diff_ids = json.loads(config).get('rootfs', {}).get('diff_ids', [])
+        configuration = json.loads(config)
+        labels = configuration.get('config', {}).get('Labels', {})
+        if not isinstance(labels, dict) or (labels.get('org.opencontainers.image.revision') != source['revision']
+                or labels.get('org.opencontainers.image.source') != source['repository']):
+            raise ValueError('Image archive source labels differ from candidate')
+        diff_ids = configuration.get('rootfs', {}).get('diff_ids', [])
         layers = entries[0]['Layers']
         if len(layers) != len(diff_ids) or not layers:
             raise ValueError('Image layer list differs from config')
@@ -224,7 +229,7 @@ def build(directory, component):
     archive = directory / (component + '-image.tar.gz')
     # The tag supplies the archive name; inspect_archive verifies immutable config bytes.
     save_image(reference, archive)
-    inspect_archive(archive, reference, lock['architecture'], info['Id'])
+    inspect_archive(archive, reference, lock['architecture'], info['Id'], source)
     record = {'component': component, 'candidate_lock_sha256': lock_digest, 'source_revision': source['revision'],
               'image': reference, 'image_config_digest': info['Id'], 'architecture': lock['architecture'],
               'archive': archive.name, 'sha256': checksum(archive)}
@@ -241,12 +246,13 @@ def assemble(directory):
         record = json.loads((directory / (component + '-image.json')).read_text())
         if (record.get('component') != component or record.get('candidate_lock_sha256') != lock_digest
                 or record.get('source_revision') != lock['sources'][owner]['revision'] or record.get('architecture') != lock['architecture']
+                or record.get('image') != f'sudo-agent-candidate/{component}:{lock_digest[:16]}-{lock["architecture"]}'
                 or record.get('archive') != component + '-image.tar.gz'):
             raise ValueError('Stale or foreign component record: ' + component)
         archive = asset_path(directory, record['archive'])
         if checksum(archive) != record['sha256']:
             raise ValueError('Changed image archive: ' + component)
-        inspect_archive(archive, record['image'], lock['architecture'], record['image_config_digest'])
+        inspect_archive(archive, record['image'], lock['architecture'], record['image_config_digest'], lock['sources'][owner])
         records[component] = record
     manifest = {'kind': 'LocalAgentCandidateImages', 'schema_version': 1, 'candidate_lock_sha256': lock_digest,
                 'images': records, 'qualification': 'images assembled; deployment, migration, desktop signing and business acceptance still required'}
