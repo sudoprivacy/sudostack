@@ -3,7 +3,6 @@
 import argparse
 import base64
 import errno
-import hashlib
 import importlib.util
 import json
 import os
@@ -19,6 +18,9 @@ import time
 import urllib.request
 import urllib.error
 import ssl
+
+from artifacts import RUNTIME_SCRIPTS, checksum
+from images import retain_archive
 
 os.umask(0o077)
 NAMESPACE = 'atlas-system'
@@ -47,13 +49,6 @@ def secret(name, data, kind='Opaque'):
         'labels': {'app.kubernetes.io/managed-by': 'atlas-install'}}, 'type': kind,
         'data': {key: base64.b64encode(value if isinstance(value, bytes) else value.encode()).decode() for key, value in data.items()}})
 
-def checksum(path):
-    digest = hashlib.sha256()
-    with path.open('rb') as stream:
-        for block in iter(lambda: stream.read(1024 * 1024), b''):
-            digest.update(block)
-    return digest.hexdigest()
-
 def image_digest(tag):
     rows = output('k3s', 'ctr', 'images', 'ls').splitlines()
     matches = [row.split()[2] for row in rows[1:] if row.split()[0] == tag]
@@ -62,16 +57,6 @@ def image_digest(tag):
     ref = tag.rsplit(':', 1)[0] + '@' + matches[0]
     run('k3s', 'ctr', 'images', 'tag', '--force', tag, ref, stdout=subprocess.DEVNULL)
     return ref
-
-def import_archive(path):
-    with path.open('rb') as source:
-        unzip = subprocess.Popen(['gzip', '-dc'], stdin=source, stdout=subprocess.PIPE)
-        try:
-            run('k3s', 'ctr', 'images', 'import', '-', stdin=unzip.stdout, stdout=subprocess.DEVNULL)
-        finally:
-            unzip.stdout.close()
-        if unzip.wait():
-            raise RuntimeError('Image archive decompression failed')
 
 def helm(root, chart, values, filename='values.json'):
     path = root / filename
@@ -284,7 +269,7 @@ def install(args):
         Path('/usr/local/bin/helm').chmod(0o755)
     for archive in manifest['imageArchives']:
         print('Importing ' + archive, flush=True)
-        import_archive(assets / archive)
+        retain_archive(assets / archive, manifest['archives'][archive])
     images = {component: image_digest(tag) for component, tag in manifest['images'].items()}
     claim_namespace(root)
     # Adopt only an empty session namespace from the Moss bootstrap helper.
@@ -402,7 +387,7 @@ def add_router(root, assets, chart, manifest, host):
     router.assert_moss_configuration(root)
     value = router.credentials(root)
     secret('atlas-router-env', {'SESSION_SECRET': value['sessionSecret']})
-    import_archive(assets / manifest['routerArchive'])
+    retain_archive(assets / manifest['routerArchive'], manifest['archives'][manifest['routerArchive']])
     values['images']['router'] = image_digest(manifest['images']['router'])
     values['gateway']['routerOrigin'] = 'https://' + host + ':9443'
     values['router'] = {'enabled': True, 'expose': False}
@@ -417,11 +402,21 @@ def add_router(root, assets, chart, manifest, host):
     print_access_info(root)
 
 
+def install_runtime_tools(root, assets):
+    for filename in RUNTIME_SCRIPTS:
+        if not (assets / filename).is_file():
+            raise ValueError('Missing runtime tool: ' + filename)
+    root.mkdir(parents=True, exist_ok=True)
+    for filename in RUNTIME_SCRIPTS:
+        if (assets / filename).resolve() != (root / filename).resolve():
+            shutil.copyfile(assets / filename, root / filename)
+    (root / 'cleanup-atlas.sh').chmod(0o700)
+
+
 def finalize_install(root, assets, chart, manifest, images):
+    install_runtime_tools(root, assets)
     if chart != root / 'chart':
         shutil.copytree(chart, root / 'chart', dirs_exist_ok=True)
-    if Path(__file__).resolve() != root / 'atlas.py':
-        shutil.copy(__file__, root / 'atlas.py')
     write(root / 'release-manifest.json', {**manifest, 'resolvedImages': images})
     for action in ('status', 'restart', 'stop', 'start', 'verify'):
         import shlex
@@ -432,13 +427,6 @@ def finalize_install(root, assets, chart, manifest, images):
     gateway = json.loads((root / 'values.json').read_text())['gateway']
     (root / 'admin-credentials.txt').write_text('WebUI: ' + gateway['webuiOrigin'] + '\nMoss Admin: ' + gateway['mossOrigin'] + '/admin/\nUsername: '
         + credentials['adminUsername'] + '\nPassword: ' + credentials['adminPassword'] + '\n')
-    for filename in ('smoke.py', 'webui-smoke.cjs', 'mock-openai-server.mjs', 'snapshot.py', 'router.py', 'cleanup-atlas.sh'):
-        if filename == 'cleanup-atlas.sh' and not (assets / filename).exists():
-            continue
-        if (assets / filename).resolve() != root / filename:
-            shutil.copyfile(assets / filename, root / filename)
-        if filename == 'cleanup-atlas.sh':
-            (root / filename).chmod(0o700)
     for action in ('backup', 'restore'):
         script = root / (action + '.sh')
         script.write_text('#!/usr/bin/env bash\nset -euo pipefail\nexec python3 ' + shlex.quote(str(root / 'snapshot.py')) + ' ' + action + ' --root ' + shlex.quote(str(root)) + ' "$@"\n')

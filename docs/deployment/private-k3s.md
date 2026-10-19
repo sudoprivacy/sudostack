@@ -79,6 +79,18 @@ sudo k3s kubectl -n atlas-system logs deployment/moss-server
 
 Moss 的 kubeconfig 使用 Pod ServiceAccount tokenFile，RBAC 仅授予会话命名空间的必要资源操作。Nexus 通过自己的 CA 签发 `atlas-moss` Agent，授予会话身份签发权限；Moss 的客户端 Secret 不包含节点私钥。所有镜像导入后按 digest 部署，配置和 Secret 不进入镜像。
 
+### 离线镜像保留
+
+使用 `imagePullPolicy: Never` 的镜像必须持续保留，单次 `ctr images import` 不能防止 kubelet 在磁盘压力下回收尚未使用的镜像。公共安装器校验归档 SHA256 后，将完整文件原子写入 `/var/lib/rancher/k3s/agent/images/`，由 K3s 导入并固定；只有 CRI 报告的镜像 config ID 与归档一致且 `pinned: true`，才继续部署。K3s 重启时也会从保留的归档恢复镜像。
+
+Cloud 节点或独立运维流程可复用同一入口：
+
+```bash
+sudo python3 tools/deploy/images.py --archive /path/to/runtime.tar.gz --sha256 VERIFIED_ARCHIVE_SHA256
+```
+
+归档是部署所需的持久制品，至少保留当前版本和仍可回退的版本。移除前应确认没有现有工作负载、期望部署或回退计划引用它；安装器不会自动删除其他版本，也不修改 GC 阈值或重启 K3s。镜像缺失或未固定时，此入口会更新归档时间以触发重新检查，也适用于启用了 K3s 条件导入缓存的节点；它不会修改 K3s 的缓存文件。归档、镜像身份和固定状态都正确时，重复运行不会触发重新导入。节点验收应同时记录归档摘要、CRI 镜像身份与固定状态，不能只记录导入命令成功。
+
 备份为停机冷备份，包含安装目录、两个命名空间中的 PVC 和业务 Secret，使用 AES-256-CBC/PBKDF2 加密并验证 HMAC-SHA256。先结束活动会话。密钥必须保存在安装目录和备份目录之外、权限 600，并单独保存到另一安全位置：
 
 ```bash

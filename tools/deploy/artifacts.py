@@ -9,6 +9,10 @@ import subprocess
 import tempfile
 from urllib.parse import quote, urlparse
 
+RUNTIME_SCRIPTS = ('atlas.py', 'artifacts.py', 'images.py', 'smoke.py', 'webui-smoke.cjs',
+                   'mock-openai-server.mjs', 'snapshot.py', 'router.py', 'cleanup-atlas.sh',
+                   'diagnostics.py', 'moss-diagnostics.cjs')
+
 
 def checksum(path):
     digest = hashlib.sha256()

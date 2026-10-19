@@ -151,24 +151,17 @@ def pull_image(ref, architecture='amd64'):
 
 
 def verify_image_archive(path, expected_refs, architecture='amd64'):
-    def canonical(ref):
-        if '/' not in ref:
-            return 'docker.io/library/' + ref
-        first = ref.split('/')[0]
-        return ref if '.' in first or ':' in first or first == 'localhost' else 'docker.io/' + ref
-
-    with tarfile.open(path) as archive:
-        try:
-            entries = json.load(archive.extractfile('manifest.json'))
-            tagged = {canonical(tag): entry for entry in entries for tag in entry.get('RepoTags', [])}
-            for ref in expected_refs:
-                if canonical(ref) not in tagged:
-                    raise ValueError(f'{path.name} does not contain the locked image {ref}')
-                config = json.load(archive.extractfile(tagged[canonical(ref)]['Config']))
-                if config.get('architecture') != architecture or config.get('os') != 'linux':
-                    raise ValueError(f'{path.name}: {ref} must be a linux/{architecture} image')
-        except (KeyError, TypeError, json.JSONDecodeError) as error:
-            raise ValueError('Invalid Docker image archive: ' + path.name) from error
+    from images import archive_images, canonical
+    try:
+        tagged = archive_images(path)
+        for ref in expected_refs:
+            if canonical(ref) not in tagged:
+                raise ValueError(f'{path.name} does not contain the locked image {ref}')
+            config = tagged[canonical(ref)]
+            if config['architecture'] != architecture or config['os'] != 'linux':
+                raise ValueError(f'{path.name}: {ref} must be a linux/{architecture} image')
+    except (KeyError, TypeError, json.JSONDecodeError) as error:
+        raise ValueError('Invalid Docker image archive: ' + path.name) from error
 
 
 def verify_runtime_version(output, locked_version):
