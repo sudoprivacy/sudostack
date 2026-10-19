@@ -4,6 +4,7 @@ import io
 import json
 from pathlib import Path
 import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -121,6 +122,116 @@ class ImageRetentionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'no tagged images'):
             self.retain()
         self.assertFalse(self.directory.exists())
+
+
+class OCIArchiveIdentityTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.archive = self.root / 'runtime.tar.gz'
+        self.config = b'{"architecture":"amd64","os":"linux"}'
+        self.config_id = 'sha256:' + hashlib.sha256(self.config).hexdigest()
+        self.tag = 'docker.io/library/runtime:1'
+        self.blobs = {self.config_id: self.config}
+        self.manifest = {'schemaVersion': 2, 'mediaType': 'application/vnd.oci.image.manifest.v1+json',
+                         'config': {'mediaType': 'application/vnd.oci.image.config.v1+json',
+                                    'digest': self.config_id, 'size': len(self.config)}, 'layers': []}
+        descriptor = self.descriptor(self.manifest)
+        self.manifest_id = descriptor['digest']
+        self.index = {'schemaVersion': 2, 'mediaType': 'application/vnd.oci.image.index.v1+json',
+                      'manifests': [descriptor]}
+
+    def descriptor(self, value):
+        raw = json.dumps(value, separators=(',', ':')).encode()
+        digest = 'sha256:' + hashlib.sha256(raw).hexdigest()
+        self.blobs[digest] = raw
+        return {'mediaType': value['mediaType'], 'digest': digest, 'size': len(raw)}
+
+    def write(self, symlink=None):
+        metadata = {'manifest.json': json.dumps([{'Config': 'blobs/sha256/' + self.config_id[7:],
+                                                 'RepoTags': ['runtime:1']}]).encode(),
+                    'oci-layout': b'{"imageLayoutVersion":"1.0.0"}',
+                    'index.json': json.dumps(self.index).encode(),
+                    **{'blobs/sha256/' + digest[7:]: raw for digest, raw in self.blobs.items()}}
+        with tarfile.open(self.archive, 'w:gz') as archive:
+            for name, raw in metadata.items():
+                member = tarfile.TarInfo(name)
+                if name == symlink:
+                    member.type, member.linkname = tarfile.SYMTYPE, '/etc/passwd'
+                    archive.addfile(member)
+                else:
+                    member.size = len(raw)
+                    archive.addfile(member, io.BytesIO(raw))
+
+    def identity(self):
+        self.write()
+        return images.archive_images(self.archive)[self.tag]
+
+    def test_manifest_identity_is_bound_to_the_config_and_differs_from_config_identity(self):
+        self.assertNotEqual(self.config_id, self.manifest_id)
+        self.assertEqual(self.identity(), {'id': self.config_id, 'architecture': 'amd64',
+                                           'os': 'linux', 'manifestDigest': self.manifest_id})
+
+    def test_nested_image_index_keeps_the_root_digest_reported_by_cri(self):
+        root = self.descriptor(self.index)
+        self.index = {'schemaVersion': 2, 'manifests': [root]}
+        self.assertEqual(self.identity()['manifestDigest'], root['digest'])
+        self.assertNotEqual(root['digest'], self.manifest_id)
+
+    def test_descriptor_supplies_the_optional_manifest_media_type(self):
+        raw = json.dumps({key: value for key, value in self.manifest.items() if key != 'mediaType'}).encode()
+        digest = 'sha256:' + hashlib.sha256(raw).hexdigest()
+        self.blobs[digest] = raw
+        self.index['manifests'] = [{**self.index['manifests'][0], 'digest': digest, 'size': len(raw)}]
+        self.assertEqual(self.identity()['manifestDigest'], digest)
+
+    def test_conflicting_unnamed_manifests_are_rejected(self):
+        self.index['manifests'].append(self.descriptor({**self.manifest, 'annotations': {'variant': 'other'}}))
+        with self.assertRaisesRegex(ValueError, 'ambiguous OCI manifest'):
+            self.identity()
+
+    def test_exact_name_resolves_multiple_encodings_of_one_config(self):
+        self.index['manifests'][0]['annotations'] = {'io.containerd.image.name': self.tag}
+        self.index['manifests'].append(self.descriptor({**self.manifest, 'annotations': {'variant': 'other'}}))
+        self.assertEqual(self.identity()['manifestDigest'], self.manifest_id)
+
+    def test_corrupt_manifest_is_rejected_before_cri_or_retention(self):
+        self.blobs[self.manifest_id] += b' '
+        self.write()
+        directory = self.root / 'retained'
+        with patch.object(images.subprocess, 'run') as run:
+            with self.assertRaisesRegex(ValueError, 'OCI content does not match'):
+                images.retain_archive(self.archive, checksum(self.archive), directory=directory)
+            run.assert_not_called()
+        self.assertFalse(directory.exists())
+
+    def test_corrupt_config_is_rejected_even_when_the_manifest_descriptor_matches(self):
+        self.blobs[self.config_id] += b' '
+        with self.assertRaisesRegex(ValueError, 'OCI config content does not match'):
+            self.identity()
+
+    def test_symlink_manifest_blob_is_not_followed(self):
+        self.write(symlink='blobs/sha256/' + self.manifest_id[7:])
+        with self.assertRaisesRegex(ValueError, 'Invalid image metadata'):
+            images.archive_images(self.archive)
+
+    def test_wrong_config_link_is_rejected(self):
+        other = b'{"architecture":"arm64","os":"linux"}'
+        other_id = 'sha256:' + hashlib.sha256(other).hexdigest()
+        self.blobs[other_id] = other
+        self.index['manifests'] = [self.descriptor({**self.manifest, 'config': {
+            **self.manifest['config'], 'digest': other_id, 'size': len(other)}})]
+        with self.assertRaisesRegex(ValueError, 'Missing or ambiguous OCI manifest'):
+            self.identity()
+
+    def test_inspect_cli_is_read_only_and_works_without_k3s(self):
+        self.write()
+        result = subprocess.run([sys.executable, images.__file__, '--inspect', '--archive', str(self.archive)],
+                                capture_output=True, text=True, cwd=self.root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)[self.tag]['manifestDigest'], self.manifest_id)
+        self.assertEqual(list(self.root.iterdir()), [self.archive])
 
 
 if __name__ == '__main__':

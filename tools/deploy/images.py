@@ -2,6 +2,7 @@
 """Retain verified offline images through K3s' managed, GC-pinned importer."""
 import argparse
 import hashlib
+from functools import cache
 import json
 import os
 from pathlib import Path
@@ -25,9 +26,10 @@ def canonical(ref):
 
 
 def archive_images(path):
-    """Read config identities without extracting or executing archive contents."""
+    """Read config and OCI manifest identities without extracting image contents."""
     result = {}
     with tarfile.open(path) as archive:
+        @cache
         def read(name):
             member = archive.getmember(name)
             if not member.isfile() or member.size > 1024 * 1024:
@@ -43,7 +45,58 @@ def archive_images(path):
                 tag = canonical(tag)
                 if tag in result and result[tag] != value:
                     raise ValueError('Conflicting image identity: ' + tag)
-                result[tag] = value
+                result[tag] = dict(value)
+        if 'index.json' in archive.getnames():
+            if json.loads(read('oci-layout')).get('imageLayoutVersion') != '1.0.0':
+                raise ValueError('Unsupported OCI image layout')
+            index = json.loads(read('index.json'))
+            if index.get('schemaVersion') != 2 or not isinstance(index.get('manifests'), list):
+                raise ValueError('Invalid OCI image index')
+            def configs(descriptor, depth=0):
+                if depth > 4:
+                    raise ValueError('OCI image index nesting is too deep')
+                digest = descriptor.get('digest', '')
+                if not re.fullmatch(r'sha256:[a-f0-9]{64}', digest):
+                    raise ValueError('Invalid OCI descriptor digest')
+                content = read('blobs/sha256/' + digest.removeprefix('sha256:'))
+                if len(content) != descriptor.get('size') or 'sha256:' + hashlib.sha256(content).hexdigest() != digest:
+                    raise ValueError('OCI content does not match its descriptor')
+                manifest = json.loads(content)
+                media_type = descriptor.get('mediaType')
+                if manifest.get('schemaVersion') != 2 or manifest.get('mediaType', media_type) != media_type:
+                    raise ValueError('Invalid OCI image metadata')
+                if media_type in ('application/vnd.oci.image.index.v1+json',
+                                  'application/vnd.docker.distribution.manifest.list.v2+json'):
+                    if not isinstance(manifest.get('manifests'), list):
+                        raise ValueError('Invalid OCI image index')
+                    return {value for child in manifest['manifests'] for value in configs(child, depth + 1)}
+                if media_type not in (
+                        'application/vnd.oci.image.manifest.v1+json',
+                        'application/vnd.docker.distribution.manifest.v2+json'):
+                    raise ValueError('Unsupported OCI image descriptor')
+                config = manifest.get('config', {})
+                config_digest = config.get('digest', '')
+                if not re.fullmatch(r'sha256:[a-f0-9]{64}', config_digest):
+                    raise ValueError('Invalid OCI config digest')
+                config_content = read('blobs/sha256/' + config_digest.removeprefix('sha256:'))
+                if len(config_content) != config.get('size') or 'sha256:' + hashlib.sha256(config_content).hexdigest() != config_digest:
+                    raise ValueError('OCI config content does not match its descriptor')
+                return {config_digest}
+
+            manifests = []
+            for descriptor in index['manifests']:
+                config_ids = configs(descriptor)
+                annotations = descriptor.get('annotations', {})
+                reference = annotations.get('io.containerd.image.name') or annotations.get('org.opencontainers.image.ref.name')
+                manifests.append({'digest': descriptor['digest'], 'configs': config_ids,
+                                  'reference': canonical(reference) if reference else None})
+            for tag, value in result.items():
+                candidates = [row for row in manifests if value['id'] in row['configs']]
+                named = [row for row in candidates if row['reference'] == tag]
+                digests = {row['digest'] for row in named or candidates}
+                if len(digests) != 1:
+                    raise ValueError('Missing or ambiguous OCI manifest identity: ' + tag)
+                value['manifestDigest'] = digests.pop()
     if not result:
         raise ValueError('Image archive contains no tagged images')
     return result
@@ -139,8 +192,14 @@ def retain_archive(path, expected, *, directory=IMAGES_DIRECTORY, timeout=300):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--archive', required=True, type=Path)
-    parser.add_argument('--sha256', required=True)
+    parser.add_argument('--sha256')
+    parser.add_argument('--inspect', action='store_true', help='Read archive identities without importing or retaining images')
     args = parser.parse_args()
+    if args.inspect:
+        print(json.dumps(archive_images(args.archive)))
+        return
+    if not args.sha256:
+        parser.error('--sha256 is required when retaining an image archive')
     print(json.dumps(retain_archive(args.archive, args.sha256)))
 
 
