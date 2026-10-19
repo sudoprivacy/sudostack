@@ -26,6 +26,11 @@ COMPONENTS = {
     'http-provider': ('moss', 'deploy/http-agent-provider/Dockerfile', None),
     'product-registry': ('nexus', 'Dockerfile', None),
 }
+ASSEMBLER_FILES = ('agent_candidate.py', 'artifacts.py', 'release.py')
+
+
+def assembler_files():
+    return {name: checksum(Path(__file__).resolve().parent / name) for name in ASSEMBLER_FILES}
 
 def git(repo, *args):
     return subprocess.check_output(['git', '-C', str(repo), *args])
@@ -135,6 +140,7 @@ def prepare(repos, provider, output, architecture):
             files[name] = checksum(stage / name)
         lock = {'schema_version': 1, 'kind': 'LocalAgentCandidate', 'architecture': architecture,
                 'assembler_revision': full_revision(git(stack, 'rev-parse', 'HEAD').decode().strip()),
+                'assembler_files': assembler_files(),
                 'sources': sources, 'provider_files': files,
                 'qualification': 'unqualified; build and deployment evidence required'}
         json_write(stage / 'candidate.lock.json', lock)
@@ -149,6 +155,8 @@ def load_lock(directory):
             or set(lock.get('provider_files', {})) != {'http-agent-provider.mjs', 'artifact-manifest.json'}):
         raise ValueError('Invalid local candidate lock')
     full_revision(lock.get('assembler_revision'))
+    if lock.get('assembler_files') != assembler_files():
+        raise ValueError('Use the exact assembler files recorded by candidate preparation')
     for name, source in lock['sources'].items():
         full_revision(source['revision'])
         if source['repository'] != 'https://github.com/' + OWNERS[name] or source['archive'] != name + '-source.tar':

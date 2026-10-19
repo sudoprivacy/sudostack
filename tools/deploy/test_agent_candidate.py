@@ -43,6 +43,7 @@ class AgentCandidateTests(unittest.TestCase):
             (self.root / name).write_text('fixture\n')
             files[name] = checksum(self.root / name)
         lock = {'schema_version': 1, 'kind': 'LocalAgentCandidate', 'architecture': 'arm64',
+                'assembler_files': candidate.assembler_files(),
                 'assembler_revision': self.revision, 'sources': sources, 'provider_files': files}
         candidate.json_write(self.root / 'candidate.lock.json', lock)
         return lock
@@ -127,6 +128,11 @@ class AgentCandidateTests(unittest.TestCase):
     def test_changed_archives_artifacts_and_foreign_owners_fail_before_build(self):
         lock = self.lock()
         self.assertEqual(candidate.load_lock(self.root), lock)
+        lock['assembler_files']['release.py'] = '0' * 64
+        candidate.json_write(self.root / 'candidate.lock.json', lock)
+        with self.assertRaisesRegex(ValueError, 'exact assembler files'):
+            candidate.load_lock(self.root)
+        self.lock()
         (self.root / 'moss-source.tar').write_bytes(b'changed')
         with self.assertRaisesRegex(ValueError, 'Changed source'):
             candidate.load_lock(self.root)

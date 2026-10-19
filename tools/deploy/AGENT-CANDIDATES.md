@@ -26,7 +26,11 @@ Preparation checks the existing contract source chains, records full owner
 commits, exports committed source and exact submodule commits, verifies actual
 LFS object hashes, and copies the verified Provider executable. Untracked files
 and local configuration are excluded. The candidate lock and source archives
-are inputs to every build. Keep an independent checksum of the lock when handing
+are inputs to every build. The three assembler Python files are also checksummed;
+copy them from the recorded Stack commit when building on another host. Python
+3.12 or later and Docker Buildx are required. A different assembler fails before
+building, so use a new preparation after changing it.
+Keep an independent checksum of the lock when handing
 it to another operator; these are local records, not signed attestations.
 
 ## Build and inspect
