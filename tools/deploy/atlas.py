@@ -20,6 +20,8 @@ import urllib.request
 import urllib.error
 import ssl
 
+from images import retain_archive
+
 os.umask(0o077)
 NAMESPACE = 'atlas-system'
 RELEASE = 'atlas-mvp'
@@ -62,16 +64,6 @@ def image_digest(tag):
     ref = tag.rsplit(':', 1)[0] + '@' + matches[0]
     run('k3s', 'ctr', 'images', 'tag', '--force', tag, ref, stdout=subprocess.DEVNULL)
     return ref
-
-def import_archive(path):
-    with path.open('rb') as source:
-        unzip = subprocess.Popen(['gzip', '-dc'], stdin=source, stdout=subprocess.PIPE)
-        try:
-            run('k3s', 'ctr', 'images', 'import', '-', stdin=unzip.stdout, stdout=subprocess.DEVNULL)
-        finally:
-            unzip.stdout.close()
-        if unzip.wait():
-            raise RuntimeError('Image archive decompression failed')
 
 def helm(root, chart, values, filename='values.json'):
     path = root / filename
@@ -284,7 +276,7 @@ def install(args):
         Path('/usr/local/bin/helm').chmod(0o755)
     for archive in manifest['imageArchives']:
         print('Importing ' + archive, flush=True)
-        import_archive(assets / archive)
+        retain_archive(assets / archive, manifest['archives'][archive])
     images = {component: image_digest(tag) for component, tag in manifest['images'].items()}
     claim_namespace(root)
     # Adopt only an empty session namespace from the Moss bootstrap helper.
@@ -402,7 +394,7 @@ def add_router(root, assets, chart, manifest, host):
     router.assert_moss_configuration(root)
     value = router.credentials(root)
     secret('atlas-router-env', {'SESSION_SECRET': value['sessionSecret']})
-    import_archive(assets / manifest['routerArchive'])
+    retain_archive(assets / manifest['routerArchive'], manifest['archives'][manifest['routerArchive']])
     values['images']['router'] = image_digest(manifest['images']['router'])
     values['gateway']['routerOrigin'] = 'https://' + host + ':9443'
     values['router'] = {'enabled': True, 'expose': False}
