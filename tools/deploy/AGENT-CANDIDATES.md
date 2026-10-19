@@ -59,6 +59,12 @@ runtime acceptance. This command neither publishes releases nor starts services.
 
 ## Deployment qualification still required
 
+For fresh synthetic-data testing, use the optional
+[isolated lab preparation tool](agent-lab/README.md). It revalidates the candidate
+archives and loaded images, creates separate private service configuration, and
+requires explicit schema initialization and organization binding. Preparation
+is not a deployment or acceptance receipt.
+
 Use the existing owner deployment tools with a separately reviewed environment
 configuration. Keep runtime configuration, credentials and database backups out
 of these source/image archives. Register the exact image config digests and
