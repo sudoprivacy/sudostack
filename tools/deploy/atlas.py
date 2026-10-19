@@ -19,7 +19,7 @@ import urllib.request
 import urllib.error
 import ssl
 
-from artifacts import checksum
+from artifacts import RUNTIME_SCRIPTS, checksum
 from images import retain_archive
 
 os.umask(0o077)
@@ -402,11 +402,21 @@ def add_router(root, assets, chart, manifest, host):
     print_access_info(root)
 
 
+def install_runtime_tools(root, assets):
+    for filename in RUNTIME_SCRIPTS:
+        if not (assets / filename).is_file():
+            raise ValueError('Missing runtime tool: ' + filename)
+    root.mkdir(parents=True, exist_ok=True)
+    for filename in RUNTIME_SCRIPTS:
+        if (assets / filename).resolve() != (root / filename).resolve():
+            shutil.copyfile(assets / filename, root / filename)
+    (root / 'cleanup-atlas.sh').chmod(0o700)
+
+
 def finalize_install(root, assets, chart, manifest, images):
+    install_runtime_tools(root, assets)
     if chart != root / 'chart':
         shutil.copytree(chart, root / 'chart', dirs_exist_ok=True)
-    if Path(__file__).resolve() != root / 'atlas.py':
-        shutil.copy(__file__, root / 'atlas.py')
     write(root / 'release-manifest.json', {**manifest, 'resolvedImages': images})
     for action in ('status', 'restart', 'stop', 'start', 'verify'):
         import shlex
@@ -417,13 +427,6 @@ def finalize_install(root, assets, chart, manifest, images):
     gateway = json.loads((root / 'values.json').read_text())['gateway']
     (root / 'admin-credentials.txt').write_text('WebUI: ' + gateway['webuiOrigin'] + '\nMoss Admin: ' + gateway['mossOrigin'] + '/admin/\nUsername: '
         + credentials['adminUsername'] + '\nPassword: ' + credentials['adminPassword'] + '\n')
-    for filename in ('smoke.py', 'webui-smoke.cjs', 'mock-openai-server.mjs', 'snapshot.py', 'router.py', 'cleanup-atlas.sh'):
-        if filename == 'cleanup-atlas.sh' and not (assets / filename).exists():
-            continue
-        if (assets / filename).resolve() != root / filename:
-            shutil.copyfile(assets / filename, root / filename)
-        if filename == 'cleanup-atlas.sh':
-            (root / filename).chmod(0o700)
     for action in ('backup', 'restore'):
         script = root / (action + '.sh')
         script.write_text('#!/usr/bin/env bash\nset -euo pipefail\nexec python3 ' + shlex.quote(str(root / 'snapshot.py')) + ' ' + action + ' --root ' + shlex.quote(str(root)) + ' "$@"\n')
