@@ -49,6 +49,15 @@ def archive_images(path):
     return result
 
 
+def inspect_image(tag):
+    result = subprocess.run(['k3s', 'crictl', 'inspecti', '--output', 'json', tag],
+                            capture_output=True, text=True, timeout=20)
+    if result.returncode and 'no such image' in result.stderr:
+        return None
+    result.check_returncode()
+    return json.loads(result.stdout)['status']
+
+
 def retain_archive(path, expected, *, directory=IMAGES_DIRECTORY, timeout=300):
     """Publish atomically, then require CRI to report every exact image as pinned.
 
@@ -67,11 +76,22 @@ def retain_archive(path, expected, *, directory=IMAGES_DIRECTORY, timeout=300):
     target = directory / (expected + '.tar.gz')
     if directory.is_symlink() or target.is_symlink():
         raise ValueError('Image retention paths must not be symlinks')
-    directory.mkdir(parents=True, exist_ok=True)
     if target.exists():
         if not target.is_file() or checksum(target) != expected:
             raise ValueError('Retained image archive checksum mismatch')
-    else:
+    # Refuse conflicting immutable tags and operational failures before K3s
+    # can observe any new archive. Only an absent image is expected here.
+    present = {}
+    for tag, expected_image in images.items():
+        status = inspect_image(tag)
+        if status is not None and status.get('id') != expected_image['id']:
+            raise ValueError('Existing image identity mismatch: ' + tag)
+        if status is not None and status.get('pinned') is True:
+            present[tag] = {'id': status['id'], 'pinned': True}
+    if target.exists() and len(present) == len(images):
+        return {'archive': str(target), 'sha256': expected, 'images': present}
+    directory.mkdir(parents=True, exist_ok=True)
+    if not target.exists():
         if shutil.disk_usage(directory).free < path.stat().st_size + 2 * 1024**3:
             raise ValueError('Insufficient space to retain image archive with a 2 GiB reserve')
         with tempfile.NamedTemporaryFile(dir=directory, prefix='.', suffix='.part', delete=False) as stream:
@@ -100,12 +120,10 @@ def retain_archive(path, expected, *, directory=IMAGES_DIRECTORY, timeout=300):
     pending, observed = set(images), {}
     while pending:
         for tag in tuple(pending):
-            result = subprocess.run(['k3s', 'crictl', 'inspecti', '--output', 'json', tag],
-                                    capture_output=True, text=True, timeout=20)
-            if result.returncode:
-                observed[tag] = result.stderr.strip()[-1000:]
+            status = inspect_image(tag)
+            if status is None:
+                observed[tag] = 'not present'
                 continue
-            status = json.loads(result.stdout)['status']
             if status.get('id') != images[tag]['id']:
                 raise ValueError('Imported image identity mismatch: ' + tag)
             observed[tag] = {'id': status['id'], 'pinned': status.get('pinned', False)}

@@ -41,19 +41,23 @@ class ImageRetentionTests(unittest.TestCase):
         return images.retain_archive(self.archive, checksum(self.archive), directory=self.directory, **kwargs)
 
     def test_waits_for_cri_pin_and_retains_exact_bytes_without_manual_import(self):
-        responses = [subprocess.CompletedProcess([], 1, '', 'image not present'),
+        responses = [subprocess.CompletedProcess([], 1, '', 'no such image'),
                      self.status(pinned=False), self.status()]
         def inspect(command, **kwargs):
             self.assertEqual(command, ['k3s', 'crictl', 'inspecti', '--output', 'json', self.tag])
-            files = list(self.directory.iterdir())
-            self.assertEqual(len(files), 1)
-            self.assertEqual(files[0].read_bytes(), self.archive.read_bytes())
+            if len(responses) == 3:
+                self.assertFalse(self.directory.exists())
+            else:
+                files = list(self.directory.iterdir())
+                self.assertEqual(len(files), 1)
+                self.assertEqual(files[0].read_bytes(), self.archive.read_bytes())
             return responses.pop(0)
         with patch.object(images.subprocess, 'run', side_effect=inspect), patch.object(images.time, 'sleep'):
             result = self.retain()
         self.assertEqual(result['images'][self.tag], {'id': self.image_id, 'pinned': True})
         self.assertEqual(Path(result['archive']).name, checksum(self.archive) + '.tar.gz')
-        with patch.object(images.subprocess, 'run', return_value=self.status()):
+        with patch.object(images.subprocess, 'run', return_value=self.status()), \
+             patch.object(images.os, 'utime', side_effect=AssertionError('Do not reimport already pinned images')):
             self.assertEqual(self.retain(), result)
         self.assertEqual(len(list(self.directory.iterdir())), 1)
 
@@ -68,6 +72,15 @@ class ImageRetentionTests(unittest.TestCase):
         with patch.object(images.subprocess, 'run', return_value=self.status(image_id='sha256:' + '0' * 64)):
             with self.assertRaisesRegex(ValueError, 'identity mismatch'):
                 self.retain()
+        self.assertFalse(self.directory.exists())
+
+    def test_cri_permission_failure_is_not_retried_or_published(self):
+        refused = subprocess.CompletedProcess([], 1, '', 'permission denied connecting to containerd')
+        with patch.object(images.subprocess, 'run', return_value=refused) as run:
+            with self.assertRaises(subprocess.CalledProcessError):
+                self.retain()
+            self.assertEqual(run.call_count, 1)
+        self.assertFalse(self.directory.exists())
 
     def test_unpinned_image_cannot_pass_deployment_gate(self):
         with patch.object(images.subprocess, 'run', return_value=self.status(pinned=False)):
@@ -89,7 +102,8 @@ class ImageRetentionTests(unittest.TestCase):
         def fail(source, stream):
             stream.write(b'partial')
             raise OSError('interrupted copy')
-        with patch.object(images.shutil, 'copyfileobj', side_effect=fail):
+        with patch.object(images.subprocess, 'run', return_value=self.status()), \
+             patch.object(images.shutil, 'copyfileobj', side_effect=fail):
             with self.assertRaisesRegex(OSError, 'interrupted copy'):
                 self.retain()
         self.assertEqual(list(self.directory.iterdir()), [])

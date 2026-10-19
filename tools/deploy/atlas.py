@@ -3,7 +3,6 @@
 import argparse
 import base64
 import errno
-import hashlib
 import importlib.util
 import json
 import os
@@ -20,6 +19,7 @@ import urllib.request
 import urllib.error
 import ssl
 
+from artifacts import checksum
 from images import retain_archive
 
 os.umask(0o077)
@@ -48,13 +48,6 @@ def secret(name, data, kind='Opaque'):
     apply({'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': name, 'namespace': NAMESPACE,
         'labels': {'app.kubernetes.io/managed-by': 'atlas-install'}}, 'type': kind,
         'data': {key: base64.b64encode(value if isinstance(value, bytes) else value.encode()).decode() for key, value in data.items()}})
-
-def checksum(path):
-    digest = hashlib.sha256()
-    with path.open('rb') as stream:
-        for block in iter(lambda: stream.read(1024 * 1024), b''):
-            digest.update(block)
-    return digest.hexdigest()
 
 def image_digest(tag):
     rows = output('k3s', 'ctr', 'images', 'ls').splitlines()
