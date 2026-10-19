@@ -23,7 +23,9 @@ the lab uses loopback HTTP; production HTTPS/cookies must be qualified separatel
    file; only `auth_modes.proxy.sudorouter.baseUrl/apiKey` are copied. Do not put a
    credential on the command line. Keep the output out of source control and
    evidence archives. On Linux root, Provider files become UID/GID 10001; on a
-   non-root host the Provider uses the invoking UID/GID.
+   non-root host the Provider uses the invoking UID/GID. Registry files and its
+   process use UID/GID 1000 on Linux root, or the invoking UID/GID otherwise;
+   private directories stay 0700 and signing credentials stay 0600.
 
 ```sh
 python3 tools/deploy/agent_lab.py prepare \

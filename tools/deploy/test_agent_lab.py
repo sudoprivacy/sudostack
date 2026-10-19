@@ -48,6 +48,7 @@ class AgentLabTests(unittest.TestCase):
             if name != 'runtime':
                 self.assertNotIn('ports', service)
         self.assertNotEqual(compose['services']['provider']['user'], '0:0')
+        self.assertNotEqual(compose['services']['registry']['user'], '0:0')
         self.assertEqual(compose['services']['provider']['cap_drop'], ['ALL'])
         self.assertNotIn('docker.sock', json.dumps(compose))
         for path in self.out.rglob('*'):
@@ -61,6 +62,15 @@ class AgentLabTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'never overwritten'):
             self.prepare()
         self.assertEqual((self.out / 'registry/secrets/signing.pem').read_bytes(), private)
+
+    def test_root_preparation_assigns_private_registry_files_to_runtime_user(self):
+        with patch.object(lab, 'assemble', return_value=self.manifest), patch.object(lab, 'local_image', return_value=self.image_id), patch.object(lab.os, 'getuid', return_value=0), patch.object(lab.os, 'geteuid', return_value=0), patch.object(lab.os, 'chown') as chown:
+            self.prepare()
+        compose = json.loads((self.out / 'compose.json').read_text())
+        self.assertEqual(compose['services']['registry']['user'], '1000:1000')
+        for path in [self.out / 'registry', *(self.out / 'registry').rglob('*')]:
+            chown.assert_any_call(path, 1000, 1000)
+            self.assertEqual(path.stat().st_mode & 0o777, 0o700 if path.is_dir() else 0o600)
 
     def test_scope_binding_requires_explicit_valid_id_and_cannot_remap(self):
         path = self.out / 'moss/config/registry.json'

@@ -102,6 +102,11 @@ def prepare(candidate, output, router_path, model, postgres_image):
         'DATABASE_URL=postgresql://agent_lab:' + pg_password + '@database:5432/agent_lab',
         'SESSION_HMAC_KEY=' + secrets.token_hex(32), 'TOKEN_AES_KEY=' + secrets.token_hex(32), '']))
     shutil.copyfile(Path(__file__).parent / 'agent-lab/registry.py', output / 'registry/entrypoint.py')
+    (output / 'registry/entrypoint.py').chmod(0o600)
+    registry_uid = os.getuid() or 1000
+    if os.geteuid() == 0:
+        for path in [output / 'registry', *(output / 'registry').rglob('*')]:
+            os.chown(path, registry_uid, registry_uid)
     common = {'restart': 'no', 'security_opt': ['no-new-privileges:true'],
               'logging': {'driver': 'json-file', 'options': {'max-size': '5m', 'max-file': '2'}}}
     def service(image, **options):
@@ -114,6 +119,7 @@ def prepare(candidate, output, router_path, model, postgres_image):
                             volumes=['database:/var/lib/postgresql/data', './postgres/password:/run/secrets/password:ro'],
                             healthcheck={'test': ['CMD-SHELL', 'pg_isready -U agent_lab -d agent_lab'], 'interval': '3s', 'timeout': '3s', 'retries': 30}),
         'registry': service(images['product-registry'], network_mode='service:runtime',
+                            user=f'{registry_uid}:{registry_uid}',
                             environment={'HOME': '/lab/data', 'REDACT_API_KEY_IN_LOGS': 'true'},
                             entrypoint=['python', '/lab/entrypoint.py'], volumes=['./registry:/lab']),
         'moss': service(images['moss'], network_mode='service:runtime', volumes=['./moss:/lab'],
