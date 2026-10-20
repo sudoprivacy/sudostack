@@ -113,12 +113,14 @@ gh run list -R sudoprivacy/sudostack --workflow deployment-release.yml \
 流水线发布 GitHub prerelease（包括自动生成的发布清单），随后将相同完整包上传到：
 
 ```text
-https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v<版本>/
+https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/releases/sudostack-v<版本>/
   sudostack-<版本>-linux-<架构>.tar.gz
   sudostack-<版本>-linux-<架构>.tar.gz.sha256
   install-cos.sh / cleanup-atlas.sh / cos_bundle.py
   components.lock.json / atlas-release.json / bundle.json / SHA256SUMS
 ```
+
+用户一键安装入口为同域名下的 `sudostack/entrypoints/sudostack-v<版本>/install-cos.sh`。安装脚本和完整包从北京地域下载；CI 上传及发布校验继续使用全球加速域名。镜像归档和完整包均须为实际 gzip 压缩的 `.tar.gz`。
 
 tag 默认 `cos_mode=release-only`，成功发布固定目录也不会自动更新 latest。公开下载无需凭据；COS 写入由仓库 Actions secrets `TENCENT_SECRET_ID` / `TENCENT_SECRET_KEY` 提供。
 

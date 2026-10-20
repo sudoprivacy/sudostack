@@ -36,7 +36,7 @@ Sudocode 从 0.2.32 起补齐 Linux ARM64 bundle/deb，ARM64 二进制要求 gli
 以下使用已完成 166 验收的 rc.9 ARM64，发布状态见 [版本 README](../../releases/0.0.1-rc.9-arm64/README.md)。rc.8 的原始下载命令保留在其自己的版本页。
 
 ```bash
-curl -fsSL https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/install-cos.sh -o install-cos.sh
+curl -fsSL https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/entrypoints/sudostack-v0.0.1-rc.9-arm64/install-cos.sh -o install-cos.sh
 sudo bash install-cos.sh --host "你的服务器IP或域名" --root /data/atlas --manage-k3s
 ```
 

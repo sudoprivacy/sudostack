@@ -33,7 +33,7 @@ rc.9 的 ARM64 与 amd64 完整包均已发布，ARM64 安装器修复及 166 �
 通过 COS 获取包含全部资源的离线安装入口，目标机无需访问 GitHub：
 
 ```bash
-curl --http1.1 --retry 3 --retry-all-errors -fLO https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.7/install-cos.sh
+curl --http1.1 --retry 3 --retry-all-errors -fLO https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/entrypoints/sudostack-v0.0.1-rc.7/install-cos.sh
 sudo bash install-cos.sh --host atlas.customer.example --root /data/atlas --manage-k3s
 ```
 

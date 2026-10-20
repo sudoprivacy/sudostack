@@ -60,6 +60,8 @@ class CosBundleTests(unittest.TestCase):
         self.assertNotIn('@@ATLAS_RELEASE_TAG@@', (self.output / 'install-cos.sh').read_text())
         self.assertIn('ATLAS_RELEASE_ARCH="' + self.architecture + '"', (self.output / 'install-cos.sh').read_text())
         self.assertTrue(self.data['bundle'].endswith('-linux-' + self.architecture + '.tar.gz'))
+        self.assertEqual(self.archive.read_bytes()[:3], b'\x1f\x8b\x08')
+        self.assertIn('cos.ap-beijing.myqcloud.com', (self.output / 'install-cos.sh').read_text())
         publish_cos.local_files(self.output)
 
     def test_descriptor_cannot_mislabel_manifest_architecture(self):
@@ -87,10 +89,84 @@ class CosBundleTests(unittest.TestCase):
             expected |= {'sudostack/latest/install-cos.sh', 'sudostack/latest/cleanup-atlas.sh'}
         self.assertEqual(paths, expected)
 
+    def test_release_publication_adds_a_regional_installer_entrypoint(self):
+        _, files = publish_cos.local_files(self.output)
+        entrypoint = 'sudostack/entrypoints/' + self.data['release'] + '/install-cos.sh'
+        uploaded = []
+        def head(url):
+            name = url.rsplit('/', 1)[1]
+            if entrypoint in url and not uploaded:
+                return None
+            item = files[name]
+            return {'content-length': str(item['size']), 'x-cos-meta-sha256': item['sha256']}
+        def upload(command, **_):
+            uploaded.append(command)
+            return subprocess.CompletedProcess(command, 0)
+        with patch.object(publish_cos, 'head', side_effect=head), patch.object(publish_cos.subprocess, 'run', side_effect=upload):
+            publish_cos.publish(self.output, 'test-12345', 'ap-beijing', 'sudostack', 'https://cos.example', 'release-only')
+        self.assertEqual([command[-1] for command in uploaded], [entrypoint])
+
+    def test_latest_from_a_legacy_release_still_uses_the_regional_installer(self):
+        launcher_path = self.output / 'install-cos.sh'
+        launcher_path.write_text(launcher_path.read_text().replace('cos.ap-beijing.myqcloud.com',
+                                                           'cos.accelerate.myqcloud.com'))
+        self.data['files']['install-cos.sh'] = {
+            'size': launcher_path.stat().st_size, 'sha256': cos_bundle.checksum(launcher_path)}
+        (self.output / 'bundle.json').write_text(json.dumps(self.data))
+        (self.output / 'SHA256SUMS').write_text(''.join(
+            cos_bundle.checksum(path) + '  ' + path.name + '\n'
+            for path in sorted(self.output.iterdir()) if path.name != 'SHA256SUMS'))
+        _, files = publish_cos.local_files(self.output)
+        base = 'https://cos.example/sudostack/releases/' + self.data['release']
+        remote = {base + '/' + name: {'content-length': str(item['size']),
+                                    'x-cos-meta-sha256': item['sha256']} for name, item in files.items()}
+        installer_sources = []
+        def upload(command, **_):
+            key = command[-1]
+            source = Path(command[-2])
+            headers = json.loads(command[command.index('-H') + 1])
+            remote['https://cos.example/' + key] = {
+                'content-length': str(source.stat().st_size),
+                'x-cos-meta-sha256': headers['x-cos-meta-sha256']}
+            if key.endswith('/install-cos.sh'):
+                installer_sources.append(source.read_text())
+            return subprocess.CompletedProcess(command, 0)
+        with patch.object(publish_cos, 'head', side_effect=remote.get), patch.object(publish_cos.subprocess, 'run', side_effect=upload):
+            publish_cos.publish(self.output, 'test-12345', 'ap-beijing', 'sudostack', 'https://cos.example', 'latest-only')
+        self.assertEqual(len(installer_sources), 3 if self.architecture == 'amd64' else 2)
+        self.assertTrue(all('cos.ap-beijing.myqcloud.com' in source and
+                            'cos.accelerate.myqcloud.com' not in source for source in installer_sources))
+
     def test_packaging_is_reproducible(self):
         another = self.root / 'another'
         cos_bundle.create(self.assets, another)
         self.assertEqual(cos_bundle.checksum(self.archive), cos_bundle.checksum(another / self.data['bundle']))
+
+    def test_rejects_plain_tar_misnamed_as_compressed_image(self):
+        image = self.assets / 'image.tar.gz'
+        with tarfile.open(image, 'w') as archive:
+            member = tarfile.TarInfo('manifest.json')
+            archive.addfile(member, io.BytesIO(b''))
+        manifest_path = self.assets / 'atlas-release.json'
+        manifest = json.loads(manifest_path.read_text())
+        manifest['imageArchives'] = [image.name]
+        manifest['archives'][image.name] = cos_bundle.checksum(image)
+        manifest_path.write_text(json.dumps(manifest))
+        with self.assertRaisesRegex(ValueError, 'not gzip-compressed'):
+            cos_bundle.create(self.assets, self.root / 'invalid-release')
+
+    def test_publication_rejects_plain_tar_even_with_matching_checksums(self):
+        with tarfile.open(self.archive, 'w') as archive:
+            member = tarfile.TarInfo('atlas-release.json')
+            archive.addfile(member, io.BytesIO(b''))
+        self.data['files'][self.data['bundle']] = {
+            'size': self.archive.stat().st_size, 'sha256': cos_bundle.checksum(self.archive)}
+        (self.output / 'bundle.json').write_text(json.dumps(self.data))
+        (self.output / 'SHA256SUMS').write_text(''.join(
+            cos_bundle.checksum(path) + '  ' + path.name + '\n'
+            for path in sorted(self.output.iterdir()) if path.name != 'SHA256SUMS'))
+        with self.assertRaisesRegex(ValueError, 'not gzip-compressed'):
+            publish_cos.local_files(self.output)
 
     def test_checksum_failure_leaves_destination_untouched(self):
         self.archive.write_bytes(b'corrupt')
