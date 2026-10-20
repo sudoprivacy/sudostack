@@ -1,0 +1,21 @@
+name: Nexus pre-write receipt contract
+on:
+  pull_request:
+    paths:
+      - 'contracts/experimental/nexus-prewrite/**'
+      - 'tools/contracts/source.mjs'
+      - '.github/workflows/nexus-prewrite-contract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test contracts/experimental/nexus-prewrite/generate.test.mjs
