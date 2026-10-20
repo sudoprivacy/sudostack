@@ -191,9 +191,18 @@ def create(assets, output):
         raise ValueError('Release architecture must be amd64 or arm64')
     if output.exists() and any(output.iterdir()):
         raise ValueError('COS output directory must be empty')
+    for image in manifest.get('imageArchives', []):
+        if not image.endswith('.tar.gz') or not (assets / image).is_file():
+            raise ValueError('Image archive must be a .tar.gz file: ' + image)
+        with (assets / image).open('rb') as source:
+            if source.read(3) != b'\x1f\x8b\x08':
+                raise ValueError('Image archive is not gzip-compressed: ' + image)
     output.mkdir(parents=True, exist_ok=True)
     name = 'sudostack-' + manifest['release'].removeprefix('sudostack-v') + '-linux-' + arch + '.tar.gz'
     create_archive(assets, output / name)
+    with (output / name).open('rb') as source:
+        if source.read(3) != b'\x1f\x8b\x08':
+            raise ValueError('COS bundle is not gzip-compressed')
     source = Path(__file__).resolve().parent
     for filename in ('cos_bundle.py', 'cleanup-atlas.sh'):
         shutil.copyfile(source / filename, output / filename)

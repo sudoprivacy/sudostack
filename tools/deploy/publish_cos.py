@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 from urllib.parse import quote
 
 from cos_bundle import checksum, descriptor, https_base, matches
@@ -21,6 +22,9 @@ def local_files(directory):
     for name, expected in files.items():
         if not matches(directory / name, expected):
             raise ValueError('Publication checksum mismatch: ' + name)
+    with (directory / data['bundle']).open('rb') as archive:
+        if archive.read(3) != b'\x1f\x8b\x08':
+            raise ValueError('COS bundle is not gzip-compressed')
     sums = {}
     for line in (directory / 'SHA256SUMS').read_text().splitlines():
         digest, name = line.split('  ', 1)
@@ -89,33 +93,50 @@ def publish(directory, bucket, region, prefix, public_base, mode, config=None):
     if config:
         command += ['-c', str(config)]
 
-    def upload(name, key, immutable):
+    def upload(name, key, immutable, source=None, expected=None):
+        source = source or directory / name
+        expected = expected or files[name]
         headers = {'Cache-Control': 'public, max-age=31536000, immutable' if immutable else 'no-cache, no-store, must-revalidate',
-                   'x-cos-meta-sha256': files[name]['sha256']}
+                   'x-cos-meta-sha256': expected['sha256']}
         if name.endswith('.sh'):
             headers['Content-Type'] = 'text/x-shellscript; charset=utf-8'
         print('Upload ' + key, flush=True)
-        subprocess.run([*command, 'upload', '-H', json.dumps(headers), str(directory / name), key], check=True)
-        if not remote_matches(head(public_base + '/' + key), files[name]):
+        subprocess.run([*command, 'upload', '-H', json.dumps(headers), str(source), key], check=True)
+        if not remote_matches(head(public_base + '/' + key), expected):
             raise RuntimeError('Uploaded COS object failed size/SHA256 metadata verification: ' + key)
 
     # Preflight every object before the first write. Publish the descriptor last.
     pending = plan_release(release_base, files)
-    if mode == 'latest-only' and pending:
-        raise ValueError('Complete the immutable release before updating latest')
-    if mode != 'latest-only':
-        pending.sort(key=lambda name: (name in ('bundle.json', 'SHA256SUMS'), name))
-        for name in pending:
-            upload(name, release_key + '/' + name, True)
-    if plan_release(release_base, files):
-        raise RuntimeError('COS release verification found missing objects')
-    if mode != 'release-only':
-        latest_keys = [prefix + '/latest/' + data['architecture']]
-        if data['architecture'] == 'amd64':
-            latest_keys.append(prefix + '/latest')
-        for latest_key in latest_keys:
-            for name in ('install-cos.sh', 'cleanup-atlas.sh'):
-                upload(name, latest_key + '/' + name, False)
+    entrypoint_key = prefix + '/entrypoints/' + data['release'] + '/install-cos.sh'
+    launcher = (directory / 'install-cos.sh').read_text().replace(
+        'sudowork-release-1309794936.cos.accelerate.myqcloud.com',
+        'sudowork-release-1309794936.cos.ap-beijing.myqcloud.com')
+    if 'sudowork-release-1309794936.cos.ap-beijing.myqcloud.com' not in launcher:
+        raise ValueError('COS installer lacks the Beijing regional download URL')
+    with tempfile.TemporaryDirectory(prefix='atlas-entrypoint-') as temporary:
+        entrypoint = Path(temporary) / 'install-cos.sh'
+        entrypoint.write_text(launcher)
+        entrypoint_meta = {'size': entrypoint.stat().st_size, 'sha256': checksum(entrypoint)}
+        existing_entrypoint = head(public_base + '/' + entrypoint_key)
+        if existing_entrypoint is not None and not remote_matches(existing_entrypoint, entrypoint_meta):
+            raise ValueError('Refusing to overwrite a different immutable COS entrypoint: ' + entrypoint_key)
+        if mode == 'latest-only' and pending:
+            raise ValueError('Complete the immutable release before updating latest')
+        if mode != 'latest-only':
+            pending.sort(key=lambda name: (name in ('bundle.json', 'SHA256SUMS'), name))
+            for name in pending:
+                upload(name, release_key + '/' + name, True)
+        if plan_release(release_base, files):
+            raise RuntimeError('COS release verification found missing objects')
+        if existing_entrypoint is None:
+            upload('install-cos.sh', entrypoint_key, True, entrypoint, entrypoint_meta)
+        if mode != 'release-only':
+            latest_keys = [prefix + '/latest/' + data['architecture']]
+            if data['architecture'] == 'amd64':
+                latest_keys.append(prefix + '/latest')
+            for latest_key in latest_keys:
+                upload('install-cos.sh', latest_key + '/install-cos.sh', False, entrypoint, entrypoint_meta)
+                upload('cleanup-atlas.sh', latest_key + '/cleanup-atlas.sh', False)
     print('Published COS release: ' + release_base, flush=True)
 
 

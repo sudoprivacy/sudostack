@@ -6,7 +6,7 @@ ATLAS_RELEASE_TAG="${ATLAS_RELEASE_TAG:-@@ATLAS_RELEASE_TAG@@}"
 ATLAS_RELEASE_ARCH="@@ATLAS_RELEASE_ARCH@@"
 # A source checkout retains the original amd64 default; published launchers are stamped.
 [[ "$ATLAS_RELEASE_ARCH" != *'@@'* ]] || ATLAS_RELEASE_ARCH=amd64
-ATLAS_COS_BASE="${ATLAS_COS_BASE:-https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack}"
+ATLAS_COS_BASE="${ATLAS_COS_BASE:-https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack}"
 ATLAS_DOWNLOAD_ONLY=0
 ATLAS_INSTALL_ARGS=()
 while (( $# )); do

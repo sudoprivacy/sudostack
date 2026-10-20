@@ -61,13 +61,13 @@ rc.9 安装器会提前报告运行中或停止但未卸载的 k3s-agent、网�
 ```bash
 ATLAS_VERSION="0.0.1-rc.9-arm64"
 ATLAS_HOST="你的服务器IPv4地址或域名"
-ATLAS_RELEASE_BASE="https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v$ATLAS_VERSION"
+ATLAS_RELEASE_BASE="https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/entrypoints/sudostack-v$ATLAS_VERSION"
 curl --http1.1 --retry 3 --retry-all-errors -fL \
   "$ATLAS_RELEASE_BASE/install-cos.sh" -o "install-$ATLAS_VERSION.sh"
 sudo bash "install-$ATLAS_VERSION.sh" --host "$ATLAS_HOST" --root /data/atlas --manage-k3s
 ```
 
-入口下载整包，支持断点续传；整包和包内文件校验通过后才执行本地安装。只准备离线资源时，将最后一条命令替换为：
+入口脚本及约 3 GB 的完整 `.tar.gz` 包均从 COS 北京地域下载；CI 上传和发布校验仍使用全球加速。入口支持断点续传；整包和包内文件校验通过后才执行本地安装。只准备离线资源时，将最后一条命令替换为：
 
 ```bash
 sudo bash "install-$ATLAS_VERSION.sh" --download-only
@@ -128,7 +128,7 @@ sudo bash /data/atlas/cleanup-atlas.sh
 若安装未完成，使用对应版本 README 提供的清理下载入口。例如 rc.9 ARM64：
 
 ```bash
-curl -fL https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/cleanup-atlas.sh -o cleanup-atlas.sh
+curl -fL https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/cleanup-atlas.sh -o cleanup-atlas.sh
 bash cleanup-atlas.sh --dry-run
 sudo bash cleanup-atlas.sh
 ```
@@ -146,7 +146,7 @@ sudo bash cleanup-atlas.sh
 ```bash
 ATLAS_NEXT_VERSION="实际已发布的同架构版本"
 ATLAS_HOST="你的服务器IPv4地址或域名"
-ATLAS_NEXT_BASE="https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v$ATLAS_NEXT_VERSION"
+ATLAS_NEXT_BASE="https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/entrypoints/sudostack-v$ATLAS_NEXT_VERSION"
 curl -fL "$ATLAS_NEXT_BASE/install-cos.sh" -o "install-$ATLAS_NEXT_VERSION.sh"
 sudo bash "install-$ATLAS_NEXT_VERSION.sh" --host "$ATLAS_HOST" --root /data/atlas --manage-k3s
 sudo /data/atlas/verify.sh

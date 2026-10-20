@@ -101,7 +101,8 @@ class ReleaseNotesTests(unittest.TestCase):
         notes = release_notes.render(self.manifest_path, self.bundle_path, 'https://example.com/suite')
         self.assertNotIn(release_notes.COS_BASE, notes)
         for name in (*self.data['files'], 'bundle.json', 'SHA256SUMS'):
-            self.assertIn('https://example.com/suite/releases/' + self.data['release'] + '/' + name, notes)
+            path = 'entrypoints' if name == 'install-cos.sh' else 'releases'
+            self.assertIn('https://example.com/suite/' + path + '/' + self.data['release'] + '/' + name, notes)
 
 
 if __name__ == '__main__':

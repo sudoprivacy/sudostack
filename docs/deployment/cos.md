@@ -9,7 +9,7 @@
 发布桶沿用 Moss 的 `sudowork-release-1309794936`，sudostack 使用独立前缀：
 
 ```text
-https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/
+https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/
   releases/sudostack-v0.0.1-rc.7/
     install-cos.sh
     cos_bundle.py
@@ -20,11 +20,12 @@ https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/
     components.lock.json
     cleanup-atlas.sh
     SHA256SUMS
+  entrypoints/sudostack-v0.0.1-rc.7/install-cos.sh
   latest/install-cos.sh
   latest/cleanup-atlas.sh
 ```
 
-版本目录禁止用不同内容覆盖。`latest` 仅保存已固定版本的入口脚本，在完整版本上传和校验成功后更新。镜像和组件版本始终由该套件的 manifest 决定。
+版本目录禁止用不同内容覆盖。`entrypoints/<版本>/install-cos.sh` 是面向用户的北京地域下载入口；历史版本目录中的原始脚本保持固定。`latest` 仅保存已固定版本的入口脚本，在完整版本上传和校验成功后更新。镜像和组件版本始终由该套件的 manifest 决定。CI 上传及发布校验使用全球加速域名。
 
 ## 包内资源
 
@@ -58,7 +59,7 @@ ATLAS_HOST="你的服务器IP"
 apt-get update \
 && apt-get install -y ca-certificates curl python3 tar gzip util-linux openssl coreutils \
 && curl --http1.1 --retry 3 --retry-all-errors -fLO \
-  https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.7/install-cos.sh \
+  https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/entrypoints/sudostack-v0.0.1-rc.7/install-cos.sh \
 && bash install-cos.sh --host "$ATLAS_HOST" --root /data/atlas --manage-k3s
 ```
 
@@ -93,7 +94,7 @@ sudo bash /var/cache/sudostack/sudostack-v0.0.1-rc.7/assets/install-atlas.sh \
 也可以手工下载压缩包后搬运到另一台机器：
 
 ```bash
-ATLAS_COS_RELEASE="https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.7"
+ATLAS_COS_RELEASE="https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.7"
 curl --http1.1 -fLO "$ATLAS_COS_RELEASE/sudostack-0.0.1-rc.7-linux-amd64.tar.gz.sha256"
 curl --http1.1 -fL -C - --retry 3 --retry-all-errors \
   "$ATLAS_COS_RELEASE/sudostack-0.0.1-rc.7-linux-amd64.tar.gz" \
@@ -109,9 +110,9 @@ sha256sum -c sudostack-0.0.1-rc.7-linux-amd64.tar.gz.sha256 \
 正式交付由 `.github/workflows/deployment-release.yml` 完成：
 
 1. 推送 `sudostack-vVERSION` tag，CI 读取对应的版本锁，从固定的组件 Release 获取并校验全部资源。
-2. `assemble` 生成最终 `.tar.gz`、入口脚本、manifest、descriptor 和 SHA256，并上传同一份 candidate artifact。
+2. `assemble` 生成经过 gzip 压缩的镜像归档和完整 `.tar.gz`、入口脚本、manifest、descriptor 和 SHA256，并上传同一份 candidate artifact。
 3. `qualify` 校验并解压这份完整包，在全新原生 runner（amd64 为 Ubuntu 22.04，arm64 为 Ubuntu 24.04）验收安装、经 Router 的会话、重复安装和重启恢复。验收证据保存包的 descriptor 与 SHA256。
-4. `qualify` 成功后，GitHub Release 和 `publish-cos` 发布同一次构建的产物。COS 原样上传完整 candidate artifact，不重新打包；tag 默认仅发布固定版本目录。
+4. `qualify` 成功后，GitHub Release 和 `publish-cos` 发布同一次构建的产物。COS 原样上传完整 candidate artifact，不重新打包；tag 默认发布固定版本目录及对应的北京地域安装入口。
 5. 目标机完成从 COS 安装、清空安装数据和缓存、重新下载安装的验收后，用 `publish_run` 指向原成功 run，选择 `cos_mode=latest-only`，将同一版本推广到对应架构的 `latest` 入口。详见 [ARM64 发布说明](arm64.md#ci验收与入口发布)。
 
 CI 使用与 Moss 一致的 `TENCENT_SECRET_ID`、`TENCENT_SECRET_KEY` Actions secrets；目标机下载无需凭据。PR 只构建和验收。手动运行默认不发布 COS，显式设置 `cos_mode` 才发布固定版本或推广入口；复用原包时需要成功的来源 run 和安装验收记录。构建端仍需连接组件 Release 来源；目标机部署资源全部来自 COS。
@@ -130,7 +131,7 @@ python3 tools/deploy/publish_cos.py --directory dist/cos-release --mode release-
 ## 清理
 
 ```bash
-curl -fLO https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.7/cleanup-atlas.sh
+curl -fLO https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.7/cleanup-atlas.sh
 bash cleanup-atlas.sh --dry-run
 sudo bash cleanup-atlas.sh
 ```

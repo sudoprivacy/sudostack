@@ -10,15 +10,15 @@
 
 | 文件 | 下载地址 |
 | --- | --- |
-| 完整离线包 | [sudostack-0.0.1-rc.9-arm64-linux-arm64.tar.gz](https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/sudostack-0.0.1-rc.9-arm64-linux-arm64.tar.gz) |
-| 整包 SHA256 | [sudostack-0.0.1-rc.9-arm64-linux-arm64.tar.gz.sha256](https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/sudostack-0.0.1-rc.9-arm64-linux-arm64.tar.gz.sha256) |
-| 一键安装入口 | [install-cos.sh](https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/install-cos.sh) |
-| 清理脚本 | [cleanup-atlas.sh](https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/cleanup-atlas.sh) |
-| 组件版本锁 | [components.lock.json](https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/components.lock.json) |
-| 完整发布清单 | [atlas-release.json](https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/atlas-release.json) |
-| COS 文件大小与摘要 | [bundle.json](https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/bundle.json) |
-| COS 交付文件校验表 | [SHA256SUMS](https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/SHA256SUMS) |
-| 离线下载与解包助手 | [cos_bundle.py](https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/cos_bundle.py) |
+| 完整离线包 | [sudostack-0.0.1-rc.9-arm64-linux-arm64.tar.gz](https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/sudostack-0.0.1-rc.9-arm64-linux-arm64.tar.gz) |
+| 整包 SHA256 | [sudostack-0.0.1-rc.9-arm64-linux-arm64.tar.gz.sha256](https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/sudostack-0.0.1-rc.9-arm64-linux-arm64.tar.gz.sha256) |
+| 一键安装入口 | [install-cos.sh](https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/entrypoints/sudostack-v0.0.1-rc.9-arm64/install-cos.sh) |
+| 清理脚本 | [cleanup-atlas.sh](https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/cleanup-atlas.sh) |
+| 组件版本锁 | [components.lock.json](https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/components.lock.json) |
+| 完整发布清单 | [atlas-release.json](https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/atlas-release.json) |
+| COS 文件大小与摘要 | [bundle.json](https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/bundle.json) |
+| COS 交付文件校验表 | [SHA256SUMS](https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/SHA256SUMS) |
+| 离线下载与解包助手 | [cos_bundle.py](https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/cos_bundle.py) |
 
 整包 SHA256：
 
@@ -32,8 +32,8 @@ GitHub Release 附件用于清单和分项下载，完整 `.tar.gz` 从上述 CO
 ## 下载与安装
 
 ```bash
-ATLAS_COS_RELEASE="https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64"
-curl -fL "$ATLAS_COS_RELEASE/install-cos.sh" -o install-cos.sh
+ATLAS_COS_INSTALLER="https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/entrypoints/sudostack-v0.0.1-rc.9-arm64/install-cos.sh"
+curl -fL "$ATLAS_COS_INSTALLER" -o install-cos.sh
 # 先下载、解包并校验全部文件
 bash install-cos.sh --download-only
 # 在满足要求的目标机安装，替换为实际 IP 或域名
@@ -74,7 +74,7 @@ Nexus 基础镜像和 Caddy 的 registry digest 见 `atlas-release.json.registry
 **仅用于已确认可清空的专用测试环境。** 清理会删除整个本机 k3s 集群、Atlas 数据、凭据、默认下载缓存、Helm 和 gVisor；先保存需要的备份及验收报告。
 
 ```bash
-curl -fL "https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/cleanup-atlas.sh" -o cleanup-atlas.sh
+curl -fL "https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/releases/sudostack-v0.0.1-rc.9-arm64/cleanup-atlas.sh" -o cleanup-atlas.sh
 bash cleanup-atlas.sh --dry-run
 sudo bash cleanup-atlas.sh
 ```
@@ -97,7 +97,7 @@ sudo bash ./install-cos.sh --host "你的服务器IP或域名" --root /data/atla
 ```bash
 ATLAS_NEXT_VERSION="替换为已发布的同架构版本"
 ATLAS_HOST="你的服务器IP或域名"
-ATLAS_NEXT_BASE="https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v$ATLAS_NEXT_VERSION"
+ATLAS_NEXT_BASE="https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/entrypoints/sudostack-v$ATLAS_NEXT_VERSION"
 curl -fL "$ATLAS_NEXT_BASE/install-cos.sh" -o "install-$ATLAS_NEXT_VERSION.sh"
 sudo bash "install-$ATLAS_NEXT_VERSION.sh" --host "$ATLAS_HOST" --root /data/atlas --manage-k3s
 ```

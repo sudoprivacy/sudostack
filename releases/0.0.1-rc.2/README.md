@@ -104,7 +104,7 @@ sudo bash ./install-atlas.sh --host "你的服务器IP或域名" --root /data/at
 ```bash
 ATLAS_NEXT_VERSION="替换为已发布的同架构版本"
 ATLAS_HOST="你的服务器IP或域名"
-ATLAS_NEXT_BASE="https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/sudostack-v$ATLAS_NEXT_VERSION"
+ATLAS_NEXT_BASE="https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack/entrypoints/sudostack-v$ATLAS_NEXT_VERSION"
 curl -fL "$ATLAS_NEXT_BASE/install-cos.sh" -o "install-$ATLAS_NEXT_VERSION.sh"
 sudo bash "install-$ATLAS_NEXT_VERSION.sh" --host "$ATLAS_HOST" --root /data/atlas --manage-k3s
 ```

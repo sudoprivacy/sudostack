@@ -8,7 +8,7 @@ from urllib.parse import quote
 
 from cos_bundle import checksum, descriptor, https_base
 
-COS_BASE = 'https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack'
+COS_BASE = 'https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack'
 GUIDE = 'https://github.com/sudoprivacy/sudostack/blob/main/docs/deployment/releasing.md'
 OVERVIEW = 'https://github.com/sudoprivacy/sudostack/blob/main/DEPLOYMENT.md'
 LABELS = {'moss': 'Moss Server / Runtime / 部署助手', 'webui': 'SudoWork WebUI',
@@ -48,7 +48,7 @@ def maintenance_sections(version, architecture, cleanup_url=None, cos_base=COS_B
               '清理后安装新版（将变量替换为实际已发布版本和目标地址）：', '', '```bash',
               'ATLAS_NEXT_VERSION="替换为已发布的同架构版本"',
               'ATLAS_HOST="你的服务器IP或域名"',
-              f'ATLAS_NEXT_BASE="{cos_base}/releases/sudostack-v$ATLAS_NEXT_VERSION"',
+              f'ATLAS_NEXT_BASE="{cos_base}/entrypoints/sudostack-v$ATLAS_NEXT_VERSION"',
               'curl -fL "$ATLAS_NEXT_BASE/install-cos.sh" -o "install-$ATLAS_NEXT_VERSION.sh"',
               'sudo bash "install-$ATLAS_NEXT_VERSION.sh" --host "$ATLAS_HOST" --root /data/atlas --manage-k3s',
               '```', '',
@@ -88,6 +88,7 @@ def render(manifest_path, bundle_path, cos_base=COS_BASE, run_url=None):
         if sources[name]['sha256'] != digest:
             raise ValueError('Release notes source checksum disagrees: ' + name)
     base = https_base(cos_base) + '/releases/' + data['release']
+    installer = https_base(cos_base) + '/entrypoints/' + data['release'] + '/install-cos.sh'
     bundle = data['bundle']
     info = data['files'][bundle]
 
@@ -112,7 +113,7 @@ def render(manifest_path, bundle_path, cos_base=COS_BASE, run_url=None):
                         ('组件版本锁', 'components.lock.json'), ('完整发布清单', 'atlas-release.json'),
                         ('COS 文件大小与摘要', 'bundle.json'), ('COS 交付文件校验表', 'SHA256SUMS'),
                         ('离线下载与解包助手', 'cos_bundle.py')]:
-        lines.append(f'| {label} | {link(name, base + "/" + quote(name))} |')
+        lines.append(f'| {label} | {link(name, installer if name == "install-cos.sh" else base + "/" + quote(name))} |')
     lines += ['', '整包 SHA256：', '', '```text', info['sha256'], '```', '',
               '完整包包含全部运行镜像、离线工具与安装文件；目标机仍须预装 Python、curl、openssl 等系统依赖。',
               'GitHub Release 附件用于清单和分项下载，完整 `.tar.gz` 从上述 COS 地址下载。', '',
@@ -159,8 +160,8 @@ def render(manifest_path, bundle_path, cos_base=COS_BASE, run_url=None):
                      + quote(components['moss']['tag'], safe='') + '/src/server/nexus/runtime-versions.json') + '。',
               'PostgreSQL 的锁为 `16-alpine` 一类镜像标签，未单独记录补丁版；实际交付内容由 WebUI 归档 SHA256 固定。',
               'Nexus 基础镜像和 Caddy 的 registry digest 见 `atlas-release.json.registryInputs`；其余上游附件摘要见 `buildInputs`。', '',
-              '## 下载与安装', '', '```bash', f'ATLAS_COS_RELEASE="{base}"',
-              'curl -fL "$ATLAS_COS_RELEASE/install-cos.sh" -o install-cos.sh',
+              '## 下载与安装', '', '```bash', f'ATLAS_COS_INSTALLER="{installer}"',
+              'curl -fL "$ATLAS_COS_INSTALLER" -o install-cos.sh',
               '# 先下载、解包并校验全部文件', 'bash install-cos.sh --download-only',
               '# 在满足要求的目标机安装，替换为实际 IP 或域名',
               'sudo bash install-cos.sh --host "你的服务器IP或域名" --root /data/atlas --manage-k3s', '```', '',

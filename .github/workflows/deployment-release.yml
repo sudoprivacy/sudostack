@@ -293,9 +293,10 @@ jobs:
           import json
           from pathlib import Path
           data = json.loads(Path('cos-release/bundle.json').read_text())
-          base = 'https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudostack/releases/' + data['release']
+          regional = 'https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudostack'
+          base = regional + '/releases/' + data['release']
           print('Published the same complete archive used by clean installation qualification.\n')
-          print(f'Installer: {base}/install-cos.sh\n')
+          print(f'Installer: {regional}/entrypoints/{data["release"]}/install-cos.sh\n')
           print(f'Bundle: {base}/{data["bundle"]}\n')
           print('SHA256: `' + data['files'][data['bundle']]['sha256'] + '`')
           PY
