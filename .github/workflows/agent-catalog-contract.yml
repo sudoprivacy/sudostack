@@ -24,8 +24,8 @@ jobs:
           persist-credentials: false
       - name: Reproduce the experimental schema and type artifacts
         run: node contracts/experimental/agent-catalog/generate.mjs --owner .catalog-owner/moss --check
+      - run: npm ci --ignore-scripts
       - name: Reject source identity, revision and byte drift
         run: node --test contracts/experimental/agent-catalog/generate.test.mjs
-      - run: npm ci --ignore-scripts
       - name: Check experimental TypeScript without changing stable exports
         run: npx tsc --noEmit --module esnext --moduleResolution bundler --target es2022 --types node contracts/experimental/agent-catalog/contract.gen.ts
