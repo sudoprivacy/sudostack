@@ -33,7 +33,7 @@
     ]
   },
   "nexus": {
-    "rev": "ffe782f68231cdbd875e068773f4ab48d72598b7",
+    "rev": "be4cd39bc4b28a4ec22ced0cc6ec7cec840bfb10",
     "schemas": [
       "contracts/common/v1/principal-ref.schema.json",
       "contracts/common/v1/resource-ref.schema.json",
@@ -53,7 +53,7 @@
     "fixtures_dir": "contracts/fixtures/"
   },
   "moss": {
-    "rev": "c8974192f58ac55b061bdb2d85ceba77d2bdede5",
+    "rev": "a2bbdd905b501aae5878f2490d6d3849697d9c43",
     "metadata_only": true,
     "schemas": [
       "contracts/iam/v1/org-zone-binding.schema.json"

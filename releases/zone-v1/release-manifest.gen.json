@@ -18,8 +18,8 @@
   },
   "pinned_owner_revisions": {
     "nexus-vfs": "f070d0faa7328a1fbde2c66418290b584d128bf3",
-    "nexus": "ffe782f68231cdbd875e068773f4ab48d72598b7",
-    "moss (metadata only)": "c8974192f58ac55b061bdb2d85ceba77d2bdede5"
+    "nexus": "be4cd39bc4b28a4ec22ced0cc6ec7cec840bfb10",
+    "moss (metadata only)": "a2bbdd905b501aae5878f2490d6d3849697d9c43"
   },
   "schemas": [
     {
@@ -124,23 +124,23 @@
     },
     {
       "path": "contracts/zone-v1/auth/v1/index.gen.d.ts",
-      "sha256": "7d07a2530da3d27aeed5d125c49a61bb217936d8b97f38aeea876b147229a053"
+      "sha256": "d93ffe20df8516fbd8a32c3c8cef6b1dc56e2d616659b5dbc664708f51b2886b"
     },
     {
       "path": "contracts/zone-v1/auth/v1/index.gen.js",
-      "sha256": "c6cb0e8c3ba6c8e56a418baf5bfbbad28f4449b9ad9dfe149e82caff1a797bd4"
+      "sha256": "98d65315f8b14cf30afa614a17e83b87b609da29b8e0c005dec669a78cd47303"
     },
     {
       "path": "contracts/zone-v1/codes.gen.js",
-      "sha256": "81486d6b8d75a48c6f050732b6e0f727128390c05b4fff92001e49bbd0152dfb"
+      "sha256": "a93357f6c315457c4f00838311c98131fff53f38bc5e77511d39e5b6c880e979"
     },
     {
       "path": "contracts/zone-v1/common/v1/index.gen.d.ts",
-      "sha256": "afac81dc6e9f256ca3b7dedb4b190563b400dac14dd1cceea9ca51d70fb25d0e"
+      "sha256": "e9f2132675088deae0f478233d64165b810169f354ab13f5cbcb6286df6e1311"
     },
     {
       "path": "contracts/zone-v1/common/v1/index.gen.js",
-      "sha256": "76e30329b0c0aa4cf9a3bce5a2bebf149f27b7b73f5fa42b03cd9b68d52a791e"
+      "sha256": "cbe874d7f64ca245c1c6b4d809797188c9a401f362d47291f81f2db74f3efd29"
     },
     {
       "path": "contracts/zone-v1/fixtures/compatibility.gen.json",
@@ -168,23 +168,23 @@
     },
     {
       "path": "contracts/zone-v1/provenance.gen.json",
-      "sha256": "e48ebe0dbfbc23aefb69ca27170eef882a43f697976fd38a9d89e58180f6f485"
+      "sha256": "95c17b21f99287893f6878423e6ceff3d1655d36917ff4a31e67541976cd2982"
     },
     {
       "path": "contracts/zone-v1/runtime/v2/index.gen.d.ts",
-      "sha256": "6e015ce0d3d845bbfb2aaaae0e73c59347e2958c783525aff27c98d230ebc7fb"
+      "sha256": "a8daaa806fb76388ea4179a9134bf3c68da12e9d8a6f37ae791cff7da6de855c"
     },
     {
       "path": "contracts/zone-v1/runtime/v2/index.gen.js",
-      "sha256": "8ac83095e6319e8fe3eae66ed3c09b9033f9ef7d8d3f1aea3abe3543c281a934"
+      "sha256": "699193f6c1900dd82a2e1d341d63c411f4669b6e12b325ed525aa6c89e48c790"
     },
     {
       "path": "contracts/zone-v1/schema-bundle.gen.json",
-      "sha256": "b2850b4520914505598acbd88ee407819a0c851e9bc3b87eb58a2a734a3d0594"
+      "sha256": "4c7bb272a242b58cbac0904b3bb7c41e0ffe885241f928f352c64b825ffe6525"
     },
     {
       "path": "contracts/zone-v1/validators.gen.js",
-      "sha256": "11d2247e96bac51f455b7a963fdfef9d4acbbaef590dc291049437f805203ff7"
+      "sha256": "03fb0fedb110c962b09ddb244aead21ba42db408a4af7a927d49aeb88013b3b6"
     },
     {
       "path": "package.json",
