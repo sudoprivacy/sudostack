@@ -1,0 +1,77 @@
+{
+  "generated_at": "2026-09-29T07:30:00Z",
+  "work_item": "SW-20260915-002-INTEGRATION",
+  "revisions": {
+    "sudostack_release": "f4b9020",
+    "sudostack_evidence_parent": "f4b9020",
+    "nexus": "a8194cf444c0b35cc056ea8950f659135776a11f",
+    "moss": "0bf6f4ff08fcf854f1b0f75d5e4f77d605736948",
+    "nexus_vfs": "bc89aa638b6ebfa05ce9491fb6a2e0c841febe2c",
+    "sudocode": "4740251c7f"
+  },
+  "contract_release": {
+    "package": "@sudo/contracts@0.2.0-rc.1",
+    "manifest_sha256": "3b0283232bb6982947725242019d7a50b6f0de10c73e56917b53129ba34f13d8",
+    "checksums_sha256": "9a126a8ddd7f77a23b5b20d2422a191c9edb8053dd941fffa87148e367f694cf",
+    "sbom_sha256": "32ceaf87f1e46d8681234fc7c376a6acdd4f43a17d54c7917a25753fc14c71d44",
+    "pinned_owner_revisions": {
+      "nexus_vfs": "bc89aa638b6ebfa05ce9491fb6a2e0c841febe2c",
+      "nexus": "d78448594c7dd00d71581b62919ab0ca60cfedbb",
+      "moss_metadata_only": "406427e280b55d04b5dbf097bd84da1194ace6e9"
+    },
+    "moss_provenance_note": "iam/v1 schema unchanged since 406427e (3bd0996 touched fixtures only, which are not generate inputs); pin kept at 406427e as the accurate schema-content revision",
+    "moss_contract_pin_equivalence": "moss consumes @sudo/contracts at 8323b0f; the consumption surface (contracts/zone-v1 derived artifacts) is byte-identical through the f4b9020 release commit — generate reports up to date"
+  },
+  "consumer_pins": {
+    "moss_sudo_contracts": "8323b0f6ac50270594dd76120919c20cc57318dd",
+    "nexus_sudocode": "4740251c7f",
+    "nexus_nexus_vfs": "bc89aa638b6ebfa05ce9491fb6a2e0c841febe2c",
+    "sudocode_nexus_vfs": "bc89aa638b6ebfa05ce9491fb6a2e0c841febe2c"
+  },
+  "runtime_topology": {
+    "admin_plane": {
+      "nexus_commit": "a8194cf444c0b35cc056ea8950f659135776a11f",
+      "nexus_vfs_revision": "bc89aa638b6ebfa05ce9491fb6a2e0c841febe2c",
+      "status": "aligned"
+    },
+    "current_built_nexusd": {
+      "version": "nexusd-cluster 0.1.1 (nexus-cluster 0.1.1, plugin-abi 7)",
+      "sha256": "cc3be65b766c514554a52b2018f57519b37699e615983c33913f81eb55a73139",
+      "source_commit": "a8194cf444c0b35cc056ea8950f659135776a11f",
+      "nexus_vfs_revision": "bc89aa638b6ebfa05ce9491fb6a2e0c841febe2c",
+      "build_profile": "debug (target/debug/nexusd-cluster.exe, features full,cohost-sudocode)"
+    },
+    "moss_embedded": {
+      "version_pin": "0.1.6",
+      "observed_version": "nexusd-cluster 0.1.6 (nexus-cluster 0.1.1, plugin-abi 7)",
+      "sha256": "466fdd50deba9000f4219387d58e7c24fb8f37a2701f3c530df1c28e2d628871",
+      "binary_path": "moss/bin/nexus/nexusd.exe (git-ignored local artifact)",
+      "build_provenance": "locally built from nexus-vfs bc89aa638 (NEXUSD_BUILD_VERSION=0.1.6); not distributed from any release source",
+      "vault_plugin_sha256": "941892ccccf1eeb15590cf8e0c2577468ab88f95be1d39eec416a0dbb18c5c3d",
+      "vault_plugin_abi": 7,
+      "vault_plugin_signing": "local Ed25519 key trusted via NEXUS_LOCAL_TRUSTED_KEYS_DIR (kernel loader DEV seam); signature verified at daemon startup (loader is fail-loud)",
+      "status": "converged locally: secrets plane built from the same source revision as the admin plane"
+    },
+    "external_grpc": {
+      "status": "unverified"
+    },
+    "plugin_abi_compatibility": {
+      "moss_embedded_daemon_abi": 7,
+      "moss_vault_plugin_abi": 7,
+      "moss_vault_plugin_sha256": "941892ccccf1eeb15590cf8e0c2577468ab88f95be1d39eec416a0dbb18c5c3d",
+      "current_daemon_abi": 7,
+      "current_source_abi": 7,
+      "current_loader_accepts": [6, 7],
+      "status": "aligned (drift resolved: embedded daemon and vault plugin both at ABI 7, matching source)",
+      "monitoring_rule": "fail when embedded daemon ABI differs from its vault plugin or is absent from current_loader_accepts; warn while embedded ABI differs from current daemon ABI"
+    }
+  },
+  "checks": {
+    "release_owner_revisions_match_owner_contract_revisions": true,
+    "nexus_and_sudocode_nexus_vfs_pins_match": true,
+    "moss_contract_pin_matches_sudostack_release": true,
+    "three_line_runtime_topology_recorded": true,
+    "runtime_topology_fully_version_aligned": true,
+    "plugin_abi_pair_verified": true
+  }
+}

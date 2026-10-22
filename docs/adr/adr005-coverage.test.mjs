@@ -265,17 +265,17 @@ test('reviewed workflow snapshot binds Moss checkout, commands and shared enviro
   const moss = '      - name: Check out exact Moss enforcement targets\n' +
     '        uses: actions/checkout@v4\n        with:\n' +
     '          repository: sudoprivacy/moss\n' +
-    '          ref: e9660ed1483cf01f96fe06c45ba7e070e0223ec3\n' +
+    '          ref: a2bbdd905b501aae5878f2490d6d3849697d9c43\n' +
     '          path: .enforcement/moss\n          persist-credentials: false\n'
   assert.ok(workflow.includes(moss))
   const command = '        run: node --test docs/adr/enforced-by.test.mjs'
   const sharedEnv = '    env:\n      SUDOSTACK_REPOS_ROOT: ${{ github.workspace }}/.enforcement\n'
   const brokenVariants = [
     workflow.replace(moss, ''),
-    workflow.replace(moss, moss.replace('ref: e9660ed1483cf01f96fe06c45ba7e070e0223ec3', 'ref: main')),
+    workflow.replace(moss, moss.replace('ref: a2bbdd905b501aae5878f2490d6d3849697d9c43', 'ref: main')),
     workflow.replace(moss, moss.replace('repository: sudoprivacy/moss', 'repository: sudoprivacy/sudostack') + '      # repository: sudoprivacy/moss\n'),
     workflow.replace(moss, moss.replace('path: .enforcement/moss', 'path: .enforcement/wrong') + '      # path: .enforcement/moss\n'),
-    workflow.replace(moss, moss.replace('ref: e9660ed1483cf01f96fe06c45ba7e070e0223ec3', 'ref: main') +
+    workflow.replace(moss, moss.replace('ref: a2bbdd905b501aae5878f2490d6d3849697d9c43', 'ref: main') +
       moss.replace('repository: sudoprivacy/moss', 'repository: sudoprivacy/sudostack').replace('path: .enforcement/moss', 'path: .enforcement/wrong')),
     workflow.replace(moss, moss + moss),
     workflow.replace(moss, moss.replace('        with:', '        if: false\n        with:')),
