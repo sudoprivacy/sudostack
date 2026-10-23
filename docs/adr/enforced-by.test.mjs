@@ -159,9 +159,9 @@ test('Moss suite resolution uses the exact M bytes from the shared reference env
   // 的自洽历史事件记录，不做部分重拍）。锚 = moss 终态提交 + 该文件 blob 哈希；
   // 字节经 git cat-file 取 blob（记录口径），与工作区的 autocrlf 状态无关。
   // moss 前进时同步更新以下两个常量与 contracts.yml 的 evidence 检出 ref。
-  const mossRevision = 'a2bbdd905b501aae5878f2490d6d3849697d9c43'
+  const mossRevision = 'bc0c54f5cf244314fe5a8b3654f3d2962cbba225'
   const path = 'src/server/__tests__/contractsActivation.test.ts'
-  const expectedBlobSha256 = '625339ee809b4916db0c59c1f73da3adff89583bc92b40007e3662e86f78f9e5'
+  const expectedBlobSha256 = '38152fabafa197914775dce2deb73712a5a223e4837c50e549a6077393fa8956'
   const blob = spawnSync('git', ['-C', join(root, 'moss'), 'cat-file', '-p', `${mossRevision}:${path}`], { maxBuffer: 64 * 1024 * 1024 })
   assert.equal(blob.status, 0, `git cat-file failed: ${blob.stderr?.toString()}`)
   assert.equal(createHash('sha256').update(blob.stdout).digest('hex'), expectedBlobSha256)
