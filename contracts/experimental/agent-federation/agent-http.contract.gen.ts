@@ -1,4 +1,4 @@
-// Derived from Moss ca1ab5cdad399393dce4145e42f682fb9e1aa22a:contracts/agent-http/v1alpha2/contract.ts. DO NOT EDIT.
+// Derived from Moss b6aa8883929ebc24ce480168dc870a4529834770:contracts/agent-http/v1alpha2/contract.ts. DO NOT EDIT.
 /** Durable remote execution. Moss owns this experimental transport contract. */
 export const DURABLE_AGENT_HTTP_API = 'agent-http.sudo.dev/v1alpha2' as const
 

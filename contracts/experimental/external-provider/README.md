@@ -31,3 +31,20 @@ Reference registration now requires a durable `request_id` and complete `source_
 Coordinate the Moss and SudoWork upgrade. Event delta semantics from alpha3 remain unchanged; old stored events resync via a snapshot. Alpha3 complete raw answers stay `current`, while alpha2 incomplete raw history remains `legacy_checkpoint`. The source digest attests only submitted review evidence, never a remotely pinned Dify execution revision.
 
 The pilot marks source identity as unverified; caller-supplied App/Workspace IDs do not prove credential ownership. Task submission requires the versioned SubmitTask admission contract; legacy CreateExternalTask is rejected. Historical tasks may lack the new session creation sequence and identity-evidence fields.
+
+
+## Foundation capability metadata (2026-10-16)
+
+The v1alpha5 response now has optional `usage` metadata. This is an additive read projection:
+old clients may ignore it; new clients accept its absence and display unconfirmed information.
+Unknown scope, evidence basis or unsupported enabled capabilities must not be interpreted as approval.
+The executable compatibility cases live in the real SudoWork consumer
+`apps/desktop/tests/unit/mossExternalProviderClient.test.ts`, with shared renderer DOM cases.
+
+`evaluated_at` is projection time, not a network health check. `reviewed_at` is null for historic
+or invalidated reviews; only explicit successful approval writes it. Existing capabilities are
+adapter guarantees, not per-run attestations. Task evidence remains a separate endpoint.
+No private endpoint, secret, reviewer identity or grant list is added to the public DTO.
+
+See `docs/design/agent-foundation-contract-boundaries.md` for the actual consumption inventory
+and the unactivated Registry/native work. This family remains experimental.

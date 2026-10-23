@@ -1,0 +1,17 @@
+{
+  "repository": "https://github.com/sudoprivacy/moss",
+  "revision": "5a3aa94d015468a1d58228b8142e877b5ae992cd",
+  "semanticOwner": "moss",
+  "maturity": "experimental-catalog-governance",
+  "apiVersion": "agent-catalog.sudo.dev/v1alpha1",
+  "files": {
+    "contracts/agent-catalog/v1alpha1/contract.ts": {
+      "output": "contract.gen.ts",
+      "digest": "sha256:8bbb6240d592bd0ba11792c8fab5e96df616602fa743ca2aee3d3c40d4e12335"
+    },
+    "contracts/agent-catalog/v1alpha1/schema.json": {
+      "output": "schema.gen.json",
+      "digest": "sha256:5df4ddbdad052838e57008649630dead548602db9912f1ba4975d661c2e602a3"
+    }
+  }
+}

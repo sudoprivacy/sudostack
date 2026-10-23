@@ -13,3 +13,5 @@ node --test contracts/experimental/agent-federation/generate.test.mjs
 ```
 
 The generator reads Git blobs at the full owner commit, never the working tree. Keep this family separate from `external-provider` alpha5, which remains the Pilot UI protocol. HTTP manifests cannot activate unsupported capabilities; run bindings keep source snapshot evidence distinct from immutable execution proof.
+
+The current source also declares the opt-in `sudo-task-grant/v1` external execution context. It binds an HTTP/OpenAI/MCP/A2A invocation to a short-lived Nexus task grant for Moss model/tool gateways. The credential is ephemeral and is not a TaskSpec/Registry snapshot field. Durable HTTP v1alpha2 does not accept this profile. A platform must explicitly implement the receiver; using the protocol alone is not evidence of full platform governance.
