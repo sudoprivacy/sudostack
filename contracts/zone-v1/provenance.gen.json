@@ -39,7 +39,7 @@
     },
     {
       "repo": "https://github.com/sudoprivacy/moss",
-      "rev": "a2bbdd905b501aae5878f2490d6d3849697d9c43",
+      "rev": "bc0c54f5cf244314fe5a8b3654f3d2962cbba225",
       "role": "iam/v1 source metadata only — no public export derived (no cross-repo consumer)",
       "paths": [
         "contracts/iam/v1/org-zone-binding.schema.json"
