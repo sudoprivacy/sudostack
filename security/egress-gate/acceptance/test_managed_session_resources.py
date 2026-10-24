@@ -39,6 +39,18 @@ class ManagedSessionResourceTests(unittest.TestCase):
         self.assertEqual(len(calls), 1)
         self.assertEqual(calls[0][0], 'systemd-run')
 
+    def test_failed_direct_launch_never_cleans_up_an_unowned_process(self):
+        with tempfile.TemporaryDirectory() as root:
+            binary = Path(root) / 'daemon'
+            binary.touch()
+            env = {'GATE_BIN': str(binary), 'NEXUS_PROTO_ROOT': root, 'NODE_MODULES': root,
+                   'WORK': root + '/fresh', 'LIVE_POLICY': '1', 'GATE_PROCESS_MODE': '1'}
+            with patch.dict(os.environ, env, clear=True), patch.object(managed.subprocess, 'Popen', side_effect=OSError('fixture launch refused')) as launch, patch.object(managed.subprocess, 'run') as run:
+                with self.assertRaisesRegex(OSError, 'fixture launch refused'):
+                    managed.main()
+                launch.assert_called_once()
+                run.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()

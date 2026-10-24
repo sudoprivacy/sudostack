@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "verified_at": "2026-10-24T17:46:30.401656+00:00",
+  "passed": true,
+  "scope": "candidate_cohost_live_policy_managed_sessions_linux_arm64",
+  "production_deployed": false,
+  "real_cloud_model_called": false,
+  "provenance": {
+    "sudocode_commit": "608d32650bf667af261512bd213fc75286c04b74",
+    "nexus_commit": "2e6e2ceb9fade7d587ca23c4061d3fdf3d11cc9a",
+    "executable_sha256": "ba27a0d6ee0082eb4b4099be155962ba248d8486d7e2e1010a171eb3cb708401",
+    "features": [
+      "daemon",
+      "driver-ai",
+      "egress-gate-presidio"
+    ],
+    "profile": "dev",
+    "dependency_source_override": true,
+    "shipping_manifest_changed": false,
+    "platform": "linux-arm64"
+  },
+  "authenticated_user_delegation": true,
+  "managed_agent_service": true,
+  "same_daemon": true,
+  "daemon_pid": 1851660,
+  "upstream": "synthetic_loopback",
+  "cases": [
+    {
+      "scenario": "disabled-before",
+      "passed": true,
+      "policy_revision": 0,
+      "enabled": false,
+      "mode": "redact",
+      "upstream_requests": 1,
+      "caller_received_error": false,
+      "visible_answer": true,
+      "local_original_retained": true
+    },
+    {
+      "scenario": "redact",
+      "passed": true,
+      "policy_revision": 1,
+      "enabled": true,
+      "mode": "redact",
+      "upstream_requests": 1,
+      "caller_received_error": false,
+      "visible_answer": true,
+      "local_original_retained": true
+    },
+    {
+      "scenario": "deny",
+      "passed": true,
+      "policy_revision": 2,
+      "enabled": true,
+      "mode": "deny",
+      "upstream_requests": 0,
+      "caller_received_error": true,
+      "visible_answer": false,
+      "local_original_retained": true
+    },
+    {
+      "scenario": "outage",
+      "passed": true,
+      "policy_revision": 3,
+      "enabled": true,
+      "mode": "redact",
+      "upstream_requests": 0,
+      "caller_received_error": true,
+      "visible_answer": false,
+      "local_original_retained": true
+    },
+    {
+      "scenario": "malformed",
+      "passed": true,
+      "policy_revision": 4,
+      "enabled": true,
+      "mode": "redact",
+      "upstream_requests": 0,
+      "caller_received_error": true,
+      "visible_answer": false,
+      "local_original_retained": true
+    },
+    {
+      "scenario": "disabled-after",
+      "passed": true,
+      "policy_revision": 5,
+      "enabled": false,
+      "mode": "redact",
+      "upstream_requests": 1,
+      "caller_received_error": false,
+      "visible_answer": true,
+      "local_original_retained": true
+    }
+  ]
+}
