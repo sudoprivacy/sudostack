@@ -35,6 +35,35 @@ Credential renewal uses JSON Patch with atomic tests for the observed Secret UID
 
 Current Kubernetes delivery uses projected Secrets, including short-lived leaf keys and model configuration. Volatile delivery and its recovery path must be completed before treating this as the final storage design. The package has one source implementation; consumers must remove their copies when switching to the versioned package.
 
+## Work admission
+
+`WorkAdmission` is a process-local gate for control-plane work. Wrap each job's
+claim and execution in `tryRun`, and wrap interactive starts in `run`. A pause
+refuses fresh roots before their callbacks run. Operations already admitted can
+finish their nested work. Register detached child work with `run` before its
+parent returns so it remains part of the join. A callback that outlives its
+completed scope cannot reuse that scope to bypass a later pause.
+
+For an admitted job's authenticated loopback transport, `captureContinuation`
+returns an opaque local grant. `tryRunContinuation` lets that operation dispatch
+its nested work after a pause. The grant expires when its source scope settles
+and is valid only in the issuing process. It never replaces peer authorization
+and must not be accepted on public user-input routes or logged with credentials.
+
+Keep the handle returned by `pause` until maintenance ends; holders release
+independently. `waitForIdle` joins admitted operations within a time budget and
+never cancels them. A timeout is an incomplete drain. The gate stores no durable
+state and resets when its process exits.
+Its `epochId` identifies this gate's lifetime; maintenance clients must check
+it along with the controller identity so a reused instance name cannot hide a
+restart or a different admission gate.
+
+This is only the admission barrier. Controllers must also flush previously
+forwarded transport input and inspect native executions and background tools.
+They must fence every peer that can submit work, and verify the same controller
+instances still hold their pauses before stopping compute. An idle join alone
+does not prove that a Pod is safe to stop.
+
 ## Checks
 
 Discovery authenticates the observed running Pod even if its release differs from the configured target. It renews only that Pod's owner-bound credential, preserves its model configuration and never creates missing placement or caches an older build for execution. Concurrent discovery shares the same authentication; Pod replacement, an upgrade lock or controller closure rejects the result. Starting sessions still uses `resolve`, which requires the configured release.
