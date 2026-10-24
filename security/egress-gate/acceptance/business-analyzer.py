@@ -35,8 +35,14 @@ def main():
         if case["whole_record"]:
             assert any(item["start"] == 0 and item["end"] == len(text) for item in protected), case["id"]
     assert len(analyze("😀Client-Aster-7400 Client-Aster-7400")) == 2
+    live = {"version": 1, "public_organizations": [], "protected_terms": ["Runtime-Contract-8240"], "protected_markers": []}
+    rows = analyze("Runtime-Contract-8240", business_policy=live, entities=["PERSON"], score_threshold=1.0)
+    assert any(item["entity_type"] == "PROTECTED_TERM" for item in rows), "Live runtime policy was not applied"
+    assert not any(item["entity_type"].startswith("PROTECTED_") for item in analyze("Runtime-Contract-8240")), "A policy leaked into the next request"
+    empty = {"version": 1, "public_organizations": ["Client-Aster-7400"], "protected_terms": [], "protected_markers": []}
+    assert any(item["entity_type"] == "PROTECTED_TERM" for item in analyze("Client-Aster-7400", business_policy=empty)), "Runtime policy removed deployment protection"
     assert analyze("讨论客户名单功能，部署本地推理服务。") == []
-    for extra in [{"allow_list": ["Client-Aster-7400"]}, {"ad_hoc_recognizers": []}, {"score_threshold": float("nan")}, {"score_threshold": True}]:
+    for extra in [{"allow_list": ["Client-Aster-7400"]}, {"ad_hoc_recognizers": []}, {"score_threshold": float("nan")}, {"score_threshold": True}, {"business_policy": {"version": 1}}]:
         try:
             analyze("Client-Aster-7400", **extra)
         except urllib.error.HTTPError as error:

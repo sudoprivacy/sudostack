@@ -1,0 +1,13 @@
+{
+  "name": "@sudo/egress-policy",
+  "version": "0.1.0",
+  "description": "Shared live egress policy, validation and runtime reconciliation",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": { ".": { "types": "./src/index.d.ts", "import": "./src/index.js" } },
+  "files": ["src", "README.md"],
+  "scripts": { "test": "node --test test/*.test.mjs" },
+  "engines": { "node": ">=22.21.0" },
+  "repository": { "type": "git", "url": "git+https://github.com/sudoprivacy/sudostack.git", "directory": "packages/egress-policy" }
+}
