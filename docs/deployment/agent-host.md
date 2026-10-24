@@ -74,6 +74,16 @@ newer accepted writes as an automatic executable rollback.
 
 ## Product consumers
 
+`configuration.py inspect/apply --path EXISTING --expected OLD_SHA256
+--prepared NATIVE_PREPARED --sha256 NEW_SHA256 --evidence NEW_PRIVATE_DIRECTORY`
+selects exact producer-prepared configuration bytes for the next start. It
+retains the original privately, refuses stale pins/symlinks/reused evidence,
+and fsyncs the replacement and directory. It neither edits native schema nor
+restarts a service. The product adapter must exclusively own configuration
+writes; the cooperative deployment lock is not filesystem CAS against other
+writers. A partial operation retains evidence and requires inspection, never
+an automatic restore over later writes. Native readiness remains false.
+
 SudoEdge's `install-cohost.sh` selects appliance paths and invokes this shared
 action through an exact source/file lock. It contains no second installer.
 Keep device locations, maintenance choices and real receipts in sudoedge.
