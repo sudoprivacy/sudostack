@@ -23,7 +23,8 @@ class ProductQualificationTests(test_checkpoint.CheckpointTests):
         self.children['controller.service'] = subprocess.Popen([str(self.runtime),str(self.entry)])
         self.producer = self.home/'producer.py'
         self.producer.write_text('''import json,pathlib,sys
-configuration,output,verb,sid=sys.argv[1:]
+configuration,output,verb,sid,flag,binding=sys.argv[1:]
+assert flag=='--expected-binding' and pathlib.Path(binding).is_file()
 root=pathlib.Path(output);root.mkdir(mode=0o700)
 values=json.loads(pathlib.Path(configuration).read_text())
 with (pathlib.Path(configuration).parent/'calls').open('a') as log:log.write(verb+'\\n')
@@ -35,6 +36,7 @@ proof=values['inspection' if verb=='--inspect-existing' else 'model']
         common = {'schemaVersion':1,'ownerId':'original-owner','accountCreated':False,
             'agentCreated':False,'sessionCreated':False,'probeTokenLoggedOut':True}
         self.values = {'inspection':{**common,'turnSubmitted':False,'nativeExecutionResumeRequested':False,
+            'nativeBindingObserved':self.binding,
             'existingHistoryReads':[{'sessionId':'original-session','messagesSha256':'a'*64}]},
             'model':{**common,'nativeBindingPreserved':self.binding,'originalHistoryBeforeJourneySha256':'a'*64,
                 'resumeHttpAccepted':True,'projectedContextPreserved':True,'modelJourneyAccepted':True,
@@ -97,6 +99,14 @@ proof=values['inspection' if verb=='--inspect-existing' else 'model']
         self.assertFalse(result['authenticatedProductReady'])
         self.assertEqual(len((self.home/'calls').read_text().splitlines()),2)
         self.assertEqual(self.calls,[])
+
+    def test_native_binding_mismatch_refuses_before_a_model_command(self):
+        self.values['inspection']['nativeBindingObserved'] = {**self.binding,'durableSessionId':'changed'}
+        self.update_configuration()
+        result = product_qualification.qualify(self.product_plan,self.home/'binding-changed',True)
+        self.assertEqual(result['status'],'product-qualification-refused')
+        self.assertFalse(result['modelTurnsMayHaveBeenSubmitted'])
+        self.assertEqual((self.home/'calls').read_text().splitlines(),['--inspect-existing'])
 
     def test_credential_configuration_must_remain_private(self):
         self.config.chmod(0o644)

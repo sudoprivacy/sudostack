@@ -146,7 +146,9 @@ history observation; the plan supplies expectations, never authority.
 Inspection verifies actual process/entry hashes and private inputs, without
 calling the producer. Apply shares the deployment's cooperative owner lock,
 authenticates through a read-only producer preflight, and compares the original
-owner/session/history before any model command. Only then does the producer run
+owner/session/history and native repository using a private `--expected-binding` file;
+missing legacy migration files do not replace the canonical binding. The
+expectation is never an identity grant. Only then does the producer run
 its existing three-turn dependent-reply and reattach journey, preserving its
 1080-second parent budget and native per-operation deadlines. The selected
 service PID and configuration hashes are checked again afterward.

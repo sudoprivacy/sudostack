@@ -67,7 +67,10 @@ def producer_call(plan, selected, producer, runtime, configuration, output, verb
     # Model/configuration resolution stays with the product producer.
     environment = dict(item.split('=',1) for item in
         (Path('/proc')/str(selected['pid'])/'environ').read_text().split('\0') if '=' in item)
-    result = subprocess.run([str(runtime),str(producer),str(configuration),str(output),verb,plan['session']['id']],
+    # The native producer checks its canonical binding before execution. This
+    # expectation is neither authority nor a grant; adoption stays native.
+    result = subprocess.run([str(runtime),str(producer),str(configuration),str(output),verb,plan['session']['id'],
+        '--expected-binding',str(output.parent/'expected-binding.json')],
         env=environment,capture_output=True,timeout=PRODUCER_BUDGET_SECONDS)
     publish(output.parent/(output.name+'.stdout.private.log'),result.stdout,0o600)
     publish(output.parent/(output.name+'.stderr.private.log'),result.stderr,0o600)
@@ -99,6 +102,8 @@ def qualify(plan, output, execute=False):
         producer,runtime,configuration,selected,output = inspect(plan,output)
         output.mkdir(mode=0o700)
         publish(output/'submitted.json',(json.dumps(report)+'\n').encode(),0o600)
+        binding = {key:plan['session'][key] for key in ['ownerId','agentId','durableSessionId','repositoryPath']}
+        publish(output/'expected-binding.json',(json.dumps(binding)+'\n').encode(),0o600)
         try:
             before = producer_call(plan,selected,producer,runtime,configuration,output/'inspection','--inspect-existing')
             reads = before.get('existingHistoryReads',[])
@@ -107,13 +112,14 @@ def qualify(plan, output, execute=False):
                 raise ValueError('Original product history changed before a model turn; no turn submitted')
             if before.get('turnSubmitted') is not False or before.get('nativeExecutionResumeRequested') is not False:
                 raise ValueError('Read-only product inspection unexpectedly selected execution')
+            if before.get('nativeBindingObserved') != binding:
+                raise ValueError('Native original binding differs before a model command')
             if verify_candidate(plan['service'])['pid'] != selected['pid'] or digest(configuration) != plan['configuration']['sha256']:
                 raise ValueError('The selected product changed before qualification')
             report['modelTurnsMayHaveBeenSubmitted'] = True
             # Persist uncertainty BEFORE a model command, never only after it.
             publish(output/'model-submitted.json',(json.dumps(report)+'\n').encode(),0o600)
             proof = producer_call(plan,selected,producer,runtime,configuration,output/'model','--exercise-existing')
-            binding = {key:plan['session'][key] for key in ['ownerId','agentId','durableSessionId','repositoryPath']}
             if proof.get('nativeBindingPreserved') != binding or proof.get('originalHistoryBeforeJourneySha256') != plan['session']['messagesSha256']:
                 raise ValueError('Original native binding or pre-journey history differs')
             if not all(proof.get(key) is True for key in ['resumeHttpAccepted','projectedContextPreserved','modelJourneyAccepted','dependentReplyAndReattachAccepted']):
