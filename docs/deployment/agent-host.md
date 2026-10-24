@@ -124,3 +124,39 @@ must exclude independent configuration writers throughout maintenance.
 Cloud's existing `@sudo/user-runtime` Kubernetes lifecycle retains its resource
 UID, volume and authenticated-readiness rules. It is not replaced by this Linux
 service adapter. The native join and A2A contracts must be the same for both.
+
+## Existing-product qualification
+
+After process selection, `product_qualification.py inspect/apply --plan
+PRIVATE_JSON --output NEW_PRIVATE_DIRECTORY` invokes the product's pinned
+producer, rather than implementing another login, session or model client.
+The first producer is Moss's `moss-inspect-existing-product.mjs` with explicit
+`--inspect-existing` and `--exercise-existing` modes. Its full source revision
+and bundle hash are required. No compiler or package installation runs on the
+target.
+
+The versioned plan contains `schemaVersion:1`, `producer:{path,sha256,source}`,
+`runtime:{path,sha256}`, `configuration:{path,sha256}`, the running product's
+existing selection `service:{name,binary,sha256,argumentFiles}`, and
+`session:{id,ownerId,agentId,durableSessionId,repositoryPath,messagesSha256}`.
+Machine paths, credentials and original session values belong in the private
+device/allocation record. Pin the native producer's original binding and
+history observation; the plan supplies expectations, never authority.
+
+Inspection verifies actual process/entry hashes and private inputs, without
+calling the producer. Apply shares the deployment's cooperative owner lock,
+authenticates through a read-only producer preflight, and compares the original
+owner/session/history before any model command. Only then does the producer run
+its existing three-turn dependent-reply and reattach journey, preserving its
+1080-second parent budget and native per-operation deadlines. The selected
+service PID and configuration hashes are checked again afterward.
+
+Submission evidence is persisted before the model command. Failures after
+possible submission stay Unknown and retain private native output; no turn is
+retried, no replacement Agent/session is created, and no execution is stopped
+as cleanup. A reused evidence directory refuses. The running product retains
+its execution. A pass reports authenticated product/model acceptance, with
+`domainJoinAccepted:false` and no semantic-recall claim about older history.
+Native identity/space/content-policy and multi-party delivery remain separate
+required qualification. The appliance or Cloud allocation adapter chooses a
+quiet point and owns its actual runtime lifecycle.
