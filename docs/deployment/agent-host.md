@@ -88,6 +88,18 @@ SudoEdge's `install-cohost.sh` selects appliance paths and invokes this shared
 action through an exact source/file lock. It contains no second installer.
 Keep device locations, maintenance choices and real receipts in sudoedge.
 
+An isolated cold-copy qualification may require a real loopback dependency
+such as the product's configured model service. `qualification_endpoint.py`
+provides two explicitly selected transport endpoints: `host` listens on a new
+owner-only Unix socket and connects only to one declared `127.0.0.1:PORT`;
+`namespace` restores that same loopback port inside a different network
+namespace. Both require the observed host namespace, a private socket directory,
+and current-owner socket permissions. No general network route, payload log,
+connection retry, provider override or fake model response is introduced.
+The appliance owns the fixed port selection and both process lifetimes. Close
+both endpoints after the case, and retain metadata/failure evidence. This is
+a test dependency boundary, not a production gateway or authorization policy.
+
 Cloud's existing `@sudo/user-runtime` Kubernetes lifecycle retains its resource
 UID, volume and authenticated-readiness rules. It is not replaced by this Linux
 service adapter. The native join and A2A contracts must be the same for both.
