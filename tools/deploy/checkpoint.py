@@ -120,6 +120,49 @@ def stopped(unit):
     return current
 
 
+def copy_stopped(plan, units, roots, output):
+    """The shared cold-copy boundary, used by maintenance and version selection."""
+    for unit in units:
+        stopped(unit['name'])
+    for pin in plan['pins']:
+        if digest(owned_path(pin['path'])) != pin['sha256']:
+            raise ValueError('Pinned configuration changed during maintenance')
+    before = inventory(roots)
+    for label, path in roots.items():
+        target = output/label
+        if path.is_dir():
+            shutil.copytree(path, target)
+        else:
+            shutil.copy2(path, target)
+        for item in [target, *target.rglob('*')] if target.is_dir() else [target]:
+            item.chmod(0o700 if item.is_dir() else 0o600)
+    copied = inventory({label:output/label for label in roots})
+    if copied != before or inventory(roots) != before:
+        raise ValueError('Checkpoint/source bytes changed while services were stopped')
+    for unit in units:
+        stopped(unit['name'])
+    return copied
+
+
+def restore_original(units):
+    restoration, failed = [], False
+    for unit in reversed(units):
+        if failed:
+            restoration.append({'unit':unit['name'], 'status':'blocked-by-dependency-restoration'})
+            continue
+        try:
+            control('start', unit['name'])
+            current = state(unit['name'])
+            pid = int(current.get('MainPID', '0'))
+            if not pid or current.get('ActiveState') != 'active' or digest(Path('/proc')/str(pid)/'exe') != unit['binarySha256']:
+                raise ValueError('Original executable is not active after restoration')
+            restoration.append({'unit':unit['name'], 'status':'original-process-started', 'pid':pid})
+        except (ValueError, OSError, subprocess.SubprocessError) as error:
+            restoration.append({'unit':unit['name'], 'status':'restore-failed', 'error':str(error)})
+            failed = True
+    return restoration, failed
+
+
 def checkpoint(plan, output, execute):
     units, roots, output = inspect(plan, output)
     report = {'schemaVersion': 1, 'action': 'deploy.checkpoint', 'status': 'inspected',
@@ -141,24 +184,7 @@ def checkpoint(plan, output, execute):
                 restore.append(unit)  # A failed stop may still have stopped it.
                 control('stop', unit['name'])
                 stopped(unit['name'])
-            for pin in plan['pins']:
-                if digest(owned_path(pin['path'])) != pin['sha256']:
-                    raise ValueError('Pinned configuration changed during maintenance')
-            before = inventory(roots)
-            for label, path in roots.items():
-                target = output/label
-                if path.is_dir():
-                    shutil.copytree(path, target)
-                else:
-                    shutil.copy2(path, target)
-                # Copies of secret material never become group/world readable.
-                for item in [target, *target.rglob('*')] if target.is_dir() else [target]:
-                    item.chmod(0o700 if item.is_dir() else 0o600)
-            copied = inventory({label:output/label for label in roots})
-            if copied != before or inventory(roots) != before:
-                raise ValueError('Checkpoint/source bytes changed while services were stopped')
-            for unit in units:
-                stopped(unit['name'])
+            copied = copy_stopped(plan, units, roots, output)
             report.update(status='cold-checkpoint-created', inventory=copied,
                           planSha256=hashlib.sha256(json.dumps(plan, sort_keys=True, separators=(',', ':')).encode()).hexdigest())
         except (ValueError, OSError, subprocess.SubprocessError) as error:
@@ -166,21 +192,7 @@ def checkpoint(plan, output, execute):
         finally:
             if report['status'] != 'cold-checkpoint-created' and failure is None:
                 failure = 'Checkpoint interrupted before completion'
-            restore_failed = False
-            for unit in reversed(restore):
-                if restore_failed:
-                    restoration.append({'unit':unit['name'], 'status':'blocked-by-dependency-restoration'})
-                    continue
-                try:
-                    control('start', unit['name'])
-                    current = state(unit['name'])
-                    pid = int(current.get('MainPID', '0'))
-                    if not pid or current.get('ActiveState') != 'active' or digest(Path('/proc')/str(pid)/'exe') != unit['binarySha256']:
-                        raise ValueError('Original executable is not active after restoration')
-                    restoration.append({'unit':unit['name'], 'status':'original-process-started', 'pid':pid})
-                except (ValueError, OSError, subprocess.SubprocessError) as error:
-                    restoration.append({'unit':unit['name'], 'status':'restore-failed', 'error':str(error)})
-                    restore_failed = True
+            restoration, restore_failed = restore_original(restore)
             if restore_failed:
                 report['checkpointError'] = failure
                 failure = 'Original service restoration needs operator attention'

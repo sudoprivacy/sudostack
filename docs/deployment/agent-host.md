@@ -100,6 +100,27 @@ The appliance owns the fixed port selection and both process lifetimes. Close
 both endpoints after the case, and retain metadata/failure evidence. This is
 a test dependency boundary, not a production gateway or authorization policy.
 
+For an existing product, `selection.py inspect/apply --plan PRIVATE_JSON
+--output NEW_PRIVATE_DIRECTORY` composes the same stopped-process/cold-copy
+boundary with exact file selection and dependency-ordered startup. The plan
+contains `schemaVersion: 1`, the existing `checkpoint` plan, `selections`
+(`path`, `expectedSha256`, `prepared`, `sha256`) and every service's `candidates`
+(`name`, `binary`, `sha256`, `argumentFiles: [{path, sha256}]`). Every selected
+original file must already be pinned in the checkpoint. Application entry
+files must occur as actual live process arguments and retain their hashes;
+checking only the Node executable cannot prove a Moss version was selected.
+
+The action verifies original services, stops in the product's declared order,
+checks empty process groups, creates the cold copy, installs native-prepared
+files, reloads systemd and starts in reverse order. Original services may
+restart after a failure before file selection begins. Once selection starts,
+any failure stops the declared services and preserves configuration backups,
+new data and the cold checkpoint for operator inspection. It does not
+automatically restart old code over possibly migrated state or restore an old
+database. A successful process selection still leaves authenticated native
+readiness and the real product journey to the appliance adapter. The product
+must exclude independent configuration writers throughout maintenance.
+
 Cloud's existing `@sudo/user-runtime` Kubernetes lifecycle retains its resource
 UID, volume and authenticated-readiness rules. It is not replaced by this Linux
 service adapter. The native join and A2A contracts must be the same for both.
