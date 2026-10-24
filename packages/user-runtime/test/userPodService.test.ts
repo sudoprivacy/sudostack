@@ -147,6 +147,101 @@ void test('an owner rollout waits for drain, retains the PVC and blocks competin
   assert.equal(kube.objects.has('upgrade-secret'), false)
 })
 
+void test('concurrent discovery shares authentication for an older Pod and preserves its configuration', async t => {
+  const kube = platform()
+  let issued = 0
+  t.mock.method(NexusZoneApiClient, 'withMtls', () => ({ mintUserRuntime: async () => {
+    issued++; return runtimeCredential('alice')
+  }, close() {} }))
+  const old = new UserPodService(options, kube.resources, async () => {})
+  const configuration = { 'sudocode.json': '{"model":"original"}', 'backend-config.json': '{"mounts":[]}' }
+  await old.resolve('alice', configuration)
+  await old.close()
+  const pod = kube.objects.get('pod')
+  const pvc = kube.objects.get('pvc')
+  const writes = kube.writes.length
+  issued = 0
+  const next = new UserPodService({ ...options, image: 'runtime:next' }, kube.resources, async () => {})
+  t.after(() => next.close())
+  const results = await Promise.all([next.find('alice'), next.find('alice'), next.find('alice')])
+  assert.equal(issued, 1)
+  assert(results.every(result => result?.runtimeEndpoint === 'https://compute.internal:31443'))
+  assert.equal(kube.objects.get('pod'), pod)
+  assert.equal(kube.objects.get('pvc'), pvc)
+  assert(kube.writes.slice(writes).every(write => write.kind === 'secret'))
+  for (const [key, value] of Object.entries(configuration)) {
+    assert.equal(Buffer.from(kube.objects.get('secret')!.data![key]!, 'base64').toString(), value)
+  }
+  await assert.rejects(next.resolve('alice'), UserRuntimeUpdateRequiredError)
+})
+
+void test('discovery never recreates a Pod lost during authentication', async t => {
+  const kube = platform()
+  t.mock.method(NexusZoneApiClient, 'withMtls', () => ({ mintUserRuntime: async () => runtimeCredential('alice'), close() {} }))
+  const old = new UserPodService(options, kube.resources, async () => {})
+  await old.resolve('alice')
+  await old.close()
+  const volume = kube.objects.get('pvc')
+  const writes = kube.writes.length
+  const next = new UserPodService(options, kube.resources, async () => { kube.objects.delete('pod') })
+  t.after(() => next.close())
+  await assert.rejects(next.find('alice'), /identity changed/)
+  assert.equal(kube.objects.has('pod'), false)
+  assert.equal(kube.objects.get('pvc'), volume)
+  assert(kube.writes.slice(writes).every(write => write.kind === 'secret'))
+})
+
+void test('discovery refuses a pending upgrade and a nonrunning Pod before renewing credentials', async t => {
+  const kube = platform()
+  let issued = 0
+  t.mock.method(NexusZoneApiClient, 'withMtls', () => ({ mintUserRuntime: async () => {
+    issued++; return runtimeCredential('alice')
+  }, close() {} }))
+  const old = new UserPodService(options, kube.resources, async () => {})
+  await old.resolve('alice')
+  await old.close()
+  issued = 0
+  const writes = kube.writes.length
+  const next = new UserPodService(options, kube.resources, async () => {})
+  t.after(() => next.close())
+  kube.objects.set('upgrade-secret', { metadata: { name: `${userPodName('alice')}-upgrade`, uid: randomUUID() } })
+  await assert.rejects(next.find('alice'), /draining/)
+  kube.objects.delete('upgrade-secret')
+  kube.objects.get('pod')!.status = { phase: 'Failed' }
+  await assert.rejects(next.find('alice'), /not running/)
+  assert.equal(issued, 0)
+  assert.equal(kube.writes.length, writes)
+})
+
+void test('controller closure joins discovery credential delivery and refuses the closed result', async t => {
+  const kube = platform()
+  let isWaiting = false
+  let release!: () => void
+  let started!: () => void
+  const waiting = new Promise<void>(resolve => { started = resolve })
+  const ready = new Promise<void>(resolve => { release = resolve })
+  t.mock.method(NexusZoneApiClient, 'withMtls', () => ({ mintUserRuntime: async () => {
+    if (isWaiting) { started(); await ready }
+    return runtimeCredential('alice')
+  }, close() {} }))
+  const old = new UserPodService(options, kube.resources, async () => {})
+  await old.resolve('alice')
+  await old.close()
+  isWaiting = true
+  const next = new UserPodService(options, kube.resources, async () => {})
+  t.after(() => next.close())
+  const discovery = assert.rejects(next.find('alice'), /service is closed/)
+  await waiting
+  let isClosed = false
+  const closing = next.close().then(() => { isClosed = true })
+  await new Promise<void>(resolve => setImmediate(resolve))
+  assert.equal(isClosed, false)
+  release()
+  await Promise.all([discovery, closing])
+  assert.equal(isClosed, true)
+  await assert.rejects(next.find('alice'), /service is closed/)
+})
+
 void test('controller closure joins credential delivery before a replacement can write its Secret', async t => {
   const kube = platform()
   let isWaiting = false

@@ -8,7 +8,7 @@ import { test } from 'node:test'
 import grpc from '@grpc/grpc-js'
 import protoLoader from '@grpc/proto-loader'
 import { createUserRuntimeCredentialBundle, userRuntimeServerName } from '@nexus-ai-fs/vfs-client'
-import { UserPodService, userPodName, type UserPodOptions, type UserPodResources } from '../src/userPodService.js'
+import { UserPodService, UserRuntimeUpdateRequiredError, userPodName, type UserPodOptions, type UserPodResources } from '../src/userPodService.js'
 import type { K8sResource } from '../src/k8sResources.js'
 import { runtimeCredential } from './runtimeCredential.js'
 import { userPodPlatform } from './userPodPlatform.js'
@@ -19,7 +19,7 @@ const protoRoot = join(dirname(fileURLToPath(import.meta.resolve('@nexus-ai-fs/v
 const definitions = protoLoader.loadSync(join(protoRoot, 'nexus/raft/transport.proto'),
   { includeDirs: [protoRoot], keepCase: true, longs: String, defaults: true })
 
-for (const operation of ['resolve', 'upgrade'] as const) {
+for (const operation of ['resolve', 'find', 'upgrade'] as const) {
   void test(`a restarted controller projects renewed credentials before ${operation} over real mTLS`, { timeout: 30_000 }, async t => {
     const expired = runtimeCredential(owner, true)
     const controller = runtimeCredential('controller')
@@ -127,6 +127,14 @@ for (const operation of ['resolve', 'upgrade'] as const) {
       assert.equal(issued, 2)
       assert.deepEqual(mutations, ['renewed', 'projected', 'ready', 'renewed', 'projected'])
       configuration['sudocode.json'] = next['sudocode.json']
+    } else if (operation === 'find') {
+      assert.equal((await service.find(owner))?.runtimeEndpoint, `https://127.0.0.1:${address.port}`)
+      assert.equal(await connect(), 'same owned runtime')
+      assert.equal((await service.inspect(owner)).isDrifted, true)
+      await assert.rejects(service.resolve(owner), UserRuntimeUpdateRequiredError,
+        'discovery must not admit an older release to the execution cache')
+      assert.equal(issued, 1)
+      assert.deepEqual(mutations, ['renewed', 'projected', 'ready'])
     } else {
       await assert.rejects(service.upgrade(owner, async previous => {
         assert.equal(previous?.runtimeEndpoint, `https://127.0.0.1:${address.port}`)

@@ -158,6 +158,7 @@ export class UserPodService {
   private readonly allocations = new Map<string, UserPodService>()
   private readonly connections = new Map<string, Promise<UserPodConnection>>()
   private readonly pendingResolutions = new Map<string, Promise<UserPodConnection>>()
+  private readonly pendingDiscoveries = new Map<string, Promise<UserRuntimeConnectionConfig | undefined>>()
   private readonly lifecycle = new AbortController()
   private readonly runtimeHost: string
 
@@ -369,10 +370,45 @@ export class UserPodService {
 
   /** Discover an existing owner box without creating a Pod or workspace for a list request. */
   async find(ownerId: string): Promise<UserRuntimeConnectionConfig | undefined> {
-    const pod = await this.readAllocationResource('pod', userPodName(ownerId, this.options.allocationId))
+    if (this.lifecycle.signal.aborted) throw new Error('User Pod service is closed')
+    let discovery = this.pendingDiscoveries.get(ownerId)
+    if (!discovery) {
+      discovery = this.findConnection(ownerId)
+      this.pendingDiscoveries.set(ownerId, discovery)
+    }
+    try { return await discovery }
+    finally {
+      if (this.pendingDiscoveries.get(ownerId) === discovery) this.pendingDiscoveries.delete(ownerId)
+    }
+  }
+
+  private async findConnection(ownerId: string): Promise<UserRuntimeConnectionConfig | undefined> {
+    const name = userPodName(ownerId, this.options.allocationId)
+    const [lock, pod] = await Promise.all([
+      this.readAllocationResource('secret', `${name}-upgrade`),
+      this.readAllocationResource('pod', name),
+    ])
+    if (lock) throw new Error('User runtime is draining for an upgrade')
     if (!pod) return undefined
     if (pod.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) throw new Error('User Pod belongs to another owner')
-    return this.resolve(ownerId)
+    if (!pod.metadata.uid) throw new Error('Existing user Pod lacks an observed identity')
+    if (pod.status?.phase !== 'Running') throw new Error('Existing user runtime is not running')
+    const cached = this.connections.get(ownerId)
+    if (cached) {
+      const connection = await cached
+      if (connection.podUid === pod.metadata.uid && pod.status.conditions?.some(condition => condition.type === 'Ready' && condition.status === 'True')) {
+        return connection.config
+      }
+    }
+    // Discovery observes the existing release. It must not provision the desired
+    // release or add this unverified build to resolve()'s execution cache.
+    await this.refreshUpgradeIdentity(ownerId, pod)
+    const config = await this.runtimeConnection(ownerId)
+    await this.ready(config, ownerId, this.lifecycle.signal)
+    await this.assertUpgradePod(ownerId, pod)
+    if (await this.readAllocationResource('secret', `${name}-upgrade`)) throw new Error('User runtime is draining for an upgrade')
+    if (this.lifecycle.signal.aborted) throw new Error('User Pod service is closed')
+    return config
   }
 
   async resolve(ownerId: string, configuration?: Record<string, string>): Promise<UserRuntimeConnectionConfig> {
@@ -555,7 +591,7 @@ export class UserPodService {
       await Promise.allSettled([...this.allocations.values()].map(service => service.close()))
       this.allocations.clear()
     }
-    await Promise.allSettled(this.pendingResolutions.values())
+    await Promise.allSettled([...this.pendingResolutions.values(), ...this.pendingDiscoveries.values()])
     await Promise.allSettled([...this.connections.values()].map(async connection => (await connection).close()))
     this.connections.clear()
   }
