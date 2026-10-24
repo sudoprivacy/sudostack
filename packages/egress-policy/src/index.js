@@ -2,7 +2,11 @@
 export const POLICY_FILENAME = 'egress-policy.json'
 export const POLICY_ENVIRONMENT = 'NEXUS_EGRESS_GATE_CONFIG'
 export { EgressPolicyRepository, EgressPolicyConflict } from './repository.js'
-export const DEFAULT_POLICY = Object.freeze({
+function freezeDefaults(value) {
+  for (const child of Object.values(value)) if (child && typeof child === 'object') freezeDefaults(child)
+  return Object.freeze(value)
+}
+export const DEFAULT_POLICY = freezeDefaults({
   version: 1, revision: 0, enabled: false, mode: 'redact',
   modelMounts: [], a2aMounts: [], analyzer: null,
   businessPolicy: { version: 1, public_organizations: [], protected_terms: [], protected_markers: [] },
@@ -19,7 +23,7 @@ function list(value, max, item) {
     value.some(entry => typeof entry !== 'string' || !item(entry))) throw new Error('Invalid egress policy list')
 }
 function mount(value) {
-  return value.length <= 1024 && value.startsWith('/') && value !== '/' && !value.endsWith('/') &&
+  return new TextEncoder().encode(value).length <= 1024 && value.startsWith('/') && value !== '/' && !value.endsWith('/') &&
     !value.startsWith('/__sys__') && value.split('/').slice(1).every(part => part && part !== '.' && part !== '..') &&
     !/[\u0000-\u001f\u007f\\]/u.test(value)
 }
@@ -54,7 +58,7 @@ export function parseEgressPolicy(input) {
       !Number.isSafeInteger(analyzer.timeoutMs) || analyzer.timeoutMs < 1 || analyzer.timeoutMs > 60000) throw new Error('Invalid local analyzer configuration')
     list(analyzer.entities, 256, value => /^[A-Z][A-Z0-9_]{0,63}$/.test(value))
   }
-  if (JSON.stringify(input).length > 1024 * 1024) throw new Error('Egress policy exceeds size limit')
+  if (new TextEncoder().encode(JSON.stringify(input)).length > 1024 * 1024) throw new Error('Egress policy exceeds size limit')
   return structuredClone(input)
 }
 
@@ -68,7 +72,8 @@ export function policyApplicationStatus(desired, actual) {
   const policy = parseEgressPolicy(desired)
   if (!actual) return { state: 'pending', desiredRevision: policy.revision, appliedRevision: null }
   if (actual.error) return { state: 'error', desiredRevision: policy.revision, appliedRevision: actual.revision ?? null }
-  const isApplied = actual.revision === policy.revision && actual.enabled === policy.enabled && actual.mode === policy.mode
+  const isApplied = actual.revision === policy.revision && actual.enabled === policy.enabled && actual.mode === policy.mode &&
+    JSON.stringify(actual.modelMounts) === JSON.stringify(policy.modelMounts) && JSON.stringify(actual.a2aMounts) === JSON.stringify(policy.a2aMounts)
   return { state: isApplied ? 'applied' : 'pending', desiredRevision: policy.revision, appliedRevision: actual.revision ?? null }
 }
 
@@ -80,5 +85,9 @@ export async function readEgressPolicyStatus(client, authToken) {
   const status = envelope?.result ?? envelope
   if (!status || status.version !== 1 || !Number.isSafeInteger(status.revision) || typeof status.enabled !== 'boolean' ||
     !['redact', 'deny', 'observe'].includes(status.mode)) throw new Error('Invalid runtime egress policy status')
-  return status
+  list(status.modelMounts, 256, mount)
+  list(status.a2aMounts, 256, mount)
+  if (status.revision < 0 || !(status.error === null || typeof status.error === 'string')) throw new Error('Invalid runtime egress policy status')
+  return { version: 1, revision: status.revision, enabled: status.enabled, mode: status.mode,
+    modelMounts: [...status.modelMounts], a2aMounts: [...status.a2aMounts], error: status.error }
 }

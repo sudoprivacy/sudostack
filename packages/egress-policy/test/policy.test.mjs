@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createEgressPolicy, parseEgressPolicy, policyApplicationStatus, readEgressPolicyStatus } from '../src/index.js'
+import { DEFAULT_POLICY, createEgressPolicy, parseEgressPolicy, policyApplicationStatus, readEgressPolicyStatus } from '../src/index.js'
 
 test('cloud is disabled by default; an enabled policy needs explicit outbound mounts', () => {
   assert.equal(createEgressPolicy().enabled, false)
@@ -32,6 +32,7 @@ test('saving or delivering a policy cannot report an old runtime as applied', ()
   assert.equal(policyApplicationStatus(policy, { ...policy, revision: 1, error: null }).state, 'pending')
   assert.equal(policyApplicationStatus(policy, { ...policy, error: 'configuration unavailable' }).state, 'error')
   assert.equal(policyApplicationStatus(policy, { ...policy, error: null }).state, 'applied')
+  assert.equal(policyApplicationStatus(policy, { ...policy, modelMounts: ['/wrong-mount'], error: null }).state, 'pending')
 })
 test('status uses the existing authenticated RPC and rejects malformed replies', async () => {
   const client = { call: async (...args) => {
@@ -39,5 +40,17 @@ test('status uses the existing authenticated RPC and rejects malformed replies',
     return JSON.stringify({ result: { ...createEgressPolicy(), error: null } })
   } }
   assert.equal((await readEgressPolicyStatus(client, 'test-token')).enabled, false)
+  assert.equal('businessPolicy' in await readEgressPolicyStatus(client, 'test-token'), false)
   await assert.rejects(readEgressPolicyStatus({ call: async () => '{"result":{}}' }, ''))
+})
+
+test('shared defaults cannot be mutated by another consumer', () => {
+  assert.throws(() => DEFAULT_POLICY.businessPolicy.protected_terms.push('unexpected'))
+  assert.equal(createEgressPolicy().businessPolicy.protected_terms.length, 0)
+})
+
+test('policy size limits count UTF-8 bytes rather than UTF-16 string length', () => {
+  const policy = createEgressPolicy({ analyzer: { url: 'http://127.0.0.1:59080', language: 'zh', scoreThreshold: 0.5, entities: [], timeoutMs: 1000 } })
+  policy.businessPolicy.protected_terms = Array.from({ length: 1000 }, (_, i) => `客户${i}${'甲'.repeat(500)}`)
+  assert.throws(() => parseEgressPolicy(policy), /size limit/)
 })
