@@ -105,11 +105,21 @@ def inspect(options):
     state = properties(unit)
     pid = int(state.get('MainPID', '0'))
     running = digest(Path('/proc') / str(pid) / 'exe') if pid else None
+    expected = {'NEXUS_DATA_DIR':str(options.root/'data'),
+                'NEXUS_IDENTITY_DIR':str(options.root/'id'),
+                'SUDO_CODE_CONFIG_HOME':str(options.config)}
+    observed = {}
+    if pid:
+        environment = (Path('/proc')/str(pid)/'environ').read_bytes()
+        values = dict(item.split('=',1) for item in environment.decode().split('\0') if '=' in item)
+        observed = {key:values.get(key) for key in expected}
     return {'schemaVersion': 1, 'action': 'deploy.cohost', 'unit': unit,
             'sourceCommit': options.source, 'binarySha256': options.sha256,
             'binaryVersion': version, 'existingService': state,
             'runningBinarySha256': running,
             'sameBinaryRunning': running == options.sha256,
+            'expectedStatePaths':expected, 'observedStatePaths':observed,
+            'stateBindingVerified':bool(pid) and observed == expected,
             'identityOrDataMigration': False, 'authenticatedReady': False,
             'domainJoinAccepted': False}
 
@@ -161,7 +171,7 @@ def install(options):
     if state.get('LoadState') == 'loaded':
         # A placement installer cannot attest an existing runtime's session,
         # owner or admission barrier. It therefore cannot stop it for an upgrade.
-        if report['sameBinaryRunning']:
+        if report['sameBinaryRunning'] and report['stateBindingVerified']:
             return dict(report, status='already-running')
         raise ValueError('Existing service requires its owner-controlled drain and adoption; inspect/stage is available, install does not overwrite or restart it')
     if int(state.get('MainPID', '0')) or state.get('LoadState') not in ('not-found', None):
@@ -188,7 +198,7 @@ def install(options):
     import time
     for _ in range(20):
         report = inspect(options)
-        if report['sameBinaryRunning']:
+        if report['sameBinaryRunning'] and report['stateBindingVerified']:
             return dict(report, status='process-activated', executable=str(target))
         time.sleep(0.1)
     raise ValueError('The requested executable did not become the running service; retain the staged files and inspect the native unit')

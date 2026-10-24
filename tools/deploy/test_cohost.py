@@ -46,7 +46,8 @@ if 'show' in args:
  print('\\n'.join(k+'='+str(v) for k,v in info.items()))
 elif 'enable' in args:
  line=next(x for x in unit.read_text().splitlines() if x.startswith('ExecStart='))
- child=subprocess.Popen(shlex.split(line.split('=',1)[1]),stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+ settings=dict(shlex.split(x.split('=',1)[1])[0].split('=',1) for x in unit.read_text().splitlines() if x.startswith('Environment='))
+ child=subprocess.Popen(shlex.split(line.split('=',1)[1]),env={**os.environ,**settings},stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
  state.write_text(json.dumps({'LoadState':'loaded','MainPID':str(child.pid),'ActiveState':'active','FragmentPath':str(unit)}))
 ''')
         (self.commands / 'systemctl').chmod(0o755)
@@ -79,6 +80,7 @@ elif 'enable' in args:
         receipt = json.loads(result.stdout)
         self.assertEqual(receipt['runningBinarySha256'], self.sha)
         self.assertEqual(receipt['status'], 'process-activated')
+        self.assertTrue(receipt['stateBindingVerified'])
         self.assertFalse(receipt['authenticatedReady'])
         self.assertFalse(receipt['domainJoinAccepted'])
         before = (self.root/'service.json').read_bytes()
@@ -86,6 +88,15 @@ elif 'enable' in args:
         self.assertEqual(second.returncode, 0, second.stdout+second.stderr)
         self.assertEqual(json.loads(second.stdout)['status'], 'already-running')
         self.assertEqual(before, (self.root/'service.json').read_bytes())
+
+    def test_same_binary_with_different_state_paths_cannot_report_reentry_success(self):
+        first = self.invoke()
+        self.assertEqual(first.returncode,0,first.stdout+first.stderr)
+        before = (self.root/'service.json').read_bytes()
+        changed = self.invoke(root=str(self.root/'different-data'))
+        self.assertNotEqual(changed.returncode,0)
+        self.assertEqual(before,(self.root/'service.json').read_bytes())
+        self.assertFalse((self.root/'different-data').exists())
 
     def test_existing_foreign_unit_is_not_rewritten_even_when_inactive(self):
         unit = self.root/'.config/systemd/user/test-cohost.service'
