@@ -38,6 +38,40 @@ A `process-activated` receipt is not authenticated readiness or a domain join.
 Both fields remain false until the owning native components produce their
 actual proofs. No CA, certificate, Session or Agent is minted by this command.
 
+## Existing-runtime cold checkpoint
+
+`checkpoint.py inspect --plan PRIVATE_PLAN.json --output NEW_PRIVATE_DIRECTORY`
+validates a product adapter's explicit `schemaVersion:1` plan without stopping
+anything. `checkpoint` with the same arguments enters the selected user-service
+maintenance boundary, copies owned state, and restores the original executables.
+It never selects or activates an upgrade.
+
+The plan contains `units` in controller-first stop order (each with `name` and
+`binarySha256`), `paths` mapping simple labels to absolute owned source paths,
+and `pins` listing configuration `path` and `sha256` pairs. Include the actual
+unit files/drop-ins, application entry and durable state in the product plan.
+Every pinned file must be covered by a selected path. Symlinks, special files,
+trigger-activated units, changed pins, wrong executables and reused output
+destinations are refused. The product owner must account for every writer of
+the selected state; this Linux primitive cannot infer application ownership.
+
+After each stop, MainPID, inactive state and any remaining cgroup workers are
+checked. Files are copied only after all selected services stop. Source and
+copy hashes must agree before restoration. Secret-bearing snapshots remain
+on that host in owner-only directories/files. A partial copy is retained with
+a failure receipt. Original services restart in reverse order even after a
+copy/stop failure. If restoring a dependency fails, dependent controllers stay
+stopped and the receipt reports that operator attention is required. SIGKILL,
+power failure and an external service manager are outside this process's
+automatic restoration guarantee.
+
+An appliance adapter must inspect/drain its actual Agent lifecycle before
+invocation and verify authenticated readiness after restoration. A cold file
+checkpoint proves neither native history recovery nor authenticated readiness.
+Qualify migrations on the copy with the producer's offline tools; never run a
+second live daemon with duplicated Node identity, or restore old state over
+newer accepted writes as an automatic executable rollback.
+
 ## Product consumers
 
 SudoEdge's `install-cohost.sh` selects appliance paths and invokes this shared
