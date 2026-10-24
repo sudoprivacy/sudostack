@@ -1,9 +1,11 @@
 # Shared deploy and cross-domain Agent collaboration
 
-Status: source proposal and executable-placement foundation. Domain join is not
-implemented or enabled by this change. The target is an existing Edge cohost
-Agent, followed by existing Cloud Agents; a parallel standalone Agent does not
-qualify that product path.
+Status: the shared checkpoint/configuration/version-selection actions have
+deployed the real existing DGX SudoWork/Moss/cohost product. Original Agent,
+owner, durable SID and projected history were preserved; three real local-model
+turns and reattach/recall passed. Cross-domain join and seven-party delivery are
+still unfinished. Existing Cloud Agents are the next consumer of the same
+contracts.
 
 ## Ownership and target
 
@@ -63,11 +65,14 @@ Do not widen generic VFS foreign access just to make its receiver work.
 
 The following are selected design constraints, not claims about deployed code.
 
-1. **Domain enrollment** binds a full public-CA fingerprint to an operator
+1. **Domain enrollment** binds the full SHA256 of the registered anchor's DER
+   SubjectPublicKeyInfo (SPKI), plus its public certificate, to an operator
    approved domain and endpoint. Exchange public anchors only. Keep private
    CA keys on their existing authority. Validate the remote server under an
    explicitly trusted anchor and expected service identity; do not disable TLS
    or enroll a foreign domain as a Raft voter to obtain mailbox access.
+   The existing foreign-CA registration API separately pins complete-certificate
+   DER; do not pass the new address's SPKI authority as that registry key.
 2. **Agent authentication** comes from the actual mTLS peer and the current
    installed verifier. A typed principal binds issuer fingerprint, subject
    kind and the signed Agent identity. A profile, body field, PID, display
@@ -80,13 +85,15 @@ The following are selected design constraints, not claims about deployed code.
    administrative or cluster membership permission. Reuse the existing
    authoritative control store and immutable conversation metadata. Do not
    introduce a second directory/identity database or a relay daemon.
-4. **Current authority** is rechecked on every attempt, query and receipt
-   replay, including a long-lived TLS connection after expiry or revocation.
+4. **Current authority** is rechecked on every admission, query and receipt
+   recovery, including a long-lived TLS connection after expiry or revocation.
    Local issuer continuity, foreign-anchor removal and the applicable current
    CRL must govern access. Cached directory entries are not authorization.
-   Cross-process/offline CRL ordering must be established before claiming
-   atomic revocation through an append; the existing process-local mutex alone
-   does not prove it.
+   A control-store admission ordered after revocation must refuse. An already
+   admitted operation may finish: this does not promise atomic revocation
+   through an append in another zone. A drained/quiescent result additionally
+   requires the actual worker fence. Cross-process/offline CRL writers remain
+   part of native integration; a process-local mutex does not establish that.
 5. **Canonical addressing** must be owned once by Nexus A2A and consumed by
    scode. Both domains must derive the same global participant identity and
    conversation ID. Presentation aliases and path-safe leaf encodings are
@@ -140,14 +147,20 @@ continue to apply to managed and standalone consumers.
    An existing different unit/runtime requires its native owner-controlled
    drain/adoption path; this installer does not interrupt it or overwrite it.
 4. Apply the product's controlled maintenance/admission procedure. Preserve
-   unit drop-ins, state and identity. Fresh executable activation proves only
-   the running bytes, not authenticated readiness or domain joining.
+   unit drop-ins, state and identity. For an existing Linux product, Edge's
+   native preparation feeds Stack's shared `checkpoint`, `configuration` and
+   `selection` actions. Selection waits for empty process groups, verifies a
+   fresh cold copy, installs exact prepared unit bytes, reloads the manager,
+   and checks actual executable/application-entry hashes. Executable activation
+   is separate from authenticated product readiness and domain joining.
 5. Establish the explicit join and scoped grant through supported native APIs;
    reuse an identical existing enrollment and reject conflicting bindings.
    Ambiguous mutation responses are reconciled, not interpreted as absence.
 6. Verify authenticated readiness and actual collaboration, then write a
-   source-bound deployment/acceptance receipt. Roll back executable/config
-   selection without restoring an old database over newer writes.
+   source-bound deployment/acceptance receipt. A pre-selection failure restores
+   original services. After possible selection/migration, stop the declared
+   services and preserve new data plus the cold backup for native inspection;
+   do not automatically restore an old database over newer writes.
 
 The cohost command's `authenticatedReady:false` and `domainJoinAccepted:false`
 are intentional boundaries. A placement receipt cannot become full deploy

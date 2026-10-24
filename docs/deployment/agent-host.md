@@ -38,11 +38,88 @@ A `process-activated` receipt is not authenticated readiness or a domain join.
 Both fields remain false until the owning native components produce their
 actual proofs. No CA, certificate, Session or Agent is minted by this command.
 
+## Existing-runtime cold checkpoint
+
+`checkpoint.py inspect --plan PRIVATE_PLAN.json --output NEW_PRIVATE_DIRECTORY`
+validates a product adapter's explicit `schemaVersion:1` plan without stopping
+anything. `checkpoint` with the same arguments enters the selected user-service
+maintenance boundary, copies owned state, and restores the original executables.
+It never selects or activates an upgrade.
+
+The plan contains `units` in controller-first stop order (each with `name` and
+`binarySha256`), `paths` mapping simple labels to absolute owned source paths,
+and `pins` listing configuration `path` and `sha256` pairs. Include the actual
+unit files/drop-ins, application entry and durable state in the product plan.
+Every pinned file must be covered by a selected path. Symlinks, special files,
+trigger-activated units, changed pins, wrong executables and reused output
+destinations are refused. The product owner must account for every writer of
+the selected state; this Linux primitive cannot infer application ownership.
+
+After each stop, MainPID, inactive state and any remaining cgroup workers are
+checked. Files are copied only after all selected services stop. Source and
+copy hashes must agree before restoration. Secret-bearing snapshots remain
+on that host in owner-only directories/files. A partial copy is retained with
+a failure receipt. Original services restart in reverse order even after a
+copy/stop failure. If restoring a dependency fails, dependent controllers stay
+stopped and the receipt reports that operator attention is required. SIGKILL,
+power failure and an external service manager are outside this process's
+automatic restoration guarantee.
+
+An appliance adapter must inspect/drain its actual Agent lifecycle before
+invocation and verify authenticated readiness after restoration. A cold file
+checkpoint proves neither native history recovery nor authenticated readiness.
+Qualify migrations on the copy with the producer's offline tools; never run a
+second live daemon with duplicated Node identity, or restore old state over
+newer accepted writes as an automatic executable rollback.
+
 ## Product consumers
+
+`configuration.py inspect/apply --path EXISTING --expected OLD_SHA256
+--prepared NATIVE_PREPARED --sha256 NEW_SHA256 --evidence NEW_PRIVATE_DIRECTORY`
+selects exact producer-prepared configuration bytes for the next start. It
+retains the original privately, refuses stale pins/symlinks/reused evidence,
+and fsyncs the replacement and directory. It neither edits native schema nor
+restarts a service. The product adapter must exclusively own configuration
+writes; the cooperative deployment lock is not filesystem CAS against other
+writers. A partial operation retains evidence and requires inspection, never
+an automatic restore over later writes. Native readiness remains false.
 
 SudoEdge's `install-cohost.sh` selects appliance paths and invokes this shared
 action through an exact source/file lock. It contains no second installer.
 Keep device locations, maintenance choices and real receipts in sudoedge.
+
+An isolated cold-copy qualification may require a real loopback dependency
+such as the product's configured model service. `qualification_endpoint.py`
+provides two explicitly selected transport endpoints: `host` listens on a new
+owner-only Unix socket and connects only to one declared `127.0.0.1:PORT`;
+`namespace` restores that same loopback port inside a different network
+namespace. Both require the observed host namespace, a private socket directory,
+and current-owner socket permissions. No general network route, payload log,
+connection retry, provider override or fake model response is introduced.
+The appliance owns the fixed port selection and both process lifetimes. Close
+both endpoints after the case, and retain metadata/failure evidence. This is
+a test dependency boundary, not a production gateway or authorization policy.
+
+For an existing product, `selection.py inspect/apply --plan PRIVATE_JSON
+--output NEW_PRIVATE_DIRECTORY` composes the same stopped-process/cold-copy
+boundary with exact file selection and dependency-ordered startup. The plan
+contains `schemaVersion: 1`, the existing `checkpoint` plan, `selections`
+(`path`, `expectedSha256`, `prepared`, `sha256`) and every service's `candidates`
+(`name`, `binary`, `sha256`, `argumentFiles: [{path, sha256}]`). Every selected
+original file must already be pinned in the checkpoint. Application entry
+files must occur as actual live process arguments and retain their hashes;
+checking only the Node executable cannot prove a Moss version was selected.
+
+The action verifies original services, stops in the product's declared order,
+checks empty process groups, creates the cold copy, installs native-prepared
+files, reloads systemd and starts in reverse order. Original services may
+restart after a failure before file selection begins. Once selection starts,
+any failure stops the declared services and preserves configuration backups,
+new data and the cold checkpoint for operator inspection. It does not
+automatically restart old code over possibly migrated state or restore an old
+database. A successful process selection still leaves authenticated native
+readiness and the real product journey to the appliance adapter. The product
+must exclude independent configuration writers throughout maintenance.
 
 Cloud's existing `@sudo/user-runtime` Kubernetes lifecycle retains its resource
 UID, volume and authenticated-readiness rules. It is not replaced by this Linux

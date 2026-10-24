@@ -46,7 +46,7 @@ if 'show' in args:
  print('\\n'.join(k+'='+str(v) for k,v in info.items()))
 elif 'enable' in args:
  line=next(x for x in unit.read_text().splitlines() if x.startswith('ExecStart='))
- settings=dict(shlex.split(x.split('=',1)[1])[0].split('=',1) for x in unit.read_text().splitlines() if x.startswith('Environment='))
+ settings=dict(shlex.split(x.split('=',1)[1])[0].replace('%%','%').split('=',1) for x in unit.read_text().splitlines() if x.startswith('Environment='))
  child=subprocess.Popen(shlex.split(line.split('=',1)[1]),env={**os.environ,**settings},stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
  state.write_text(json.dumps({'LoadState':'loaded','MainPID':str(child.pid),'ActiveState':'active','FragmentPath':str(unit)}))
 ''')
@@ -73,6 +73,22 @@ elif 'enable' in args:
         return subprocess.run([sys.executable, str(SOURCE), command,
                                *[value for k, v in fields.items() for value in ('--'+k, v)]],
                               env=self.environment, capture_output=True, text=True, timeout=15)
+
+    @unittest.skipUnless(shutil.which('systemd-analyze'),'Native systemd unit parser required')
+    def test_native_parser_accepts_literal_directory_and_rejects_shell_quotes(self):
+        directory = self.root/'working space%name'
+        result = self.invoke(root=str(directory))
+        self.assertEqual(result.returncode,0,result.stderr)
+        unit = self.root/'.config/systemd/user/test-cohost.service'
+        valid = subprocess.run(['systemd-analyze','verify','--man=no',str(unit)],capture_output=True,text=True,timeout=20)
+        self.assertEqual(valid.returncode,0,valid.stderr)
+        bad = self.root/'invalid.service'
+        text = unit.read_text()
+        line = next(value for value in text.splitlines() if value.startswith('WorkingDirectory='))
+        bad.write_text(text.replace(line,'WorkingDirectory="'+str(directory).replace('%','%%')+'"'))
+        invalid = subprocess.run(['systemd-analyze','verify','--man=no',str(bad)],capture_output=True,text=True,timeout=20)
+        self.assertNotEqual(invalid.returncode,0)
+        self.assertIn('WorkingDirectory',invalid.stderr)
 
     def test_fresh_activation_hashes_the_real_process_and_reentry_is_noop(self):
         result = self.invoke()

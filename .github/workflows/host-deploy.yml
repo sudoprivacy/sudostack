@@ -2,10 +2,10 @@ name: Shared host deploy
 
 on:
   pull_request:
-    paths: ['tools/deploy/cohost.py', 'tools/deploy/test_cohost.py', 'docs/design/cohost-deploy-and-domain-join.md', '.github/workflows/host-deploy.yml']
+    paths: ['tools/deploy/**', 'docs/deployment/agent-host.md', 'docs/design/cohost-deploy-and-domain-join.md', '.github/workflows/host-deploy.yml']
   push:
     branches: [main]
-    paths: ['tools/deploy/cohost.py', 'tools/deploy/test_cohost.py', 'docs/design/cohost-deploy-and-domain-join.md', '.github/workflows/host-deploy.yml']
+    paths: ['tools/deploy/**', 'docs/deployment/agent-host.md', 'docs/design/cohost-deploy-and-domain-join.md', '.github/workflows/host-deploy.yml']
 
 permissions:
   contents: read
@@ -21,4 +21,4 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m unittest discover -s tools/deploy -p test_cohost.py -v
+      - run: python -m unittest discover -s tools/deploy -p 'test_*.py' -v

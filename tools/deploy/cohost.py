@@ -46,6 +46,13 @@ def quoted(value):
     return '"' + value.replace('\\', '\\\\').replace('"', '\\"').replace('%', '%%') + '"'
 
 
+def unit_path(value):
+    """A single native path directive, not an ExecStart argument list."""
+    if not Path(value).is_absolute() or value != value.strip() or '\\' in value or any(ord(c)<32 or ord(c)==127 for c in value):
+        raise ValueError('Use a literal absolute unit path without controls or backslashes')
+    return value.replace('%','%%')
+
+
 def publish(path, payload, mode):
     """Publish complete bytes without overwriting a competing destination."""
     descriptor, name = tempfile.mkstemp(prefix='.' + path.name + '.', dir=path.parent)
@@ -155,7 +162,7 @@ def fresh_unit(options, target):
                    'SUDO_CODE_CONFIG_HOME': str(options.config), 'RUST_LOG': 'info'}
     return ('[Unit]\nDescription=Shared cohost runtime\nAfter=network-online.target\n'
             'Wants=network-online.target\n\n[Service]\nType=simple\n'
-            'WorkingDirectory=' + quoted(str(options.root)) + '\n' +
+            'WorkingDirectory=' + unit_path(str(options.root)) + '\n' +
             ''.join('Environment=' + quoted(k + '=' + v) + '\n' for k, v in environment.items()) +
             'ExecStart=' + quoted(str(target)) + ' --bind-addr ' + quoted(options.bind) +
             '\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=default.target\n').encode()
