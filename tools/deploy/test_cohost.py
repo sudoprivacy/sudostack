@@ -46,7 +46,7 @@ if 'show' in args:
  print('\\n'.join(k+'='+str(v) for k,v in info.items()))
 elif 'enable' in args:
  line=next(x for x in unit.read_text().splitlines() if x.startswith('ExecStart='))
- settings=dict(shlex.split(x.split('=',1)[1])[0].split('=',1) for x in unit.read_text().splitlines() if x.startswith('Environment='))
+ settings=dict(shlex.split(x.split('=',1)[1])[0].replace('%%','%').split('=',1) for x in unit.read_text().splitlines() if x.startswith('Environment='))
  child=subprocess.Popen(shlex.split(line.split('=',1)[1]),env={**os.environ,**settings},stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
  state.write_text(json.dumps({'LoadState':'loaded','MainPID':str(child.pid),'ActiveState':'active','FragmentPath':str(unit)}))
 ''')
