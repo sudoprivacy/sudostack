@@ -19,7 +19,7 @@ def create_app():
     def analyze():
         try:
             data = request.get_json()
-            allowed = {"text", "language", "entities", "score_threshold"}
+            allowed = {"text", "language", "entities", "score_threshold", "business_policy"}
             if not isinstance(data, dict) or set(data) - allowed:
                 return jsonify(error="Unsupported analyzer request"), 400
             text, language = data.get("text"), data.get("language")
@@ -30,10 +30,18 @@ def create_app():
                 return jsonify(error="Invalid score threshold"), 400
             if entities is not None and (not isinstance(entities, list) or not entities or any(not isinstance(item, str) or not item for item in entities)):
                 return jsonify(error="Invalid entity selection"), 400
+            live_policy = None
+            if "business_policy" in data:
+                try:
+                    live_policy = BusinessPolicy(data["business_policy"])
+                except ValueError:
+                    return jsonify(error="Invalid runtime business policy"), 400
             results = server.engine.analyze(text=text, language=language, entities=entities, score_threshold=threshold)
             findings = [{"entity_type": item.entity_type, "start": item.start, "end": item.end, "score": item.score} for item in results]
             # Protection is deployment policy: callers cannot remove it with an
             # entity filter, an allow-list or a high statistical score threshold.
+            if live_policy is not None:
+                findings = live_policy.apply(text, findings)
             return jsonify(policy.apply(text, findings))
         except Exception:
             # Provider exceptions can contain submitted text. Neither HTTP errors

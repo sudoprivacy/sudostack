@@ -1,0 +1,59 @@
+name: egress-policy
+
+on:
+  pull_request:
+    paths: ['packages/egress-policy/**', '.github/workflows/egress-policy.yml']
+  push:
+    branches: [main]
+    tags: ['egress-policy-v*']
+    paths: ['packages/egress-policy/**', '.github/workflows/egress-policy.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  package-checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/egress-policy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.21.0'
+      - run: npm test
+      - run: npm pack
+      - run: sha256sum sudo-egress-policy-*.tgz > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: egress-policy-package
+          path: |
+            packages/egress-policy/sudo-egress-policy-*.tgz
+            packages/egress-policy/SHA256SUMS.txt
+  publish:
+    if: startsWith(github.ref, 'refs/tags/egress-policy-v')
+    needs: package-checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify immutable version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          VERSION=$(node -p 'require("./packages/egress-policy/package.json").version')
+          test "$RELEASE_TAG" = "egress-policy-v$VERSION"
+      - uses: actions/download-artifact@v4
+        with:
+          name: egress-policy-package
+          path: release
+      - name: Publish checked package
+        working-directory: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          sha256sum -c SHA256SUMS.txt
+          gh release create "$RELEASE_TAG" sudo-egress-policy-*.tgz SHA256SUMS.txt --verify-tag --title "$RELEASE_TAG" --notes 'Shared egress policy package built by passing package checks.'
