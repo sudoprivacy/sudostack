@@ -37,6 +37,8 @@ Current Kubernetes delivery uses projected Secrets, including short-lived leaf k
 
 ## Checks
 
+Discovery authenticates the observed running Pod even if its release differs from the configured target. It renews only that Pod's owner-bound credential, preserves its model configuration and never creates missing placement or caches an older build for execution. Concurrent discovery shares the same authentication; Pod replacement, an upgrade lock or controller closure rejects the result. Starting sessions still uses `resolve`, which requires the configured release.
+
 ```sh
 npm ci --ignore-scripts
 npm run typecheck
