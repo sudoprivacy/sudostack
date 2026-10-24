@@ -1,6 +1,6 @@
 {
   "name": "@sudo/user-runtime",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "Shared owner Pod lifecycle, Kubernetes resource operations and verified runtime releases.",
   "type": "module",
   "engines": {
@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "@nexus-ai-fs/vfs-client": "https://sudowork-runtime-1309794936.cos.accelerate.myqcloud.com/nexus-vfs/clients/node/0.7.3/nexus-ai-fs-vfs-client-0.7.3.tgz",
+    "@sudo/egress-policy": "https://github.com/sudoprivacy/sudostack/releases/download/egress-policy-v0.1.0/sudo-egress-policy-0.1.0.tgz",
     "zod": "4.3.6"
   },
   "devDependencies": {

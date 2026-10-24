@@ -1,3 +1,6 @@
 export * from './userPodService.js'
 export * from './agentRuntimeHomes.js'
 export * from './workAdmission.js'
+export * from './modelConfiguration.js'
+export * from './egressPolicyFile.js'
+export * from './egressAnalyzerTransport.js'
