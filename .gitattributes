@@ -16,5 +16,4 @@ contracts/generate.mjs text eol=lf
 tools/contracts/*.mjs text eol=lf
 README.md text eol=lf
 docs/sudo-cloud-plan.html text eol=lf
-tools/deploy/cohost.py text eol=lf
-tools/deploy/test_cohost.py text eol=lf
+tools/deploy/*.py text eol=lf
