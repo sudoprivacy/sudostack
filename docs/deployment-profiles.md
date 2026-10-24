@@ -6,6 +6,11 @@ records belong in each deployment repository. These assembly choices are
 currently documented decisions; a shared deployment validator does not yet
 enforce them.
 
+The shared [Agent-host placement action](deployment/agent-host.md) now supplies
+verified Linux user-service executable placement. Cross-domain joining and
+product-runtime qualification follow the [source design](design/cohost-deploy-and-domain-join.md);
+process activation alone does not establish those properties.
+
 ## Component responsibilities
 
 - **Moss** provides human login, organizations, catalog and model preferences,

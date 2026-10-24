@@ -1,0 +1,24 @@
+name: Shared host deploy
+
+on:
+  pull_request:
+    paths: ['tools/deploy/cohost.py', 'tools/deploy/test_cohost.py', 'docs/design/cohost-deploy-and-domain-join.md', '.github/workflows/host-deploy.yml']
+  push:
+    branches: [main]
+    paths: ['tools/deploy/cohost.py', 'tools/deploy/test_cohost.py', 'docs/design/cohost-deploy-and-domain-join.md', '.github/workflows/host-deploy.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  process-placement:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s tools/deploy -p test_cohost.py -v
