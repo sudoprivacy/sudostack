@@ -3,8 +3,9 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const source = await readFile(resolve(root, 'docs/sudo-cloud-plan.md'), 'utf8');
-const template = await readFile(resolve(root, 'docs/templates/sudo-cloud-plan.html'), 'utf8');
+const readText = async (path) => (await readFile(path, 'utf8')).replaceAll('\r\n', '\n');
+const source = await readText(resolve(root, 'docs/sudo-cloud-plan.md'));
+const template = await readText(resolve(root, 'docs/templates/sudo-cloud-plan.html'));
 const marker = /<!-- cloud-plan:first-diagram -->\s*```mermaid\n([\s\S]*?)\n```\s*<!-- \/cloud-plan:first-diagram -->/g;
 const matches = [...source.matchAll(marker)];
 if (matches.length !== 1) throw new Error('The plan must contain exactly one marked architecture diagram');
@@ -24,7 +25,7 @@ for (const [name, content] of Object.entries(substitutions)) {
 if (/\{\{(?:BEFORE_DATA|FIRST_DIAGRAM|AFTER_DATA)\}\}/.test(output)) throw new Error('Unresolved plan placeholder');
 const destination = resolve(root, 'docs/sudo-cloud-plan.html');
 if (process.argv.includes('--check')) {
-  if (await readFile(destination, 'utf8') !== output) {
+  if (await readText(destination) !== output) {
     throw new Error('Cloud plan HTML is stale; run node tools/docs/build-cloud-plan.mjs');
   }
   console.log('Cloud plan HTML matches its Markdown source and template');
