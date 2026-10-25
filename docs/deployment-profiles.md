@@ -12,7 +12,13 @@ Enterprise is the enterprise-owned product; Moss is its server and Agent
 management component. `sudoprivate` and `sudoedge` remain engineering placement
 identifiers. A standalone CLI in the enterprise network can act as a client
 of that deployment under an explicit identity and delegation; its network
-location alone establishes neither authority nor a management level.
+location alone establishes neither authority nor a management level. The former
+Atlas product name is retired; Cloud, Private and Edge identify deployment
+placement rather than separate control or identity implementations.
+
+The root README is retained as part of the immutable contracts-package
+baseline. Current product naming and deployment decisions are maintained here;
+updating them does not change the historical package payload.
 
 The shared [Agent-host placement action](deployment/agent-host.md) now supplies
 verified Linux user-service executable placement. Cross-domain joining and

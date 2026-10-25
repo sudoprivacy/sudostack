@@ -138,28 +138,30 @@ flowchart LR
 反过来放会出两个问题：**依赖成环**（sudostack 装配 Base product，Base product 又依赖 sudostack），
 以及**规则和执行点不在同一个仓库** —— 那样 `build.rs` 这类编译期强制根本没法用。
 
-## 产品与部署模型
+## 两层产品模型
 
 | 层 | 成员 |
 |---|---|
-| **企业产品** | **Sudo Enterprise** —— Moss、Router、Work 企业员工版和 RSI；产品定义以[Enterprise 规划](https://s.shareone.vip/s/sudo-enterprise-chan-pin-gui-hua)为准 |
-| **部署形态**（工程标识，同源） | sudocloud（我们托管 · 公有云）· sudoprivate（客户自建 · 内网）· sudoedge（盒子/离线） |
+| **Platform** | **Sudo Atlas** —— 服务端平台本身（moss 控制平面 + sudocode 引擎 + nexus 身份/状态 + SudoRouter） |
+| **Mega-product**（面向客户的**托管形态**，同源） | Sudo Cloud（我们托管 · 公有云）· Sudo Private（客户自建 · 内网）· SudoEdge（盒子/离线） |
 | **Base product**（底层 repo，被复用） | sudocode · nexus(+nexus-vfs, `nexi-lab`) · nova-gateway(=SudoRouter) · moss(中控) · hydra(编排/调度) · shareone · ai-dev-browser · password-agent |
 | **UI** | SudoWork（纯 UI，repo `sudowork`，Harness=sudocode） |
 | **Agent 集** | SudoGenius（领域包：本体/规则/资产/eval） |
 
 ### 命名：两个轴，别压成一个
 
-**Moss 是企业服务端与统一 Agent 管理组件，Enterprise 是企业产品。**「跑在谁的机器上」是部署轴；原 Atlas 产品名称停用，仓库和契约中的部署标识继续作为工程接口：
+**Sudo Atlas 命名的是「服务端平台」，不是某个部署位置。**「跑在谁的机器上」是另一个轴，也就是面向客户的那组名字：
 
-| 工程形态 | 谁托管 | 服务端放置 |
+| 名字 | 谁托管 | 有 Atlas 吗 |
 |---|---|---|
-| **Sudo Cloud** | 我们（公有云） | Hosted Moss 与所选 cohost |
-| **Sudo Private** | 客户（自己的网络） | 企业自有 Moss 与 cohost |
-| **SudoEdge** | 随盒部署 | 盒内 Moss 与 cohost |
-| **Sudo Local** | 本机用户 | scode 引擎与内嵌 Kernel；共享 Nexus 服务按需准备 |
+| **Sudo Cloud** | 我们（公有云） | 有 |
+| **Sudo Private** | 客户（自己的网络） | 有 |
+| **SudoEdge** | 随我们做的盒子出厂 | 有 |
+| **Sudo Local** | 没人 —— SudoWork ＋ 内嵌 sudocode 单机跑 | **没有** |
 
-SudoWork 和独立 CLI 可以作为企业内网工作端访问 Box。完整的产品纳管级别由实际身份、委托和执行边界确定；装有客户端或成功加入 A2A 本身不等于完成企业托管。实现分工与验收入口见[部署形态](docs/deployment-profiles.md)。
+**`Sudo Local` 就是这两个轴不能压成一个的原因**：它不是「Atlas 部署在本地」，而是**根本没有 Atlas**。所以 Atlas 命名平台，cloud / private / edge / local 命名托管形态。
+
+用户视角只会看到「本地 / 云端」；`Atlas` 是 IT 采购看的 SKU 名，终端用户不该看到。
 
 Mega-product 由 Base product 装配复用；三种托管形态共享本 repo 的 submodule 引用。
 
