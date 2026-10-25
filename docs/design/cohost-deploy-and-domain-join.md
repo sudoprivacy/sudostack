@@ -22,15 +22,112 @@ authentication protocol, mailbox implementation or credential issuer.
 | Appliance service/GPU/network selection and deployment record | sudoedge |
 | Cloud tenant/allocation/Kubernetes selection | sudocloud / existing Moss adapter |
 
-The accepted runtime is `SudoWork -> Moss -> local ManagedAgentService ->
+The DGX acceptance runtime is `SudoWork -> Moss -> local ManagedAgentService ->
 in-process scode -> local Nexus`. Its collaboration writes must pass that
 local Kernel's authorization and configured content gate. Directly connecting
 an unrelated CLI to the remote broker would qualify a different path.
+
+Runtime placement and process ownership are defined in
+[deployment profiles](../deployment-profiles.md). Moss orchestrates the managed
+product's owner, Agent and Session; Nexus ManagedAgentService and the scode
+adapter create its execution. Standalone scode owns its own process and Session.
+SudoCloud is a placement/control option rather than a prerequisite for local
+execution or authenticated Agent collaboration.
 
 `deploy` assembles, inspects, stages, activates and verifies a runtime and its
 connections. `spawn` creates an execution under a resolved Agent and owner.
 `move` transfers durable state with writer fencing. Deploy does not implicitly
 spawn another identity or implement move by copying a directory.
+
+## Runtime preparation
+
+These are shared assembly decisions. The unified bootstrap entry, extraction
+from the Desktop installer and bounded device-delegation executor remain
+implementation work (`enforced_by: none`). Existing placement, checksum and
+original-product tests qualify their own actions separately.
+
+The delivery unit is a source/digest-pinned release composition plus a private
+device profile. It selects the actual platform, runtime form, native component
+compatibility, persistent roots and lifecycle owner. Online download and an
+offline package provide the same verified component bytes and action entry;
+the artifact's trusted digest comes from the approved composition. A deployment
+receipt binds that composition to the observed running executable and product
+readiness.
+
+SudoWork's existing Desktop `RuntimeInstaller` and `DynamicNexusVfsService`
+already implement the user experience: inspect installed components, use a
+bundled archive or download a pinned one, verify it and prepare the runtime.
+Reuse that experience and the component release metadata. The reusable
+composition/fetch/selection actions belong here; application progress and
+Electron integration remain in SudoWork. Native service identity, credential
+formats and Kernel lifecycle remain in nexus-vfs/sudocode. An extraction shares
+the owner implementation or generated contract, rather than leaving copied
+downloaders in SudoWork, Moss, CLI and Edge.
+
+The existing shared `tools/deploy/artifacts.py` already verifies cached and
+downloaded assets before atomic publication. Linux executable placement and
+existing-product transitions already have their own actions. A common entry
+composes those actions with native bootstrap/identity/readiness operations;
+it does not replace them with a shell script that independently guesses state.
+
+```mermaid
+flowchart TD
+  U["User or delegated operator"] --> P["Product entry: Edge, Cloud, Desktop or CLI"]
+  P --> S["Shared release and deploy actions: sudostack"]
+  S --> I["Inspect actual profile, owner and installed runtime"]
+  I --> C["Reuse compatible runtime or stage verified missing components"]
+  C --> L["Native lifecycle owner: attach or controlled activation"]
+  L --> R["Authenticated original-product readiness"]
+  R --> J["Explicit domain enrollment and collaboration grant"]
+  J --> E["Real delivery, reader commit and recovery evidence"]
+```
+
+For standalone scode, ordinary local execution uses the already linked
+in-process Kernel. Selecting persistent or network collaboration can prepare
+a compatible local service or attach to an existing one. For cohost, the
+selected executable already contains Nexus and the scode engine; starting an
+Agent creates a session task in that daemon. A browser profile additionally
+prepares the existing Moss/WebUI application services. GPU/model provisioning
+is an Edge placement concern, independent from obtaining an Agent identity.
+
+The lifecycle owner records the runtime and state roots it controls. An
+existing listener is inspected and authenticated before reuse. A conflicting
+listener or incompatible state produces an actionable refusal; killing an
+unknown process by port is not the shared adoption procedure. The DGX's current
+Node/cohost, original Agent and model state remain the deployment target.
+
+## Authority at each operation
+
+These assembly boundaries guide the product entry. A single machine-enforced
+deploy delegation is still pending (`enforced_by: none`); today's SSH account
+permissions remain the actual host authorization boundary.
+
+| Operation | Authenticated principal and enforcement owner |
+| --- | --- |
+| Prepare or switch a device runtime | Device owner's OS account or explicitly delegated installer; device-side executor checks the approved release/plan and allowed effects |
+| Start or resume a managed Session | Moss-authenticated human/owner, delegated session credential, and native ManagedAgentService owner binding |
+| Run standalone scode | Invoking OS user and the CLI's actual local Session; network admission additionally requires the selected native Agent credential |
+| Join a collaboration space or send/receive | Actual Agent mTLS principal, current domain trust/revocation and explicit participant grant, enforced by Nexus |
+
+SSH can carry the initial package and invoke the same product entry. Once
+enrolled, an authenticated device-control channel can request that entry too.
+Both transports need the same local authorization decision. Receiving an A2A
+message proves its sender; executing a deploy requires separate delegation.
+The planned delegation binds the operator, device, deployment profile, approved
+release/plan, bounded actions/state roots, expiry and revocation. Its effective
+OS permissions must match that scope; a checked plan inside a broadly
+privileged SSH account alone does not establish confinement. Reuse the native
+authority and credential machinery rather than minting another installer CA.
+
+Cross-domain Agent authentication uses native Nexus mTLS under the actual
+scode Agent's principal in either host form. The receiving Kernel authorizes
+that principal; a shared Node credential cannot stand in for it. Moss can
+authenticate a human, obtain native delegated credentials and request enrollment
+under that owner's authority.
+Two Moss servers do not have to trust one another for their Agents to speak,
+and a standalone CLI can use the same native Agent identity and grant. Account
+SSO, model-provider access and machine-administration permission retain their
+own scopes.
 
 ## Existing source, separately from the proposal
 

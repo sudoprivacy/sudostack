@@ -15,7 +15,10 @@ process activation alone does not establish those properties.
 
 - **Moss** provides human login, organizations, catalog and model preferences,
   session APIs, and the browser-facing HTTP/WebSocket gateway. It requests
-  execution from Nexus and manages placement when Kubernetes is used.
+  execution from Nexus and resolves the Agent's durable allocation when
+  Kubernetes is used. Kubernetes places the Pod; ManagedAgentService creates
+  the actual execution. A standalone CLI owns its local execution without
+  requiring Moss or a Cloud account.
 - **ManagedAgentService** is a Nexus service. In `nexusd-cohost`, its runtime
   adapter creates scode session tasks in the daemon process. A cohost daemon
   is started by systemd or a container orchestrator; spawning an agent session
@@ -37,10 +40,11 @@ process activation alone does not establish those properties.
 
 | Form | Placement and control | Execution |
 |---|---|---|
-| Sudo Cloud | Our hosted Atlas; Moss and cluster control plane, per-user sandbox placement | Per-user cohost; cluster ManagedAgentService routes to the owning runtime |
+| Sudo Cloud | Our hosted Atlas; Moss and cluster control plane, per-user sandbox placement | Moss connects with owner-delegated identity directly to the selected allocation's cohost ManagedAgentService |
 | Sudo Private | The same Atlas services operated in the customer's network; local identity integration and customer deployment policy | Cohost placement follows the customer's trust boundaries |
 | SudoEdge | Atlas on the appliance; local Moss serves the existing WebUI with one organization; no cloud Kubernetes scheduler is required | Local cohost exposes ManagedAgentService directly; no additional local cluster daemon is required just to run one agent |
 | Sudo Local | Desktop SudoWork with its local host adapter; no Atlas requirement | Standalone/local sudocode |
+| Standalone scode CLI | The invoking user and CLI own the local process and Session | The engine uses its in-process Nexus Kernel; collaboration attaches to an explicitly selected identity and service |
 
 The Edge browser profile retains Moss to reuse the supported login, history,
 workspace and session APIs while offline, and to keep the three Atlas forms
@@ -53,10 +57,25 @@ Cloud and Edge need different process placement, while sharing service
 contracts:
 
 ```text
-Cloud: WebUI -> Moss -> cluster ManagedAgentService -> user cohost -> scode task
+Cloud: WebUI -> Moss -> selected user cohost ManagedAgentService -> scode task
 Edge:  WebUI -> local Moss -> local cohost ManagedAgentService -> scode task
+CLI:   terminal/ACP host -> local scode engine -> in-process Nexus Kernel
 Model: scode task -> session Nexus model mount -> Router -> GPUStack or cloud LLM
 ```
+
+Cloud's cluster supplies identity, secrets and shared control services. It is
+separate from the direct owner-authenticated session connection above. A Cloud
+controller can operate an Edge placement when the device owner delegates that
+operation; choosing Cloud control does not relocate the Edge Agent or its data.
+
+The standalone Kernel is already implemented in sudocode's
+`rust/crates/engine-host/src/local_kernel.rs`. It needs no installed Nexus
+daemon for local file execution. `nexusd-cohost` already links the Kernel and
+scode execution into one binary. Runtime preparation therefore resolves the
+selected profile before deciding whether a daemon must be installed or started.
+The shared [bootstrap and authority design](design/cohost-deploy-and-domain-join.md#runtime-preparation)
+defines that product integration; the unified bootstrap entry is not yet
+enforced (`enforced_by: none`).
 
 The Edge Router is a local new-api deployment. Its local channel reaches
 GPUStack/vLLM; a cloud channel reaches the hosted SudoRouter when credentials
