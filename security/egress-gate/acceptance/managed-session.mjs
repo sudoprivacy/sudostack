@@ -35,10 +35,12 @@ async function call(client, method, params) {
   return payload.result ?? payload;
 }
 const secret = 'sk' + '-proj-AbCdEfGhIjKlMnOpQrStUvWxYz012345';
-const input = ['redact', 'deny', 'disabled-before', 'disabled-after', 'attached-http', 'standalone-http'].includes(scenario)
+const input = ['redact', 'deny', 'local-control', 'disabled-before', 'disabled-after', 'attached-http', 'standalone-http'].includes(scenario)
   ? `Synthetic credential ${secret}. Reply MANAGED_GATE_OK.` : 'Reply MANAGED_GATE_OK.';
 let started;
 let operator;
+const modelName = process.env.PROVIDER_ROUTES === '1'
+  ? (scenario === 'local-control' ? 'local:managed-fixture' : 'cloud:managed-fixture') : 'managed-fixture';
 async function cliTurn() {
   const directory = path.join(work, 'cli-' + scenario);
   const home = path.join(directory, 'home');
@@ -88,7 +90,10 @@ async function cliTurn() {
   return { scenario, passed: true, standalone_cli: true, authenticated_node: scenario !== 'standalone-http', model_via_nexus: !scenario.endsWith('-http'), caller_received_error: expectedReject, visible_answer: visible, local_original_retained: retained, model: 'managed-fixture' };
 }
 try {
-  if (process.env.GATE_REUSE_MOUNT !== '1') await rpc(admin, 'Setattr', {
+  if (process.env.GATE_REUSE_MOUNT !== '1' && process.env.PROVIDER_ROUTES === '1') {
+    const { mounts } = JSON.parse(fs.readFileSync(path.join(work, 'config/backend-config.json'), 'utf8'));
+    for (const mount of mounts) await rpc(admin, 'Setattr', { ...mount, entry_type: 2, zone_id: 'root' });
+  } else if (process.env.GATE_REUSE_MOUNT !== '1') await rpc(admin, 'Setattr', {
     path: '/cloud-model', entry_type: 2, backend_type: 'anthropic', backend_name: 'managed-acceptance',
     zone_id: 'root', backend_params: {
       base_url: modelUrl, api_key: 'synthetic-only', blob_root: `${work}/model-cache`,
@@ -112,7 +117,7 @@ try {
     grpc.credentials.createSsl(Buffer.from(delegated.ca_pem), Buffer.from(delegated.agent_key_pem), Buffer.from(delegated.agent_cert_pem)), options);
   clients.push(operator);
   started = await call(operator, 'managed_agent.start_session_v1', {
-    agent_id: `managed-egress-${scenario}`, model: 'managed-fixture', owner_id: 'root', zone_id: 'root',
+    agent_id: `managed-egress-${scenario}`, model: modelName, owner_id: 'root', zone_id: 'root',
   });
   fs.writeFileSync(`${work}/started.json`, JSON.stringify(started, null, 2));
   const endpoint = started.session_endpoint;
@@ -150,6 +155,14 @@ try {
   if (initialize.error) throw new Error('Initialize failed');
   const opened = await request('new', 'session/new', { cwd: '/', mcpServers: [] });
   if (opened.error) throw new Error('Session creation failed');
+  let unknownAliasRefused;
+  if (process.env.PROVIDER_ROUTES === '1' && scenario === 'redact') {
+    const unknown = await request('unknown-model', 'session/set_model', {
+      sessionId: opened.result.sessionId, modelId: 'local:unconfigured-fixture',
+    });
+    if (!unknown.error) throw new Error('An undeclared alias silently selected a provider');
+    unknownAliasRefused = true;
+  }
   const result = await request('turn', 'session/prompt', {
     sessionId: opened.result.sessionId, prompt: [{ type: 'text', text: input }],
   });
@@ -167,7 +180,8 @@ try {
   if (!history.data?.includes(Buffer.from(input))) throw new Error('Original local input was not retained');
   report = { scenario, passed: true, managed_session: true, authenticated_controller: true,
     caller_received_error: rejected, visible_answer: visible, local_original_retained: true,
-    error: result.error ?? null, model: 'managed-fixture' };
+    error: result.error ?? null, model: modelName,
+    ...(unknownAliasRefused ? { unknown_alias_refused: true } : {}) };
   }
   if (process.env.LIVE_POLICY === '1') {
     const desired = JSON.parse(fs.readFileSync(`${work}/policy.json`, 'utf8'));

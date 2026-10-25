@@ -41,7 +41,8 @@ def main():
             if self.path == '/analyze':
                 response, content_type = b'[{"entity_type":"PERSON","start":-1,"end":99999999,"score":1}]', 'application/json'
             else:
-                captures.append({'scenario': self.server.scenario, 'body': json.loads(body)})
+                captures.append({'scenario': self.server.scenario, 'body': json.loads(body),
+                                 'credential': self.headers.get('x-api-key') or self.headers.get('Authorization')})
                 message = {'id': 'managed-fixture', 'type': 'message', 'role': 'assistant', 'model': 'managed-fixture', 'content': [], 'stop_reason': None, 'stop_sequence': None, 'usage': {'input_tokens': 10, 'output_tokens': 0}}
                 events = [('message_start', {'type': 'message_start', 'message': message}),
                           ('content_block_start', {'type': 'content_block_start', 'index': 0, 'content_block': {'type': 'text', 'text': ''}}),
@@ -67,7 +68,12 @@ def main():
     rows = []
     live_policy = os.environ.get('LIVE_POLICY') == '1'
     direct_process = os.environ.get('GATE_PROCESS_MODE') == '1'
+    provider_routes = os.environ.get('PROVIDER_ROUTES') == '1'
+    if provider_routes and (not live_policy or os.environ.get('SCODE_BIN')):
+        raise ValueError('Provider routes require the managed live-policy acceptance')
     scenarios = ['disabled-before', 'redact', 'deny', 'outage', 'malformed', 'disabled-after'] if live_policy else ['clean', 'redact', 'deny', 'outage', 'malformed']
+    if provider_routes:
+        scenarios.insert(2, 'local-control')
     if live_policy and os.environ.get('SCODE_BIN'):
         scenarios += ['attached-http', 'standalone-http']
     daemon_pid = None
@@ -92,7 +98,19 @@ def main():
             (work / 'drive.mjs').write_bytes((HERE / 'managed-session.mjs').read_bytes())
             config = {'auth_modes': {'api-key': {'anthropic': {'baseUrl': 'nexus:///cloud-model'}}}, 'models': {
                 'managed-fixture': {'alias': 'managed-fixture', 'name': 'Synthetic acceptance', 'input': ['text'], 'providers': {'api-key': {'provider': 'anthropic', 'model': 'managed-fixture'}}}}}
-            (work / 'config/sudocode.json').write_text(json.dumps(config))
+            if provider_routes:
+                builder = pathlib.Path(os.environ['SHARED_MODEL_BUILDER']).resolve(strict=True).as_uri()
+                source = '''const {buildCohostModelConfiguration}=await import(process.argv[1]);
+const routes=['local','cloud'].map(id=>({id,mountPath:id==='local'?'/model':'/cloud-model',
+baseUrl:process.argv[2],apiKey:id+'-synthetic-only',blobRoot:process.argv[3],
+models:[{alias:id+':managed-fixture',model:'managed-fixture',api:'anthropic-messages'}]}));
+process.stdout.write(JSON.stringify(buildCohostModelConfiguration(routes)));'''
+                configuration = json.loads(subprocess.check_output([os.environ.get('NODE', 'node'), '--input-type=module', '-e', source,
+                    builder, 'http://127.0.0.1:' + str(server.server_port), str(work / 'model-cache')], text=True))
+                for name in ['sudocode.json', 'backend-config.json']:
+                    (work / 'config' / name).write_text(configuration[name])
+            else:
+                (work / 'config/sudocode.json').write_text(json.dumps(config))
             if not is_reuse:
                 port = free_port()
                 unit = 'dlp-managed-' + secrets.token_hex(10) + '-' + scenario
@@ -147,15 +165,19 @@ def main():
             if result.returncode:
                 raise RuntimeError('Managed session failed; inspect ' + str(work / 'drive.log'))
             hits = [item for item in captures if item['scenario'] == scenario]
-            assert len(hits) == (1 if scenario in ['clean', 'redact', 'disabled-before', 'disabled-after', 'attached-http', 'standalone-http'] else 0), 'Unexpected upstream request count'
+            assert len(hits) == (1 if scenario in ['clean', 'redact', 'local-control', 'disabled-before', 'disabled-after', 'attached-http', 'standalone-http'] else 0), 'Unexpected upstream request count'
             if hits:
                 encoded = json.dumps(hits)
-                if scenario.startswith('disabled-') or scenario.endswith('-http'):
+                if scenario.startswith('disabled-') or scenario.endswith('-http') or scenario == 'local-control':
                     assert 'AbCdEfGhIjKlMnOpQrStUvWxYz012345' in encoded, 'Disabled gate changed the original'
                 else:
                     assert 'AbCdEfGhIjKlMnOpQrStUvWxYz012345' not in encoded, 'Credential escaped gate'
                 if scenario == 'redact':
                     assert 'REDACTED' in encoded, 'Redaction did not reach upstream'
+                if provider_routes:
+                    route = 'local' if scenario == 'local-control' else 'cloud'
+                    assert hits[0]['credential'] in [route + '-synthetic-only', 'Bearer ' + route + '-synthetic-only'], 'Model reached the wrong provider credential'
+                    assert hits[0]['body']['model'] == 'managed-fixture', 'Provider qualification escaped into the upstream model ID'
             row = json.loads((work / 'client.json').read_text())
             row['upstream_requests'] = len(hits)
             if live_policy:
@@ -174,6 +196,8 @@ def main():
                     subprocess.run(['systemctl', '--user', 'stop', unit], check=True)
         report = {'passed': True, 'scope': 'managed_session_content_gate', 'upstream': 'synthetic_loopback',
                   'daemon_sha256': hashlib.sha256(binary.read_bytes()).hexdigest(), 'live_policy': live_policy, 'same_daemon': live_policy, 'cases': rows}
+        if provider_routes:
+            report['provider_qualified_routes'] = True
         if os.environ.get('SCODE_BIN'):
             report['scope'] = 'nexus_connected_cli_content_gate'
             report['cli_sha256'] = hashlib.sha256(pathlib.Path(os.environ['SCODE_BIN']).read_bytes()).hexdigest()

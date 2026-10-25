@@ -111,6 +111,18 @@ record exact source and executable digests; they prove native session
 enforcement, while production rollout and real model quality require separate
 deployment acceptance. Keep generated TLS material outside Git.
 
+With `PROVIDER_ROUTES=1`, also set `SHARED_MODEL_BUILDER` to the built SDK's
+`dist/modelConfiguration.js`. The same runner uses
+`buildCohostModelConfiguration` to declare independent `/model` and
+`/cloud-model` accounts with different credentials and provider-qualified
+aliases for the same upstream model ID. A local control retains its original
+prompt while the cloud case is redacted. An undeclared alias must fail before
+the original cloud selection continues. The
+[Linux ARM64 provider-route receipt](acceptance/evidence/managed-provider-routes-20261025-linux-arm64.json)
+records seven cases with upstream counts `1,1,1,0,0,0,1`, credential selection,
+raw upstream model IDs and native policy receipts. This is a synthetic model
+control, not a GPU or production cloud-model acceptance.
+
 Set `SCODE_BIN` to a caller-supplied CLI executable to run the same matrix with
 real `scode --print` processes. The runner mints each CLI's node credential,
 uses a private home and node record, and checks the local transcript plus the
