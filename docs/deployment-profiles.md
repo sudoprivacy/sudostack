@@ -10,8 +10,9 @@ The product vocabulary follows [Sudo Enterprise planning](https://s.shareone.vip
 and the [product introduction](https://s.shareone.vip/md/sudo-chan-pin-yu-jie-jue-fang-an-jie-shao).
 Enterprise is the enterprise-owned product; Moss is its server and Agent
 management component. `sudoprivate` and `sudoedge` remain engineering placement
-identifiers. A standalone CLI in the enterprise network is an authorized client
-of that deployment; its network location alone establishes no management level.
+identifiers. A standalone CLI in the enterprise network can act as a client
+of that deployment under an explicit identity and delegation; its network
+location alone establishes neither authority nor a management level.
 
 The shared [Agent-host placement action](deployment/agent-host.md) now supplies
 verified Linux user-service executable placement. Cross-domain joining and
