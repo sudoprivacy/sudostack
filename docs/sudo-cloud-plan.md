@@ -114,13 +114,13 @@ flowchart TB
 
 **盒子部署约定：** WebUI + 本地 Moss + cohost + new-api + GPUStack；无需 Electron，也不为本地会话额外部署 nexusd-cluster。Moss 提供离线可用的登录、历史、工作区与会话 API；ManagedAgentService 在已有 cohost daemon 内创建 scode 会话任务。`sudoedge` 统一负责设备运维，默认 online；`sudo sudoedge connectivity local` 关闭公网出口，`online` 恢复。`/model` 由 sudoedge 在 Nexus 启动后通过 mTLS 配置，Router 重建凭据后同步刷新。
 
-**云与盒子使用 cohost 作为目标运行时。** 云端按用户隔离 daemon，盒子按组织部署 daemon；同一 daemon 内承载多个 scode 会话。上图表示目标放置，已部署形态及差距见 R1、G2 和本次现场核验。cohost 二进制已发布、机器上已有该二进制、真实用户会话已由它承载，是三个分别需要证据的状态。
+**云与盒子共用 cohost 运行机制。** 云端按 owner 隔离运行环境，盒子按组织的信任边界部署 daemon；同一 daemon 内承载多个 scode 会话。放置与启动职责统一见 [共享部署决策](https://github.com/sudoprivacy/sudostack/blob/main/docs/deployment-profiles.md)，本页记录 Cloud 接入与验收。二进制已发布、机器已有产物、真实会话由它承载分别核验；当前状态统一见 §9。
 
 **云端会话控制直达用户 cohost。** 当前链路为 `Moss → 用户 allocation Pod 的 nexusd-cohost（ManagedAgentService）→ 进程内 scode 会话任务`。Moss 认证调用者，解析持久的 Agent／allocation 绑定并编排 k3s 资源；控制面 nexusd-cluster 提供短期身份签发、secrets 与跨域服务。控制与事件流由 Moss 使用 owner 委托身份直接连接对应 Pod，cluster 不充当这条会话链路的中转。
 
-**会话契约必须完整。** 逐跳接入要保留消息发送、流式回复、工具事件、权限审批、取消和恢复，并明确 cluster 与 cohost 的 PCB 归属和会话定位。信箱消息与浏览器会话事件需要协议适配；已有外部 spawn 的 fd 隧道继续服务当前部署，迁移验收后再切换入口。
+**会话契约必须完整。** 逐跳接入保留消息发送、流式回复、工具事件、权限审批、取消和恢复，明确 cluster 与 cohost 的 PCB 归属和会话定位。信箱消息与浏览器会话事件通过协议适配；外部 spawn 兼容路径保留 fd 隧道契约。Cloud 的当前 cohost 入口与真实验收见 §3、§9，旧外部 scode 部署记录见附录。
 
-**模型调用经过 Nexus。** 会话由上述控制链路建立；推理路径为 `cohost 内的 scode → 本地 Nexus 模型驱动 → SudoRouter → LLM`；模型请求和返回进入同一治理接缝。盒子本地推理已使用 `nexus:///model`、本地 new-api 与 GPUStack。当前 Cloud 已在真实用户 Pod 验证本地 Nexus `/model` 挂载与独立 owner 的 SudoRouter 凭据；模型用量缺失继续单独追踪，不能用收到回复代替计费正确。盒子记录见 G2。
+**模型调用经过 Nexus。** 会话由上述控制链路建立；推理路径为 `cohost 内的 scode → 本地 Nexus 模型驱动 → SudoRouter → LLM`；模型请求和返回进入同一治理接缝。盒子本地推理已使用 `nexus:///model`、本地 new-api 与 GPUStack。Cloud 已在真实用户 Pod 验证本地 Nexus `/model`、实际 owner 的独立 SudoRouter 凭据和工作台账单；新按人飞书路由仍须独立验收。收到回复与费用记入正确 owner 分别取证，计费规则集中见 §5.1。盒子记录见 G2。
 
 **两种客户端，同一套接口。** 桌面端（企业模式）直连 moss 的客户端接口；浏览器走前端 VM 上的 webui server，它再打同一套接口。差别只在客户端形态，不在协议。
 
@@ -139,11 +139,11 @@ flowchart TB
 <a id="identity"></a>
 ## 2 · 租户与身份
 
-### 2.1 zone 就是租户
+### 2.1 企业组织与 Nexus Zone
 
-zone 是 nexus 的命名空间根（路径第一段）＋ 一个 raft 复制组 ＋ zone_perms 的附着点 ＋ 租户硬边界。组织需要的东西它全有，**不在 zone 之上再发明一个 org 概念**。
+Org 是 Moss 管理的成员、角色、计费和审批对象；Zone 是 Nexus 的持久数据、安全与复制边界，关联命名空间根、Raft/federation 归属及 zone_perms。两者的跨仓语义来源为 [ADR-002](https://github.com/sudoprivacy/sudostack/blob/main/docs/adr/ADR-002-zone-and-tenancy-model.md)。该 ADR 的多对多 ZoneGrant 仍有未实现项，不能据设计认定当前生产已完成；新组织的默认 Zone 绑定也不等于二者恒等。
 
-mount 是运行期 syscall（`sys_setattr(DT_MOUNT, …)`），可建也可拆，所以：
+跨组织数据共享与挂载需要明确授权。以下是保留的零复制目标方案；生产在线 share/mount 的实际接口、停机与独占锁限制见附录 R4，不能把 syscall 设计能力写成当前产品可在线完成：
 
 | 动作 | 做法 | 代价 |
 |---|---|---|
@@ -454,7 +454,9 @@ flowchart TB
 
 **升级可回滚。** 控制平面解包后切 `current` 符号链接并记录 `.current.rollback`；前端 VM 的 compose 指向按 commit sha 打的镜像 tag，回滚就是指回上一个。
 
-**scode 的版本由 moss 钉。** `runtime-versions.json` 写版本号与 bundle 的 sha256，运行时镜像在构建时按它从 GitHub 拉取并校验，scode 烘进镜像。计算节点的 pod 用 `imagePullPolicy: Never`，**只认本地导入的镜像**，所以升级 scode 的最后一步是在计算节点上导入新镜像。
+**运行产物按清单钉住。** Moss 现有 `runtime-versions.json` 保存版本与 bundle SHA256；构建按它校验并把 cohost/scode 放入计算镜像。当前本地导入镜像的部署使用 `imagePullPolicy: Never`，升级须核对计算节点已导入新镜像及实际 Pod digest。控制器随包版本、选中的运行清单与现存 Pod 的实测版本分别记录。
+
+**统一发布清单是两端共用的目标。** 清单记录引擎提交、cohost/Nexus 版本、ABI、镜像 digest 与制品校验和；Moss Agent 与普通用户消费同一份已验证运行清单。新会话按持久 Agent/allocation 归属使用已验证版本；旧会话通过排空或恢复升级，保留 Session ID、历史、文件和记忆，并检测实际版本漂移。桌面本地执行保留宿主适配，随包版本的推广与云 Pod 升级分别验收；同一代码源不能证明两个已安装产物此刻相同。
 
 **版本要可追溯。** 每个产物的 tag 对应一个 commit，任何时候都能回答"生产在跑哪份源码"。
 
@@ -895,7 +897,7 @@ flowchart LR
 
 **sudocloud 与私有化同源。** 两者二进制近乎一致，云上这套是私有化交付的预演。
 
-**nexusd 按信任域放置。** 盒子的信任域是组织，每个盒子运行一个 daemon，在进程内承载组织内的会话。云上的信任域是用户，一个用户可以有多个 allocation；每个 allocation 对应独立 Pod、PVC 和 daemon，在进程内承载多个 Agent／Session。Moss 按持久的 Agent 存储归属选 allocation，K3s 再安排 Pod；当前没有按 CPU 自动扩容 Compute VM，也没有实现同一 Agent 的跨 Pod 迁移。
+**cohost 按执行隔离范围放置。** 盒子按组织运行 daemon；云端按 owner 分隔，一个 owner 可以有多个 allocation，各自拥有独立 Pod、PVC 和 daemon，并承载多个 Agent／Session。Moss 按持久 Agent 存储归属选 allocation，K3s 放置 Pod；自动扩容 Compute VM 与 Agent 跨 Pod 迁移仍待实现。这里的用户执行隔离范围与图中的 CA_A/CA_B 证书信任域分开表达；共用 CA 不授予跨 owner 权限。
 
 **co-host 取消的是 agent 与 kernel 之间的边界**，所以它成立有两条前提，缺一条它就从「更近的放置」变成「没有边界」：
 
@@ -1495,5 +1497,40 @@ agent 生命周期今天只有 spawn、状态迁移、cancel 三件事。`AgentR
 #### G5 · 外部回执建模
 
 原 §7.12 记录“发出指令并确认落地”尚未建模。保留分录推导、客户会计过账、再次取数核对和关闭 Hook 的完整目标；实现与试点证据由 sudograph 对应工作跟踪。
+
+</details>
+
+<details>
+<summary>10/25 归并时更正的旧设计措辞（已由正文替代，保留追溯）</summary>
+
+这些是重整前的原文，用于解释旧说法与当前职责的差异；其中的部署状态和权限结论不作为当前准入依据。
+
+**云与盒子使用 cohost 作为目标运行时。** 云端按用户隔离 daemon，盒子按组织部署 daemon；同一 daemon 内承载多个 scode 会话。上图表示目标放置，已部署形态及差距见 R1、G2 和本次现场核验。cohost 二进制已发布、机器上已有该二进制、真实用户会话已由它承载，是三个分别需要证据的状态。
+
+---
+
+**会话契约必须完整。** 逐跳接入要保留消息发送、流式回复、工具事件、权限审批、取消和恢复，并明确 cluster 与 cohost 的 PCB 归属和会话定位。信箱消息与浏览器会话事件需要协议适配；已有外部 spawn 的 fd 隧道继续服务当前部署，迁移验收后再切换入口。
+
+---
+
+当前 Cloud 已在真实用户 Pod 验证本地 Nexus `/model` 挂载与独立 owner 的 SudoRouter 凭据；模型用量缺失继续单独追踪，不能用收到回复代替计费正确。
+
+---
+
+### 2.1 zone 就是租户
+
+zone 是 nexus 的命名空间根（路径第一段）＋ 一个 raft 复制组 ＋ zone_perms 的附着点 ＋ 租户硬边界。组织需要的东西它全有，**不在 zone 之上再发明一个 org 概念**。
+
+---
+
+mount 是运行期 syscall（`sys_setattr(DT_MOUNT, …)`），可建也可拆，所以：
+
+---
+
+**scode 的版本由 moss 钉。** `runtime-versions.json` 写版本号与 bundle 的 sha256，运行时镜像在构建时按它从 GitHub 拉取并校验，scode 烘进镜像。计算节点的 pod 用 `imagePullPolicy: Never`，**只认本地导入的镜像**，所以升级 scode 的最后一步是在计算节点上导入新镜像。
+
+---
+
+**nexusd 按信任域放置。** 盒子的信任域是组织，每个盒子运行一个 daemon，在进程内承载组织内的会话。云上的信任域是用户，一个用户可以有多个 allocation；每个 allocation 对应独立 Pod、PVC 和 daemon，在进程内承载多个 Agent／Session。Moss 按持久的 Agent 存储归属选 allocation，K3s 再安排 Pod；当前没有按 CPU 自动扩容 Compute VM，也没有实现同一 Agent 的跨 Pod 迁移。
 
 </details>
