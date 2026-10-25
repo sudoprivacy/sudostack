@@ -34,18 +34,18 @@ flowchart TB
     end
     subgraph MOSSVM["控制平面 VM"]
       CADDY["Caddy 443"]
-      MOSS["moss-server 43127 · 10/25 实测 0.1.78<br/>认证 · 组织 · 会话 API<br/>当前组织可见 Agents · owner 权限与计费<br/>管理员与机器人 owner 的真实回复 / 独立扣费已复验<br/>Secret · Service · PVC<br/>Pod · NetworkPolicy 编排<br/>富友沙箱查询 5019：无此交易权限<br/>终止会话工作区快速 409 · 历史保留<br/>当前仅生产商户 · 退款范围待确认"]
+      MOSS["moss-server 43127 · 10/25 实测 0.1.78<br/>0.1.79 默认 Agent 修复 · 已合并 / 发布 CI 中<br/>认证 · 组织 · 会话 API<br/>当前组织可见 Agents · owner 权限与计费<br/>管理员与机器人 owner 的真实回复 / 独立扣费已复验<br/>Secret · Service · PVC<br/>Pod · NetworkPolicy 编排<br/>富友沙箱查询 5019：无此交易权限<br/>终止会话工作区快速 409 · 历史保留<br/>当前仅生产商户 · 退款范围待确认"]
       HUMAN["已验证的飞书发送人 ↔ 企业成员<br/>私聊一次性码 + 本人登录 · Moss 权限<br/>撤销 / 接收实例租约复核 · 不借连接 owner Key<br/>按人接入 #443 · 待 CI / 部署"]
       MAGENT["每企业 × 获授权人：唯一 Moss Agent<br/>独立身份 / home / memory · 可有多个 Session<br/>与个人 Agent 共用引擎 / 工作台<br/>管理员 + 指定成员 · Web/API 授权<br/>身份 / 使用权 #441 · 待合入<br/>按人路由、owner 计费：待生产验收"]
       MSESSION["持久 Session 映射 · #443 待 CI / 部署<br/>企业 + Moss Agent + 连接 + 群/私聊<br/>同群按人隔离 · Web/桌面续接<br/>宿主兼容 #1302 · 待 CI / 发布<br/>/new 留历史 · /resume 核对 owner<br/>重启恢复 · 消息去重 · 不重放未知结果"]
       DB[("moss.db")]
-      NEXUSD["nexusd-cluster 8443 · 清单 0.8.22<br/>凭据签发与控制面服务<br/>secrets · 身份 · 跨组织 broker"]
+      NEXUSD["nexusd-cluster 8443 · 已核验生效清单 0.8.22<br/>随包清单 0.8.23 · 实际运行另验<br/>凭据签发与控制面服务<br/>secrets · 身份 · 跨组织 broker"]
     end
     subgraph COMPUTEVM["计算 VM · k3s"]
       subgraph POD["同一用户的 allocation Pod × 1..N · 各自独立存储"]
         subgraph SBX["gVisor runsc · 系统调用沙箱"]
-          CNEXUS["nexusd-cohost · 清单 0.2.34<br/>生效运行清单 server-v0.1.74<br/>Nexus 0.8.22 · ABI 7<br/>每 Pod 一个 daemon · 本地 Kernel"]
-          SCODE["进程内 cohost × N<br/>scode 0.2.34 · commit 5befb9d<br/>QA / Moss bot 实际镜像已对齐<br/>多 Agent / Session 执行"]
+          CNEXUS["nexusd-cohost · 清单 0.2.34<br/>生效运行清单 server-v0.1.74<br/>Nexus 0.8.22 · ABI 7<br/>随包 cohost 0.2.36 · 实际运行另验<br/>每 Pod 一个 daemon · 本地 Kernel"]
+          SCODE["进程内 cohost × N<br/>scode 0.2.34 · commit 5befb9d<br/>QA / Moss bot 实际镜像已对齐<br/>随包 scode 0.2.36 · 计算升级另验<br/>多 Agent / Session 执行"]
         end
       end
       UPVC["每个 allocation 的独立 PVC<br/>Agent 记忆 · 会话历史 · 项目文件"]
@@ -465,6 +465,8 @@ flowchart TB
 **运行产物按清单钉住。** Moss 现有 `runtime-versions.json` 保存版本与 bundle SHA256；构建按它校验并把 cohost/scode 放入计算镜像。当前本地导入镜像的部署使用 `imagePullPolicy: Never`，升级须核对计算节点已导入新镜像及实际 Pod digest。控制器随包版本、选中的运行清单与现存 Pod 的实测版本分别记录。
 
 **统一发布清单是两端共用的目标。** 清单记录引擎提交、cohost/Nexus 版本、ABI、镜像 digest 与制品校验和；Moss Agent 与普通用户消费同一份已验证运行清单。新会话按持久 Agent/allocation 归属使用已验证版本；旧会话通过排空或恢复升级，保留 Session ID、历史、文件和记忆，并检测实际版本漂移。桌面本地执行保留宿主适配，随包版本的推广与云 Pod 升级分别验收；同一代码源不能证明两个已安装产物此刻相同。
+
+**10/26 发布检查点。** `server-v0.1.79` 指向已合并并通过适用 CI 的默认 Agent 修复，正式发布工作流仍在排队。其随包清单为 Nexus cluster `0.8.23`、cohost/scode `0.2.36`；`server-v0.1.78` 源码中的包清单也是这些版本。此前核验的生效运行清单则为 `server-v0.1.74`、Nexus `0.8.22`、cohost/scode `0.2.34`。本次尚未执行生产切换；不能由控制器或包清单推断实际 Pod 已升级，也不覆盖相邻维护工作线的运行清单。
 
 **版本要可追溯。** 每个产物的 tag 对应一个 commit，任何时候都能回答"生产在跑哪份源码"。
 
@@ -929,11 +931,11 @@ flowchart LR
 | 每人专属 Moss Agent | [Moss #441](https://github.com/sudoprivacy/moss/pull/441) 已实现稳定身份、独立 home 引用、使用权服务、Web/API 授予/撤销，并在创建、恢复和既有 WS 输入前复核；角色变化后旧会话不能沿用旧权限。相关 37 项、最新 HTTP/运行权限 11 项、Web API 2 项、浏览器交互 6 项回归通过；Web 类型检查通过，服务端类型门禁 104/104。完整服务器套件通过；Node 1,361 通过、9 项 Windows/配置失败与未修改 dev 完全一致、15 跳过 | 最新提交 `d9d23d55288c89b02484ca2c71f38db1a6b9e0f4` 待 CI，未合入/发布/部署。飞书按成员链路见下一行；生产须验两人同群记忆/权限/Key 隔离、撤销拒绝及 Web/IM 续接。默认范围已由用户确认“管理员＋指定成员”，Web/API 必须同时可配置 |
 | 飞书按实际成员接入 | [Moss #443](https://github.com/sudoprivacy/moss/pull/443)，提交 `cc7698ed2dd081c4d9ab47578c9ac4089f40ebd7`：私聊证明、本人才可绑定、管理员独立连接配置、持久 Session 指针、/new 与 /resume、去重及接收实例租约复核已实现；稳定 open_id 与失败回执处理见 §2.5、§3.4。SQL/执行器 8 项、HTTP/路由/身份展示 14 项、渠道生命周期/默认 Agent 20 项、Web API 4 项、真实前端路由浏览器 6 项回归通过。完整服务器套件通过；Node 1,370 通过、9 项与 dev 相同的既有失败、16 跳过；类型门禁 104/104 | 待正式 CI、依赖 PR 合入、发布与部署。真实 PostgreSQL 双连接并发用例已注册 CI，本地无数据库而跳过。生产新连接尚未启用按成员模式；须先确认绑定账号，再验真实私聊证明、群回复、两人隔离、续接与实际 owner 扣费，不能沿用旧 bot owner 的账单证据 |
 | 新飞书应用 | `Moss` 已注册、发布并启用；消息/群 @/私聊与资源等 7 项权限生效，长连接事件已订阅；已进入宋一民、白桂东、bot QA 群，宋一民配对完成 | 真实 @ 消息已到达，但创建会话失败；群回复仍未验收。应用注册/连接成功不等于 Agent 回复通过 |
-| IM 默认 Agent 修复 | [Moss #439](https://github.com/sudoprivacy/moss/pull/439)：不把发送人显示名当目录模板。3 项新回归与 12 项关联回归通过，变更文件 lint 通过；类型门禁 104/104 既有基线；前置 7 项检查已通过，两平台发布构建尚未全部完成 | 精确 head `88bf6c056b077e1b31bc3fca9f072e1bb1e30068` 待完整工作流全绿后正常合并，尚未发布/部署。完整本地测试的 9 项 Windows/配置失败已在未修改 dev 复现；随后验真实回复、续接、去重及 owner 账单 |
+| IM 默认 Agent 修复 | [Moss #439](https://github.com/sudoprivacy/moss/pull/439) 已于 10/26 01:04 正常合并；合并提交 `cb476b0c9eafac3d9904552230a947ef30937686` 与通过全部适用 CI 的 head 文件树完全相同。9 项检查成功；仅 PR 不适用的发布任务跳过，3 条完整工作流均成功。3 项新回归与 12 项关联回归、lint 与类型门禁 104/104 已通过 | 已推送正式标签 `server-v0.1.79`，[发布流程](https://github.com/sudoprivacy/moss/actions/runs/40214869661) 排队中；尚未发布或部署。随后验真实回复、续接、去重及 owner 账单；完整本地测试的 9 项 Windows/配置既有失败仍保留，不将合并当作上线验收 |
 | SudoWork 桌面与 WebUI | 共享 renderer、个人 Agent × 模板组合、顶部去重与侧栏入口已交付；正式 0.2.37 发布及原生 0.2.36→0.2.37 更新、工具、历史、实际 owner 扣费已验收 | 共享界面的主回归可复用；Electron 安装/IPC/更新与 Web server/登录/WS 仍各做宿主 smoke。不能用一种宿主验收替代另一种 |
-| Moss 会话共用工作台兼容 | [SudoWork #1302](https://github.com/sudoprivacy/sudowork/pull/1302)，提交 `aec4d4ececf96a6dbcdea99cc78f63aade9de3a5`：Web 服务和桌面共用身份投影，飞书会话保留原 source/owner；桌面两个恢复入口均同步身份。相关桌面/共用工作台 44 项、Web 109 项通过；共享包构建、桌面/renderer 与 Web 类型检查通过。首轮完整测试仅因新工作树缺少浏览器子模块和 SQLite 原生库失败；补齐后二个受影响文件 14 项复验通过，完整套件复跑中 | 待完整回归结果与正式 CI、正常合入及两宿主发布。生产启用新的按成员 IM 前必须部署兼容版本；不把新的 operator 身份当作目录模板，不改变会话访问边界 |
+| Moss 会话共用工作台兼容 | [SudoWork #1302](https://github.com/sudoprivacy/sudowork/pull/1302)，最终提交 `222dae5cd7996a9ebf222b68e19c7715510fc247`：Web 服务和桌面共用身份投影，保留飞书原 source/owner；桌面两个恢复入口同步身份，并保留现有运行状态和活动时间。相关桌面/共用工作台 44 项、Web 109 项通过；共享包构建、桌面/renderer 与 Web 类型检查通过。最终完整套件 3,402 项通过、28 跳过，370 个文件通过、7 跳过。新工作树缺浏览器子模块/SQLite 原生库的首轮环境失败已补齐，14 项复验通过，原日志保留 | 待正式 CI、正常合入及两宿主发布。生产启用新的按成员 IM 前必须部署兼容版本；不把 operator 身份当作目录模板，不改变会话访问边界。飞书本人绑定账号仍待用户确定 |
 | Moss 运行环境与计费 | 共用 cohost/gVisor，实际 QA 和旧 bot owner 的工作台真实回复与独立 Key 扣费已复验；10/25 控制器实际 0.1.78 | 本次新按人 Moss Agent 仍须独立端到端验证。旧 bot owner 9920 的工作台证据不替代说话人的账单。实际 Pod 的版本/digest 另核验，不能由控制器号推断 |
-| 新支付/回调/组织余额 | 找到富友生产凭据、`testybc` 历史成功订单，已在“sudowork系列产品重构”群询问；10/26 00:35 使用现有用户 token 只读复查没有新回复，本轮未创建订单 | 等付款人可扫码再建唯一 QA 订单；验真实回调、余额和成员 Key 消费。退款产品范围待确认；沙箱拒绝记录保留 |
+| 新支付/回调/组织余额 | 找到富友生产凭据、`testybc` 历史成功订单，已在“sudowork系列产品重构”群询问；10/26 01:09 刷新用户 token 后只读复查仍没有新回复，本轮未创建订单 | 等付款人可扫码再建唯一 QA 订单；验真实回调、余额和成员 Key 消费。退款产品范围待确认；沙箱拒绝记录保留 |
 | Router 管理员会话 | 此前会话上限问题已通过正常管理员登录确认恢复；本轮账单只读查询可用 | 新 Moss Agent 账单验收时重新登录并只退出本次会话，不无故撤销别人的会话 |
 | Cloud 维护（10/24 20:34 最后核验） | 资源容量、bootstrap 更新、旧环境发现、升级及模型状态修复见下方完整记录 | 这条工作线的正式依赖、排空、备份、扩容和恢复仍按其维护准入验收；本次不操作或覆盖并行维护 |
 
