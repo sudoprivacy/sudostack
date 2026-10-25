@@ -74,10 +74,9 @@ restarting the analyzer and without persisting another organization's rules.
 | Bring a deployment up with `observe`, read the audit lines, then switch to `redact`. | A first deployment meets real traffic shapes the tests did not. | none |
 
 Per form: on SudoEdge the local GPU mount is ungated and the cloud mount is
-gated. On Sudo Cloud and Sudo Private every model endpoint is outside the
-node; which of them count as egress is the tenant's or the customer's
-policy, expressed through `NEXUS_EGRESS_GATE_MODEL_MOUNTS` and the rule
-above.
+gated. The Cloud profile declares `/model` external. Private deployments
+classify their model endpoints against the customer's boundary. Policy
+`modelMounts` declares the external planes in each form.
 
 ## Boundary
 
