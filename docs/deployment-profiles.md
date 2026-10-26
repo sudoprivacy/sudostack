@@ -6,6 +6,20 @@ records belong in each deployment repository. These assembly choices are
 currently documented decisions; a shared deployment validator does not yet
 enforce them.
 
+The product vocabulary follows [Sudo Enterprise planning](https://s.shareone.vip/s/sudo-enterprise-chan-pin-gui-hua)
+and the [product introduction](https://s.shareone.vip/md/sudo-chan-pin-yu-jie-jue-fang-an-jie-shao).
+Enterprise is the enterprise-owned product; Moss is its server and Agent
+management component. `sudoprivate` and `sudoedge` remain engineering placement
+identifiers. A standalone CLI in the enterprise network can act as a client
+of that deployment under an explicit identity and delegation; its network
+location alone establishes neither authority nor a management level. The former
+Atlas product name is retired; Cloud, Private and Edge identify deployment
+placement rather than separate control or identity implementations.
+
+The root README is retained as part of the immutable contracts-package
+baseline. Current product naming and deployment decisions are maintained here;
+updating them does not change the historical package payload.
+
 The shared [Agent-host placement action](deployment/agent-host.md) now supplies
 verified Linux user-service executable placement. Cross-domain joining and
 product-runtime qualification follow the [source design](design/cohost-deploy-and-domain-join.md);
@@ -14,7 +28,9 @@ process activation alone does not establish those properties.
 ## Component responsibilities
 
 - **Moss** provides human login, organizations, catalog and model preferences,
-  session APIs, and the browser-facing HTTP/WebSocket gateway. It requests
+  Agent inventory, authorization/delegation, lifecycle/audit, session APIs, and
+  the browser-facing HTTP/WebSocket gateway. Native certificates are issued
+  through Nexus under that authenticated authority. Moss requests
   execution from Nexus and resolves the Agent's durable allocation when
   Kubernetes is used. Kubernetes places the Pod; ManagedAgentService creates
   the actual execution. A standalone CLI owns its local execution without
@@ -40,14 +56,14 @@ process activation alone does not establish those properties.
 
 | Form | Placement and control | Execution |
 |---|---|---|
-| Sudo Cloud | Our hosted Atlas; Moss and cluster control plane, per-user sandbox placement | Moss connects with owner-delegated identity directly to the selected allocation's cohost ManagedAgentService |
-| Sudo Private | The same Atlas services operated in the customer's network; local identity integration and customer deployment policy | Cohost placement follows the customer's trust boundaries |
-| SudoEdge | Atlas on the appliance; local Moss serves the existing WebUI with one organization; no cloud Kubernetes scheduler is required | Local cohost exposes ManagedAgentService directly; no additional local cluster daemon is required just to run one agent |
-| Sudo Local | Desktop SudoWork with its local host adapter; no Atlas requirement | Standalone/local sudocode |
+| Sudo Cloud | Hosted Moss and cluster control services, per-user sandbox placement | Moss connects with owner-delegated identity directly to the selected allocation's cohost ManagedAgentService |
+| Sudo Private | Customer-operated Enterprise services, local identity integration and customer deployment policy | Cohost placement follows the customer's trust boundaries |
+| SudoEdge | Appliance deployment; local Moss serves the existing WebUI with one organization; no cloud Kubernetes scheduler is required | Local cohost exposes ManagedAgentService directly; no additional local cluster daemon is required just to run one agent |
+| Sudo Local | Desktop SudoWork with its local host adapter; no enterprise server requirement | Standalone/local sudocode |
 | Standalone scode CLI | The invoking user and CLI own the local process and Session | The engine uses its in-process Nexus Kernel; collaboration attaches to an explicitly selected identity and service |
 
 The Edge browser profile retains Moss to reuse the supported login, history,
-workspace and session APIs while offline, and to keep the three Atlas forms
+workspace and session APIs while offline, and to keep the deployment forms
 on the same application contracts. Agent count is not the reason to run it.
 The engine can run without Moss. A minimal Edge profile can remove Moss only
 when an alternative browser adapter covers those functions and passes the
@@ -77,6 +93,14 @@ The shared [bootstrap and authority design](design/cohost-deploy-and-domain-join
 defines that product integration; the unified bootstrap entry is not yet
 enforced (`enforced_by: none`).
 
+SudoWork's desktop adapter already consumes sudocode's
+[`service-host`](https://github.com/sudoprivacy/sudocode/blob/main/docs/shared-services.md)
+through `scode service stdio`. That component owns Nexus installation,
+discovery and lifetime; the desktop keeps its progress UI. CLI runtime selection
+belongs to this owner too. Enterprise update windows and pinned
+component compatibility govern a shared service transition independently of
+updating a frontend application.
+
 The Edge Router is a local new-api deployment. Its local channel reaches
 GPUStack/vLLM; a cloud channel reaches the hosted SudoRouter when credentials
 are configured. Cross-domain agent messages use Nexus federation separately.
@@ -101,10 +125,10 @@ The default was also checked without sending a runtime override:
 `37de752c-20fc-4646-a04b-96009b9e0e0e` selected cohost from
 `MOSS_DEFAULT_RUNTIME=cohost` and returned `DEFAULT_COHOST_OK` successfully.
 
-Cloud still needs its own deployment evidence against the production cluster;
-the Edge acceptance does not imply that cloud sessions have moved from
-external spawn. For either form, cancellation, recovery, model-mount restore
-and user-visible history remain separate checks. Use the [Cloud integration
+Cloud and Edge each qualify the actual installed product and owner separately;
+the historical Edge examples above do not qualify a current Cloud deployment.
+For either form, cancellation, recovery, model-mount restore and user-visible
+history remain separate checks. Use the [Cloud integration
 checklist](https://s.shareone.vip/md/sudo-cloud-plan) and each deployment
 repository's runbook for current evidence.
 
