@@ -47,6 +47,14 @@ test('refusing an unowned nonempty directory preserves its files and access mode
   assert.equal(readFileSync(existing, 'utf8'), 'preserved operator data')
   assert(!existsSync(join(f.configuration.dataDirectory, 'deployment.json')))
 })
+
+test('a remote node address is rejected before creating state or starting infrastructure', { skip: process.platform !== 'linux' }, t => {
+  const f = fixture(t)
+  const result = f.run({ ...f.configuration, bindAddress: '203.0.113.17' })
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /bind address does not belong to this host/)
+  assert(!existsSync(f.configuration.dataDirectory))
+})
 test('a different node binding cannot replace an existing deployment or change its permissions', { skip: process.platform !== 'linux' }, t => {
   const f = fixture(t)
   mkdirSync(f.configuration.dataDirectory)

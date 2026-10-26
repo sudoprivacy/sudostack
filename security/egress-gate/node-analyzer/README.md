@@ -51,6 +51,9 @@ Use the node's actual private InternalIP for `bindAddress`. The gateway binds
 only that address. The analyzer itself is published only on host loopback
 port 59081. Protect that host from untrusted host processes. The example
 address and image tag must be replaced with observed deployment values.
+The preparer rejects an address absent from the local network interfaces
+before creating private state or starting infrastructure. Run it on the
+actual compute node; a controller's SSH address does not identify that node.
 
 Run `node configure.mjs /private/node-analyzer.json` to prepare the private
 files and validate Compose. Add `--apply` to start the node service and
