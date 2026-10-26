@@ -18,6 +18,94 @@ from artifacts import checksum
 IMAGES_DIRECTORY = Path('/var/lib/rancher/k3s/agent/images')
 
 
+class _PrefixReader:
+    """Replay a layer header while keeping the containing archive sequential."""
+    def __init__(self, prefix, stream):
+        self.prefix, self.stream = prefix, stream
+
+    def read(self, size=-1):
+        if size < 0:
+            prefix, self.prefix = self.prefix, b''
+            return prefix + self.stream.read()
+        prefix, self.prefix = self.prefix[:size], self.prefix[size:]
+        return prefix + self.stream.read(size - len(prefix))
+
+
+def archive_storage(path, block_size=4096):
+    """Budget content blobs and expanded layer files without extracting them."""
+    content_bytes, layers, links, manifest = 0, {}, {}, None
+
+    def allocated(size):
+        return ((size + block_size - 1) // block_size) * block_size
+
+    with tarfile.open(path, 'r|*') as archive:
+        for member in archive:
+            if member.islnk():
+                links[member.name] = member.linkname
+                continue
+            if not member.isfile():
+                continue
+            content_bytes += allocated(member.size)
+            with archive.extractfile(member) as stream:
+                if member.name == 'manifest.json':
+                    if member.size > 1024 * 1024:
+                        raise ValueError('Invalid image metadata: manifest.json')
+                    manifest = json.load(stream)
+                    continue
+                prefix = stream.read(512)
+                if prefix and not any(prefix):
+                    layers[member.name] = 0
+                    continue
+                compressed = prefix.startswith((b'\x1f\x8b', b'BZh', b'\xfd7zXZ\x00'))
+                try:
+                    if not compressed:
+                        tarfile.TarInfo.frombuf(prefix, 'utf-8', 'surrogateescape')
+                    with tarfile.open(fileobj=_PrefixReader(prefix, stream), mode='r|*') as layer:
+                        # Account for data blocks and an extra filesystem block
+                        # per entry for inodes, directory entries and whiteouts.
+                        layers[member.name] = sum(allocated(item.size) + block_size for item in layer)
+                except (tarfile.TarError, EOFError):
+                    layers[member.name] = None
+    if not isinstance(manifest, list):
+        raise ValueError('Image archive manifest is unavailable for capacity checks')
+    unpack_bytes = 0
+    for image in manifest:
+        names = image.get('Layers', [])
+        if not isinstance(names, list) or any(not isinstance(name, str) for name in names):
+            raise ValueError('Invalid image layer list')
+        for name in names:
+            visited = set()
+            while name in links:
+                if name in visited:
+                    raise ValueError('Image layer hard-link cycle')
+                visited.add(name)
+                name = links[name]
+            if layers.get(name) is None:
+                raise ValueError('Cannot estimate expanded image layer: ' + name)
+            # Shared layers may be unpacked into more than one image chain.
+            # Counting every occurrence is conservative when caches are absent.
+            unpack_bytes += layers[name]
+    return {'contentBytes': content_bytes, 'unpackBytes': unpack_bytes}
+
+
+def require_retention_space(directory, copy_bytes, storage=None):
+    """Keep a working reserve as well as archive, content and unpack capacity."""
+    existing = Path(directory)
+    while not existing.exists():
+        existing = existing.parent
+    disk = shutil.disk_usage(existing)
+    # K3s' default image GC target leaves 20% free. A fixed 2 GiB reserve can
+    # already be below a node's eviction threshold, before any layer expands.
+    reserve = max(2 * 1024**3, (disk.total + 4) // 5)
+    storage = storage or {'contentBytes': 0, 'unpackBytes': 0}
+    required = copy_bytes + storage['contentBytes'] + storage['unpackBytes'] + reserve
+    if disk.free < required:
+        raise ValueError('Insufficient space for image retention and expansion: '
+                         f'available={disk.free}, required={required}, reserve={reserve}, '
+                         f'archiveCopy={copy_bytes}, content={storage["contentBytes"]}, '
+                         f'unpack={storage["unpackBytes"]}')
+
+
 def canonical(ref):
     if '/' not in ref:
         return 'docker.io/library/' + ref
@@ -123,7 +211,6 @@ def retain_archive(path, expected, *, directory=IMAGES_DIRECTORY, timeout=300):
         raise ValueError('An archive SHA256 is required')
     if path.is_symlink() or not path.is_file() or checksum(path) != expected:
         raise ValueError('Image archive checksum mismatch: ' + str(path))
-    images = archive_images(path)
     # Content addressing prevents unrelated releases with the same asset name
     # from replacing one another. Hidden partial files are never import inputs.
     target = directory / (expected + '.tar.gz')
@@ -132,6 +219,11 @@ def retain_archive(path, expected, *, directory=IMAGES_DIRECTORY, timeout=300):
     if target.exists():
         if not target.is_file() or checksum(target) != expected:
             raise ValueError('Retained image archive checksum mismatch')
+    else:
+        # Refuse obviously undersized nodes before scanning large layer blobs
+        # or creating anything inside K3s' watched directory.
+        require_retention_space(directory, path.stat().st_size)
+    images = archive_images(path)
     # Refuse conflicting immutable tags and operational failures before K3s
     # can observe any new archive. Only an absent image is expected here.
     present = {}
@@ -143,10 +235,10 @@ def retain_archive(path, expected, *, directory=IMAGES_DIRECTORY, timeout=300):
             present[tag] = {'id': status['id'], 'pinned': True}
     if target.exists() and len(present) == len(images):
         return {'archive': str(target), 'sha256': expected, 'images': present}
+    storage = archive_storage(path)
+    require_retention_space(directory, 0 if target.exists() else path.stat().st_size, storage)
     directory.mkdir(parents=True, exist_ok=True)
     if not target.exists():
-        if shutil.disk_usage(directory).free < path.stat().st_size + 2 * 1024**3:
-            raise ValueError('Insufficient space to retain image archive with a 2 GiB reserve')
         with tempfile.NamedTemporaryFile(dir=directory, prefix='.', suffix='.part', delete=False) as stream:
             temporary = Path(stream.name)
         try:
@@ -157,6 +249,9 @@ def retain_archive(path, expected, *, directory=IMAGES_DIRECTORY, timeout=300):
                 os.fsync(stream.fileno())
             if checksum(temporary) != expected:
                 raise ValueError('Image archive changed during retention')
+            # Another process may have used space while the hidden copy was
+            # written. Refuse before exposing it to K3s' automatic importer.
+            require_retention_space(directory, 0, storage)
             temporary.replace(target)
         finally:
             temporary.unlink(missing_ok=True)
