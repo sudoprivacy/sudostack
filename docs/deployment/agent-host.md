@@ -170,6 +170,11 @@ quiet point and owns its actual runtime lifecycle.
 
 ## Device-owned deployment operations
 
+Install the [source-pinned device action package](device-action-package.md) to
+use these commands without a source checkout. It shares the existing offline
+builder/client with Atlas and preserves Edge's per-file source checks; installing
+the package does not approve a plan or start a deployment.
+
 `device_operation.py` composes the existing service selection and original-product
 qualification in a one-shot user systemd unit. The worker lives outside Moss's
 service, so selecting a new Moss version does not end the deployment with the

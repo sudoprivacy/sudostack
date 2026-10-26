@@ -12,9 +12,14 @@ permissions:
 
 jobs:
   process-placement:
+    name: process-placement (${{ matrix.os }})
     strategy:
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm]
+        include:
+          - os: ubuntu-latest
+            architecture: amd64
+          - os: ubuntu-24.04-arm
+            architecture: arm64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -22,3 +27,23 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m unittest discover -s tools/deploy -p 'test_*.py' -v
+      - name: Package committed device actions with the shared offline builder
+        run: >-
+          python tools/deploy/cos_bundle.py create-actions
+          --repository "$GITHUB_WORKSPACE" --commit "$GITHUB_SHA"
+          --architecture '${{ matrix.architecture }}'
+          --output "$RUNNER_TEMP/device-actions"
+      - name: Run the installed device entry without a source checkout
+        working-directory: ${{ runner.temp }}
+        run: |
+          python device-actions/cos_bundle.py unpack \
+            --descriptor device-actions/bundle.json \
+            --archive device-actions/sudostack-device-actions-*.tar.gz \
+            --destination installed-device-actions
+          python installed-device-actions/tools/deploy/device_operation.py --help
+      - uses: actions/upload-artifact@v4
+        with:
+          name: device-actions-${{ matrix.architecture }}-${{ github.sha }}
+          path: ${{ runner.temp }}/device-actions
+          if-no-files-found: error
+          retention-days: 14
