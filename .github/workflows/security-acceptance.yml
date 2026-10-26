@@ -9,6 +9,25 @@ permissions:
   contents: read
 
 jobs:
+  restricted-analyzer-relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install shared runtime test dependencies
+        working-directory: packages/user-runtime
+        run: npm ci --ignore-scripts
+      - name: Build relay without file capabilities
+        run: docker build -t sudo-egress-relay:regression security/egress-gate/node-analyzer
+      - name: Exercise real TLS relay under production container restrictions
+        working-directory: packages/user-runtime
+        env:
+          CADDY_CONTAINER_IMAGE: sudo-egress-relay:regression
+        run: npx tsx test/live/nodeAnalyzerRelay.ts
+
   evaluation-adapters:
     runs-on: ubuntu-latest
     steps:

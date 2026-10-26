@@ -13,6 +13,20 @@ Only `POST /analyze` is proxied. No access or body log is enabled.
 
 ## Prepare a single-node deployment
 
+Build the relay image from this directory:
+
+```sh
+docker build -t sudo-egress-relay:caddy-2.10.2 security/egress-gate/node-analyzer
+```
+
+Use this image for both the node gateway and each owner Pod relay. It removes
+the upstream binary's `cap_net_bind_service` file capability because both
+ports are above 1024. This permits execution with all capabilities dropped,
+without privilege escalation and with a read-only root. An unmodified Caddy
+image can fail with `operation not permitted` under these restrictions.
+For K3s, import the reviewed image into its container store before enabling
+the relay; record the built image identity in the deployment receipt.
+
 Build the shared SDK (`npm ci --ignore-scripts && npm run build` in
 `packages/user-runtime`). Build the analyzer from `../presidio/Dockerfile`
 at the reviewed commit. On the Linux compute node, create a private JSON
@@ -26,7 +40,7 @@ configuration containing:
   "port": 9448,
   "serverName": "egress-node.internal",
   "analyzerImage": "sudo-presidio-zh:reviewed-commit",
-  "gatewayImage": "docker.io/library/caddy:2.10.2-alpine",
+  "gatewayImage": "sudo-egress-relay:caddy-2.10.2",
   "namespace": "moss-sessions",
   "relaySecretName": "sudo-egress-analyzer",
   "kubeconfig": "/private/moss-kubeconfig"
