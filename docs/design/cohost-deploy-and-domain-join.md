@@ -41,10 +41,10 @@ spawn another identity or implement move by copying a directory.
 
 ## Runtime preparation
 
-These are shared assembly decisions. The unified bootstrap entry, extraction
-from the Desktop installer and bounded device-delegation executor remain
-implementation work (`enforced_by: none`). Existing placement, checksum and
-original-product tests qualify their own actions separately.
+These are shared assembly decisions. A complete device bootstrap/join entry
+and bounded device-delegation executor remain implementation work
+(`enforced_by: none`). Existing native service bootstrap, placement, checksum
+and original-product tests qualify their own actions separately.
 
 The delivery unit is a source/digest-pinned release composition plus a private
 device profile. It selects the actual platform, runtime form, native component
@@ -54,21 +54,21 @@ the artifact's trusted digest comes from the approved composition. A deployment
 receipt binds that composition to the observed running executable and product
 readiness.
 
-SudoWork's existing Desktop `RuntimeInstaller` and `DynamicNexusVfsService`
-already implement the user experience: inspect installed components, use a
-bundled archive or download a pinned one, verify it and prepare the runtime.
-Reuse that experience and the component release metadata. The reusable
-composition/fetch/selection actions belong here; application progress and
-Electron integration remain in SudoWork. Native service identity, credential
-formats and Kernel lifecycle remain in nexus-vfs/sudocode. An extraction shares
-the owner implementation or generated contract, rather than leaving copied
-downloaders in SudoWork, Moss, CLI and Edge.
+Sudocode's existing `service-host` owns local Nexus artifact verification,
+installation, authenticated local discovery and service lifetime. SudoWork's
+desktop `ScodeRuntimeService` and `ScodeServiceClient` invoke `scode service
+stdio`; the old Desktop Nexus installer has been removed. Standalone CLI runtime
+selection consumes this same owner. The native contract and acceptance live in
+[sudocode shared services](https://github.com/sudoprivacy/sudocode/blob/main/docs/shared-services.md).
+SudoWork owns application progress and Electron integration. Nexus owns the
+credential format and Kernel; no application duplicates its issuer or service
+installer.
 
-The existing shared `tools/deploy/artifacts.py` already verifies cached and
-downloaded assets before atomic publication. Linux executable placement and
-existing-product transitions already have their own actions. A common entry
-composes those actions with native bootstrap/identity/readiness operations;
-it does not replace them with a shell script that independently guesses state.
+Stack owns product release composition and deployment sequencing. Its existing
+`tools/deploy/artifacts.py` verifies deployment assets before atomic publication;
+the Nexus component installer remains in sudocode. Linux executable placement
+and existing-product transitions already have their own actions. A common entry
+composes these source-owned actions with native identity/readiness operations.
 
 ```mermaid
 flowchart TD
@@ -95,6 +95,23 @@ existing listener is inspected and authenticated before reuse. A conflicting
 listener or incompatible state produces an actionable refusal; killing an
 unknown process by port is not the shared adoption procedure. The DGX's current
 Node/cohost, original Agent and model state remain the deployment target.
+
+### First installation and updates
+
+First-run runtime preparation, manual update and scheduled update use the same
+source-owned artifact selection, verification and staging operations. The
+frontend presents the choice; the lifecycle owner applies it. A local CLI
+profile retains daemon-free execution, while shared services are an explicit
+installation choice. Protocol/headless clients retain noninteractive startup.
+
+The scode release updater already shares installation between startup prompts
+and `scode update`. The product's next integration binds that CLI package to
+the shared-service composition and controlled maintenance step
+(`enforced_by: none`). SudoWork's Electron updater continues to update the
+desktop application; it delegates runtime operations to sudocode. Pinned
+enterprise profiles retain their approved release selection. Installing a new
+frontend or a cached latest release does not authorize replacing another
+client's active daemon, identity or state.
 
 ## Authority at each operation
 
@@ -128,6 +145,14 @@ Two Moss servers do not have to trust one another for their Agents to speak,
 and a standalone CLI can use the same native Agent identity and grant. Account
 SSO, model-provider access and machine-administration permission retain their
 own scopes.
+
+Moss also owns the enterprise's Agent inventory, management level, delegation,
+lifecycle and audit view. Joining a chat establishes the admitted principal and
+participant permissions; it does not establish complete containment of an
+external Agent's execution. The product's gateway-managed and hosted-execution
+levels retain their different enforcement scopes. The DGX development/office
+collaboration profile can admit scoped bidirectional messages; core-business
+domain policies retain their separate controlled artifact-publication boundary.
 
 ## Existing source, separately from the proposal
 
