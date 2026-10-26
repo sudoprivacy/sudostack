@@ -4,6 +4,23 @@ on:
     paths: ['charts/**', 'tools/deploy/**', 'manifests/deployment/**', '.github/workflows/*release*.yml', '.github/workflows/private-k3s.yml']
   workflow_dispatch:
 jobs:
+  image-retention:
+    name: Real K3s image identity and GC recovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify archive import, immutable references, restart and pruning
+        run: python3 tools/deploy/e2e_image_retention.py --evidence "$RUNNER_TEMP/image-retention"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: image-retention
+          path: ${{ runner.temp }}/image-retention/receipt.json
+          if-no-files-found: error
   validate:
     runs-on: ubuntu-latest
     steps:
