@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sudo Cloud 架构与设计</title>
+<script>
+(function () {
+  function applyTheme(theme) {
+    const isDark = theme === 'dark';
+    document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+  }
+  applyTheme(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  window.addEventListener('message', function (event) {
+    const data = event.data;
+    if (data && data.source === 'shareone-shell' && data.type === 'theme') applyTheme(data.value);
+  });
+})();
+</script>
+<style>
+:root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+body { margin: 0; background: #f4f6f8; color: #17212b; line-height: 1.6; overflow-wrap: anywhere; }
+.page { max-width: 1200px; margin: 0 auto; padding: 1rem 1.25rem 4rem; }
+article { background: #fff; border: 1px solid #d9e0e7; border-radius: .65rem; padding: 1.5rem; box-shadow: 0 2px 8px rgba(23,33,43,.05); }
+article h1, article h2, article h3 { line-height: 1.25; }
+article pre { overflow: auto; }
+article code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+article table { border-collapse: collapse; display: block; overflow-x: auto; }
+article th, article td { border: 1px solid #cbd5df; padding: .4rem .6rem; text-align: left; }
+article blockquote { margin-left: 0; padding-left: 1rem; border-left: 3px solid #9aa9b8; }
+.diagram-panel { margin: 1rem 0 2rem; border: 1px solid #cbd5df; border-radius: .55rem; overflow: hidden; }
+.diagram-panel.is-floating { position: fixed; inset: 1rem; z-index: 20; margin: 0; background: #fff; }
+.diagram-panel.is-floating #viewport { height: calc(100vh - 7rem); }
+.diagram-toolbar { display: flex; align-items: center; gap: .5rem; padding: .65rem .75rem; background: rgba(255,255,255,.96); border-bottom: 1px solid #d9e0e7; position: sticky; top: 0; z-index: 2; }
+.diagram-toolbar strong { margin-right: auto; font-size: .95rem; }
+button { border: 1px solid #bcc7d1; border-radius: .45rem; background: #fff; color: #17212b; padding: .35rem .65rem; cursor: pointer; font-size: .9rem; }
+button:hover { background: #edf2f7; }
+#viewport { height: min(72vh, 760px); min-height: 420px; overflow: hidden; cursor: grab; background-image: linear-gradient(#e7ecf1 1px,transparent 1px),linear-gradient(90deg,#e7ecf1 1px,transparent 1px); background-size: 24px 24px; }
+#viewport.is-dragging { cursor: grabbing; }
+#diagram { display: inline-block; min-width: 100%; padding: 2rem; transform-origin: 0 0; user-select: none; }
+#diagram svg { max-width: none; height: auto; }
+.hint { padding: .45rem .75rem; color: #52606d; font-size: .82rem; background: #f8fafc; border-top: 1px solid #e7ecf1; }
+:root.dark { color-scheme: dark; }
+:root.dark body { background: #09090b; color: #e4e4e7; }
+:root.dark article { background: #111827; border-color: #374151; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+:root.dark article a { color: #93c5fd; }
+:root.dark article th, :root.dark article td { border-color: #4b5563; }
+:root.dark article blockquote { border-left-color: #6b7280; }
+:root.dark .diagram-panel { border-color: #4b5563; }
+:root.dark .diagram-toolbar { background: rgba(17,24,39,.96); border-bottom-color: #374151; }
+:root.dark button { background: #1f2937; color: #e5e7eb; border-color: #4b5563; }
+:root.dark button:hover { background: #374151; }
+:root.dark #viewport { background-color: #111827; background-image: linear-gradient(#263244 1px,transparent 1px),linear-gradient(90deg,#263244 1px,transparent 1px); }
+:root.dark .hint { color: #cbd5e1; background: #1f2937; border-top-color: #374151; }
+
+
+#before, #after { overflow-wrap: anywhere; }
+#before table { width: 100%; }
+#before table th { white-space: nowrap; }
+#before table td { min-width: 14rem; }
+#before table td:first-child { min-width: 6rem; }
+.diagram-toolbar { flex-wrap: wrap; position: relative; }
+#zoomLevel { min-width: 3rem; text-align: center; font-size: .8rem; }
+.diagram-panel.is-floating { display: flex; flex-direction: column; }
+.diagram-panel.is-floating #viewport { flex: 1; min-height: 0; height: auto; }
+.diagram-panel.is-floating .hint, .diagram-panel.is-floating .diagram-toolbar { flex-shrink: 0; }
+body.is-diagram-expanded { overflow: hidden; }
+#viewport { position: relative; touch-action: none; }
+#diagram { position: absolute; display: block; min-width: 0; padding: 0; }
+#diagram pre { margin: 0; overflow: visible; }
+#diagram svg { display: block; max-width: none !important; }
+.mermaid:not([data-processed]) { visibility: hidden; }
+@media (max-width: 600px) {
+  .page { padding: .5rem; }
+  article { padding: .75rem; }
+  #viewport { min-height: 320px; }
+  .diagram-panel.is-floating { inset: .5rem; }
+  .diagram-toolbar strong { flex-basis: 100%; }
+}
+
+.topic-nav { display: flex; flex-wrap: wrap; gap: .4rem .9rem; padding: .7rem 0; }
+.topic-nav a { text-decoration: none; }
+details { margin: 1rem 0; padding: .7rem 1rem; border: 1px solid #cbd5df; border-radius: .5rem; }
+summary { cursor: pointer; font-weight: 600; }
+details[open] > summary { margin-bottom: 1rem; }
+:root.dark details { border-color: #4b5563; }
+article h2, article h3, article a[id] { scroll-margin-top: 1rem; }
+#before table td { min-width: 0; }
+@media (max-width: 600px) { details { padding: .6rem; } }
+</style>
+</head>
+<body>
+<div class="page"><article>
+<!-- Generated from docs/sudo-cloud-plan.md; run node tools/docs/build-cloud-plan.mjs. -->
+<div id="before"></div>
+<section class="diagram-panel" aria-label="Interactive Sudo Cloud architecture diagram">
+  <div class="diagram-toolbar">
+    <strong>系统架构总图</strong>
+    <button id="zoomOut" type="button" aria-label="缩小架构图">−</button>
+    <output id="zoomLevel" aria-live="polite">100%</output>
+    <button id="zoomIn" type="button" aria-label="放大架构图">＋</button>
+    <button id="reset" type="button">适应窗口</button>
+    <button id="actualSize" type="button">100%</button>
+    <button id="focusCloud" type="button">云端</button>
+    <button id="focusEdge" type="button">盒子</button>
+    <button id="expand" type="button" aria-expanded="false">展开</button>
+  </div>
+  <div id="viewport"><div id="diagram"><pre class="mermaid">{{FIRST_DIAGRAM}}</pre></div></div>
+  <div class="hint">滚轮缩放 · 拖动画布平移 · “100%”阅读原始字号 · Esc 关闭展开</div>
+</section>
+<div id="after"></div>
+</article></div>
+<script id="before-data" type="application/octet-stream">{{BEFORE_DATA}}</script>
+<script id="after-data" type="application/octet-stream">{{AFTER_DATA}}</script>
+<script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js"></script>
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.12.1/dist/mermaid.esm.min.mjs';
+import elkLayouts from 'https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.0/dist/mermaid-layout-elk.esm.min.mjs';
+mermaid.registerLayoutLoaders(elkLayouts);
+
+function decode(id) {
+  const raw = atob(document.getElementById(id).textContent);
+  const bytes = Uint8Array.from(raw, (value) => value.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+document.getElementById('before').innerHTML = marked.parse(decode('before-data'));
+document.getElementById('after').innerHTML = marked.parse(decode('after-data'));
+for (const code of document.querySelectorAll('#after pre code.language-mermaid')) {
+  const pre = code.parentElement;
+  pre.className = 'mermaid';
+  pre.textContent = code.textContent;
+}
+const mermaidNodes = Array.from(document.querySelectorAll('.mermaid'));
+const mermaidSources = new Map(mermaidNodes.map((node) => [node, node.textContent]));
+let mermaidRender = Promise.resolve();
+function diagramClasses(isDark) {
+  const palette = isDark
+    ? { client: ['#173451', '#7fb0e7'], control: ['#44341c', '#e7b960'], runtime: ['#133d32', '#73cbb0'], model: ['#322544', '#bda0e9'], store: ['#2b3544', '#a2b3ca'], network: ['#432a2f', '#e6a1a9'] }
+    : { client: ['#eaf2ff', '#4f7cac'], control: ['#fff4df', '#c58a22'], runtime: ['#e9f7ef', '#3b8c5a'], model: ['#f1eafd', '#7b55b3'], store: ['#f1f5f9', '#64748b'], network: ['#fcebea', '#b4534b'] };
+  const text = isDark ? '#e5e7eb' : '#17212b';
+  const definitions = Object.entries(palette).map(([name, colors]) => 'classDef ' + name + ' fill:' + colors[0] + ',stroke:' + colors[1] + ',color:' + text + ',stroke-width:1.5px;').join('\n');
+  return '\n' + definitions + '\nclass DESK,BROWSER,EWEB,FEISHU client;\nclass WEBUI,CADDY,MOSS,NEXUSD,EMOSS,HUMAN,MAGENT,MSESSION control;\nclass CNEXUS,SCODE,ENEXUS,ETOOLS runtime;\nclass ROUTER,LLM,EROUTER,GPUSTACK,QWEN model;\nclass DB,EPG,EDB,UPVC store;\nclass NETPOL network;';
+}
+async function renderMermaid(theme) {
+  const isDark = theme === 'dark';
+  mermaidRender = mermaidRender.catch(() => {}).then(async () => {
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: 'strict',
+      theme: 'base',
+      themeVariables: {
+        darkMode: isDark,
+        background: isDark ? '#111827' : '#ffffff',
+        primaryColor: isDark ? '#173451' : '#eaf2ff',
+        primaryTextColor: isDark ? '#e5e7eb' : '#17212b',
+        primaryBorderColor: isDark ? '#7fb0e7' : '#4f7cac',
+        secondaryColor: isDark ? '#133d32' : '#e9f7ef',
+        tertiaryColor: isDark ? '#182438' : '#f1f5f9',
+        lineColor: isDark ? '#a2b3ca' : '#586a80',
+        textColor: isDark ? '#e5e7eb' : '#17212b',
+        edgeLabelBackground: isDark ? '#111827' : '#ffffff',
+        clusterBkg: isDark ? '#182438' : '#f1f5f9',
+        clusterBorder: isDark ? '#526580' : '#a8b7c8',
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+        fontSize: '16px',
+      },
+    });
+    for (const node of mermaidNodes) {
+      node.removeAttribute('data-processed');
+      node.textContent = mermaidSources.get(node) + (node.closest('#diagram') ? diagramClasses(isDark) : '');
+    }
+    diagram.style.transform = 'none';
+    await mermaid.run({ nodes: mermaidNodes });
+    sizeDiagram();
+  });
+  await mermaidRender;
+}
+let currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+window.addEventListener('message', (event) => {
+  const data = event.data;
+  if (!data || data.source !== 'shareone-shell' || data.type !== 'theme') return;
+  const nextTheme = data.value === 'dark' ? 'dark' : 'light';
+  if (nextTheme === currentTheme) return;
+  currentTheme = nextTheme;
+  document.documentElement.classList.toggle('dark', currentTheme === 'dark');
+  void renderMermaid(currentTheme);
+});
+
+const diagram = document.getElementById('diagram');
+const viewport = document.getElementById('viewport');
+const panel = document.querySelector('.diagram-panel');
+const expand = document.getElementById('expand');
+const zoomLevel = document.getElementById('zoomLevel');
+let scale = 1;
+let panX = 0;
+let panY = 0;
+let isDragging = false;
+let startX = 0;
+let startY = 0;
+let diagramWidth = 0;
+let diagramHeight = 0;
+let isFitted = true;
+let previousFocus = null;
+function renderTransform() {
+  diagram.style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + scale + ')';
+  zoomLevel.textContent = Math.round(scale * 100) + '%';
+}
+function fitBounds(bounds) {
+  if (!bounds.width || !bounds.height) return;
+  scale = Math.min((viewport.clientWidth - 40) / bounds.width, (viewport.clientHeight - 40) / bounds.height, 1);
+  panX = (viewport.clientWidth - bounds.width * scale) / 2 - bounds.x * scale;
+  panY = (viewport.clientHeight - bounds.height * scale) / 2 - bounds.y * scale;
+  renderTransform();
+}
+function fitDiagram() {
+  isFitted = true;
+  fitBounds({ x: 0, y: 0, width: diagramWidth, height: diagramHeight });
+}
+function sizeDiagram() {
+  const svg = diagram.querySelector('svg');
+  if (!svg) return;
+  const box = svg.viewBox.baseVal;
+  diagramWidth = box.width;
+  diagramHeight = box.height;
+  svg.style.width = diagramWidth + 'px';
+  svg.style.height = diagramHeight + 'px';
+  diagram.style.width = diagramWidth + 'px';
+  diagram.style.height = diagramHeight + 'px';
+  if (isFitted) fitDiagram();
+  else renderTransform();
+}
+function setScale(nextScale, anchorX = viewport.clientWidth / 2, anchorY = viewport.clientHeight / 2) {
+  if (!diagramWidth) return;
+  isFitted = false;
+  const next = Math.min(6, Math.max(.04, nextScale));
+  const ratio = next / scale;
+  panX = anchorX - (anchorX - panX) * ratio;
+  panY = anchorY - (anchorY - panY) * ratio;
+  scale = next;
+  renderTransform();
+}
+function focusGroup(id) {
+  const group = diagram.querySelector('[id="' + id + '"]');
+  if (!group) return;
+  isFitted = false;
+  const svg = diagram.querySelector('svg');
+  const bounds = group.getBBox();
+  const matrix = svg.getCTM().inverse().multiply(group.getCTM());
+  const origin = new DOMPoint(bounds.x, bounds.y).matrixTransform(matrix);
+  fitBounds({ x: origin.x - 20, y: origin.y - 20, width: bounds.width + 40, height: bounds.height + 40 });
+}
+function setExpanded(isExpanded) {
+  panel.classList.toggle('is-floating', isExpanded);
+  document.body.classList.toggle('is-diagram-expanded', isExpanded);
+  expand.textContent = isExpanded ? '收起' : '展开';
+  expand.setAttribute('aria-expanded', String(isExpanded));
+  if (isExpanded) {
+    previousFocus = document.activeElement;
+    expand.focus();
+  } else if (previousFocus) previousFocus.focus();
+  requestAnimationFrame(fitDiagram);
+}
+document.getElementById('zoomIn').addEventListener('click', () => setScale(scale * 1.25));
+document.getElementById('zoomOut').addEventListener('click', () => setScale(scale / 1.25));
+document.getElementById('reset').addEventListener('click', fitDiagram);
+document.getElementById('actualSize').addEventListener('click', () => setScale(1));
+document.getElementById('focusCloud').addEventListener('click', () => focusGroup('CLOUD'));
+document.getElementById('focusEdge').addEventListener('click', () => focusGroup('EDGE'));
+expand.addEventListener('click', () => setExpanded(!panel.classList.contains('is-floating')));
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && panel.classList.contains('is-floating')) setExpanded(false); });
+viewport.addEventListener('wheel', (event) => {
+  event.preventDefault();
+  const rect = viewport.getBoundingClientRect();
+  setScale(scale * (event.deltaY < 0 ? 1.12 : 1 / 1.12), event.clientX - rect.left, event.clientY - rect.top);
+}, { passive: false });
+viewport.addEventListener('pointerdown', (event) => {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  isDragging = true;
+  isFitted = false;
+  startX = event.clientX - panX;
+  startY = event.clientY - panY;
+  viewport.classList.add('is-dragging');
+  viewport.setPointerCapture(event.pointerId);
+});
+viewport.addEventListener('pointermove', (event) => {
+  if (!isDragging) return;
+  panX = event.clientX - startX;
+  panY = event.clientY - startY;
+  renderTransform();
+});
+function endDrag() { isDragging = false; viewport.classList.remove('is-dragging'); }
+viewport.addEventListener('pointerup', endDrag);
+viewport.addEventListener('pointercancel', endDrag);
+viewport.addEventListener('lostpointercapture', endDrag);
+new ResizeObserver(() => { if (isFitted) fitDiagram(); }).observe(viewport);
+await renderMermaid(currentTheme);
+</script>
+</body>
+</html>
