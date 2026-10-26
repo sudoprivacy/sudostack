@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { randomUUID } from 'node:crypto'
 import { NexusZoneApiClient } from '@nexus-ai-fs/vfs-client'
+import { createEgressPolicy, POLICY_FILENAME, POLICY_ENVIRONMENT } from '@sudo/egress-policy'
 import { UserPodService, UserRuntimeUpdateRequiredError, userPodName, type UserPodOptions } from '../src/userPodService.js'
 import type { RuntimeRelease } from '../src/runtimeRelease.js'
 import { runtimeCredential } from './runtimeCredential.js'
@@ -11,6 +12,49 @@ const options: UserPodOptions = {
   image: 'runtime:verified', nodeHost: 'compute.internal', namespace: 'private-runtimes', storageClass: 'retained-local',
   issuer: { endpoint: 'https://control-plane', tls: { ca: '/ca', cert: '/moss', key: '/moss-key' } },
 }
+
+void test('node analyzer relay keeps its credential outside the agent and binds upstream to actual node identity', async t => {
+  const kube = platform()
+  t.mock.method(NexusZoneApiClient, 'withMtls', () => ({ mintUserRuntime: async (owner: string) => runtimeCredential(owner), close() {} }))
+  const service = new UserPodService({ ...options, egressAnalyzerRelay: { image: 'caddy:verified', secretName: 'node-analyzer-relay' } }, kube.resources, async () => {})
+  t.after(() => service.close())
+  await service.resolve('alice')
+  const pod = kube.objects.get('pod')!
+  const spec = pod.spec as { containers: Array<{ name: string; env: unknown[]; volumeMounts: Array<{ name: string }>; securityContext: { runAsUser?: number; readOnlyRootFilesystem?: boolean } }>; volumes: Array<{ name: string; secret?: { secretName: string } }> }
+  const agent = spec.containers.find(item => item.name === 'runtime')!
+  const relay = spec.containers.find(item => item.name === 'egress-analyzer-relay')!
+  assert(!agent.volumeMounts.some(mount => mount.name === 'analyzer-relay'))
+  assert(relay.volumeMounts.some(mount => mount.name === 'analyzer-relay'))
+  assert.equal(relay.securityContext.runAsUser, 1002)
+  assert.equal(relay.securityContext.readOnlyRootFilesystem, true)
+  assert.deepEqual(relay.env[0], { name: 'NEXUS_DLP_NODE_IP', valueFrom: { fieldRef: { fieldPath: 'status.hostIP' } } })
+  assert.equal(spec.volumes.find(item => item.name === 'analyzer-relay')?.secret?.secretName, 'node-analyzer-relay')
+  assert.throws(() => new UserPodService({ ...options, egressAnalyzer: { image: 'analyzer' },
+    egressAnalyzerRelay: { image: 'caddy:verified', secretName: 'node-analyzer-relay' } }, kube.resources, async () => {}), /Choose/)
+})
+
+void test('live policy delivery preserves the Pod, model credentials and later configuration updates', async t => {
+  const kube = platform()
+  t.mock.method(NexusZoneApiClient, 'withMtls', () => ({ mintUserRuntime: async (owner: string) => runtimeCredential(owner), close() {} }))
+  const service = new UserPodService(options, kube.resources, async () => {})
+  t.after(() => service.close())
+  assert.equal(await service.configurePolicy('alice', createEgressPolicy()), undefined)
+  assert.equal(kube.writes.length, 0, 'configuration must not provision an absent runtime')
+  const model = '{"mounts":[{"credential":"synthetic-owner-key"}]}'
+  await service.resolve('alice', { 'sudocode.json': '{}', 'backend-config.json': model })
+  const pod = kube.objects.get('pod')!
+  const containers = pod.spec!.containers as Array<{ env: Array<{ name: string; value: string }>; volumeMounts: Array<{ name: string; readOnly?: boolean }> }>
+  assert.equal(containers[0]!.env.find(entry => entry.name === POLICY_ENVIRONMENT)?.value, '/runtime-config/egress-policy.json')
+  assert.equal(containers[0]!.volumeMounts.find(mount => mount.name === 'configuration')?.readOnly, true)
+  const policy = createEgressPolicy({ revision: 1, enabled: true, modelMounts: ['/model'] })
+  await service.configurePolicy('alice', policy)
+  await service.resolve('alice', { 'sudocode.json': '{"model":"next"}', 'backend-config.json': model })
+  assert.equal(kube.objects.get('pod'), pod)
+  const values = kube.objects.get('secret')!.data!
+  assert.deepEqual(JSON.parse(Buffer.from(values[POLICY_FILENAME]!, 'base64').toString()), policy)
+  assert.equal(Buffer.from(values['backend-config.json']!, 'base64').toString(), model)
+  assert.equal(kube.writes.filter(write => write.kind === 'pod').length, 1)
+})
 
 void test('same owner allocations keep independent Pods and volumes through concurrent creation and one allocation upgrade', async t => {
   const kube = platform(true)
@@ -340,7 +384,7 @@ void test('concurrent sessions share one user Pod without delivering cluster aut
   assert.equal(kube.writes.filter(write => write.kind === 'pod').length, 1)
   const secret = kube.writes.find(write => write.kind === 'secret')!.manifest.stringData as Record<string, string>
   const credentialManifest = JSON.parse(secret['credential.json']!) as { ca: string; cert: string; key: string }
-  assert.deepEqual(Object.keys(secret).sort(), [credentialManifest.key, credentialManifest.cert, 'backend-config.json', credentialManifest.ca, 'credential.json', 'sudocode.json'].sort())
+  assert.deepEqual(Object.keys(secret).sort(), [credentialManifest.key, credentialManifest.cert, 'backend-config.json', credentialManifest.ca, 'credential.json', 'sudocode.json', POLICY_FILENAME].sort())
   assert.equal(JSON.stringify(kube.writes).includes('/moss-key'), false)
   assert.equal(a.tls, options.issuer.tls)
   assert.equal(a.authToken, '')

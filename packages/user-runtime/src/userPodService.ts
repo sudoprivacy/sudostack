@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import { z } from 'zod'
+import { createEgressPolicy, parseEgressPolicy, POLICY_FILENAME, POLICY_ENVIRONMENT, type EgressPolicy } from '@sudo/egress-policy'
 import { NexusZoneApiClient, userRuntimeServerName, createUserRuntimeCredentialBundle, type SessionCredential, type NexusVfsTlsConfig } from '@nexus-ai-fs/vfs-client'
 import { buildKubectlBaseArgs, kubectlApply, readK8sResource, deleteK8sResource, observeK8sRuntime, refreshK8sPodProjection, type K8sResource } from './k8sResources.js'
 import { parseCohostBuild, type RuntimeRelease } from './runtimeRelease.js'
@@ -49,6 +50,8 @@ export interface UserPodOptions {
   imagePullPolicy?: string
   imagePullSecrets?: string[]
   release?: RuntimeRelease
+  egressAnalyzer?: { image: string; memoryLimit?: string; cpuLimit?: string }
+  egressAnalyzerRelay?: { image: string; secretName: string }
 }
 
 interface UserPodConnection {
@@ -56,6 +59,7 @@ interface UserPodConnection {
   podUid: string
   close: () => Promise<void>
   configure: (configuration: Record<string, string>) => Promise<void>
+  configurePolicy: (policy: EgressPolicy) => Promise<void>
 }
 
 export interface UserPodResources {
@@ -105,7 +109,8 @@ function userPodManifests(ownerId: string, options: UserPodOptions) {
       'serve-user', '--owner', ownerId, '--credential', '/runtime-identity',
       '--backend-config', '/runtime-config/backend-config.json'],
     env: [{ name: 'SCODE_GLOBAL_CONFIG_DIR', value: `${DATA_ROOT}/scode` },
-      { name: 'SCODE_CHECK_UPDATES', value: '0' }, { name: 'HOME', value: '/home/agent' }],
+      { name: 'SCODE_CHECK_UPDATES', value: '0' }, { name: 'HOME', value: '/home/agent' },
+      { name: POLICY_ENVIRONMENT, value: `/runtime-config/${POLICY_FILENAME}` }],
     resources: { requests: { cpu: '100m', memory: '128Mi' },
       limits: { cpu: options.cpuLimit ?? '2', memory: options.memoryLimit ?? '4Gi' } },
     securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: ['ALL'] } },
@@ -118,7 +123,24 @@ function userPodManifests(ownerId: string, options: UserPodOptions) {
     automountServiceAccountToken: false, restartPolicy: 'Always',
     runtimeClassName: options.runtimeClassName ?? 'gvisor',
     securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000 },
-    containers: [container],
+    containers: [container, ...(options.egressAnalyzer ? [{
+      name: 'egress-analyzer', image: options.egressAnalyzer.image,
+      imagePullPolicy: options.imagePullPolicy ?? 'IfNotPresent',
+      command: ['gunicorn', '--workers', '1', '--bind', '127.0.0.1:59080', '--timeout', '60', 'sudo_analyzer:create_app()'],
+      securityContext: { ...container.securityContext, runAsUser: 1001, runAsGroup: 1001 },
+      resources: { requests: { cpu: '100m', memory: '512Mi' },
+        limits: { cpu: options.egressAnalyzer.cpuLimit ?? '2', memory: options.egressAnalyzer.memoryLimit ?? '4Gi' } },
+    }] : []), ...(options.egressAnalyzerRelay ? [{
+      name: 'egress-analyzer-relay', image: options.egressAnalyzerRelay.image,
+      imagePullPolicy: options.imagePullPolicy ?? 'IfNotPresent',
+      command: ['caddy', 'run', '--config', '/relay/Caddyfile', '--adapter', 'caddyfile'],
+      env: [{ name: 'NEXUS_DLP_NODE_IP', valueFrom: { fieldRef: { fieldPath: 'status.hostIP' } } },
+        { name: 'XDG_CONFIG_HOME', value: '/tmp/config' }, { name: 'XDG_DATA_HOME', value: '/tmp/data' }],
+      securityContext: { ...container.securityContext, runAsUser: 1002, runAsGroup: 1002, readOnlyRootFilesystem: true },
+      resources: { requests: { cpu: '10m', memory: '16Mi' }, limits: { cpu: '250m', memory: '128Mi' } },
+      volumeMounts: [{ name: 'analyzer-relay', mountPath: '/relay', readOnly: true },
+        { name: 'analyzer-relay-tmp', mountPath: '/tmp' }],
+    }] : [])],
     initContainers: [{ name: 'configuration', image: options.image,
       imagePullPolicy: options.imagePullPolicy ?? 'IfNotPresent',
       command: ['sh', '-ec',
@@ -133,7 +155,13 @@ function userPodManifests(ownerId: string, options: UserPodOptions) {
       { name: 'configuration', secret: { secretName: name, items: [
         { key: 'sudocode.json', path: 'sudocode.json' },
         { key: 'backend-config.json', path: 'backend-config.json' },
-      ] } }],
+        { key: POLICY_FILENAME, path: POLICY_FILENAME },
+      ] } }, ...(options.egressAnalyzerRelay ? [
+        { name: 'analyzer-relay', secret: { secretName: options.egressAnalyzerRelay.secretName,
+          defaultMode: 0o440, items: [{ key: 'Caddyfile', path: 'Caddyfile' },
+            { key: 'authorization.caddy', path: 'authorization.caddy' }, { key: 'analyzer-ca.pem', path: 'analyzer-ca.pem' }] } },
+        { name: 'analyzer-relay-tmp', emptyDir: { medium: 'Memory', sizeLimit: '16Mi' } },
+      ] : [])],
   }
   const digest = createHash('sha256').update(JSON.stringify({ spec, release: options.release })).digest('hex')
   return {
@@ -167,6 +195,12 @@ export class UserPodService {
     this.options = { ...options, allocationId: allocationName(options.allocationId ?? PRIMARY_ALLOCATION) }
     if (typeof ready !== 'function') throw new Error('User runtimes require authenticated readiness verification')
     if (!options.image || !options.storageClass) throw new Error('User Pods require an image and retained storage')
+    if (options.egressAnalyzer && options.egressAnalyzerRelay) throw new Error('Choose a dedicated analyzer or a node analyzer relay')
+    if (options.egressAnalyzerRelay && (!options.egressAnalyzerRelay.image ||
+      typeof options.egressAnalyzerRelay.secretName !== 'string' || options.egressAnalyzerRelay.secretName.length > 253 ||
+      !/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/.test(options.egressAnalyzerRelay.secretName))) {
+      throw new Error('Analyzer relay requires an image and a valid Secret name')
+    }
     if (!options.nodeHost) throw new Error('User Pods require a private compute node host')
     const host = new URL(`https://${options.nodeHost}`)
     if (host.username || host.password || host.port || host.pathname !== '/' || host.search || host.hash) {
@@ -271,7 +305,7 @@ export class UserPodService {
       const savedSecret = await this.readAllocationResource('secret', name)
       if (savedSecret && savedSecret.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) throw new Error('User Pod Secret belongs to another owner')
       const saved: Record<string, string> = {}
-      for (const key of ['sudocode.json', 'backend-config.json']) {
+      for (const key of ['sudocode.json', 'backend-config.json', POLICY_FILENAME]) {
         if (savedSecret?.data?.[key]) saved[key] = Buffer.from(savedSecret.data[key], 'base64').toString('utf8')
       }
       if (pod) {
@@ -428,6 +462,17 @@ export class UserPodService {
     }
   }
 
+  /** Deliver policy to an existing verified runtime without changing its model backend. */
+  async configurePolicy(ownerId: string, input: EgressPolicy): Promise<UserRuntimeConnectionConfig | undefined> {
+    const policy = parseEgressPolicy(input)
+    if (!(await this.find(ownerId))) return undefined
+    await this.resolve(ownerId)
+    const connection = await this.connections.get(ownerId)
+    if (!connection) throw new Error('User runtime connection is unavailable')
+    await connection.configurePolicy(policy)
+    return connection.config
+  }
+
   private async resolveConnection(ownerId: string, configuration?: Record<string, string>): Promise<UserPodConnection> {
     const name = userPodName(ownerId, this.options.allocationId)
     const [lock, pod] = await Promise.all([
@@ -482,7 +527,8 @@ export class UserPodService {
     if (existingPod && existingPod.metadata.annotations?.[SPEC_ANNOTATION] !== manifests.pod.metadata.annotations[SPEC_ANNOTATION]) {
       throw new UserRuntimeUpdateRequiredError('runtime')
     }
-    const defaults = { 'sudocode.json': '{}', 'backend-config.json': '{"mounts":[]}' }
+    const defaults = { 'sudocode.json': '{}', 'backend-config.json': '{"mounts":[]}',
+      [POLICY_FILENAME]: JSON.stringify(createEgressPolicy()) }
     const savedSecret = await assertOwner('secret')
     await assertOwner('service')
     await assertOwner('pvc')
@@ -499,10 +545,10 @@ export class UserPodService {
     }
     await ensureCreated('pvc', manifests.claim)
     let updates = Promise.resolve()
-    const refresh = (replacement?: Record<string, string>) => {
+    const refresh = (replacement?: Record<string, string> | ((current: Record<string, string>) => Record<string, string>)) => {
       const update = updates.catch(() => {}).then(async () => {
         const observed = await assertOwner('secret')
-        const next = replacement ?? configuration
+        const next = typeof replacement === 'function' ? replacement(configuration) : replacement ?? configuration
         const issuer = NexusZoneApiClient.withMtls(this.options.issuer.endpoint, this.options.issuer.tls)
         try {
           const credential = await issuer.mintUserRuntime(ownerId, { validitySecs: CREDENTIAL_VALIDITY_SECS })
@@ -573,7 +619,11 @@ export class UserPodService {
           throw new UserRuntimeUpdateRequiredError('model-backend')
         }
         if (JSON.stringify(configuration) === JSON.stringify(replacement)) return
-        await refresh(replacement)
+        await refresh(current => ({ ...replacement, [POLICY_FILENAME]: next[POLICY_FILENAME] ?? current[POLICY_FILENAME]! }))
+      },
+      configurePolicy: async policy => {
+        if (!isActive || this.lifecycle.signal.aborted) throw new Error('User Pod connection is closed')
+        await refresh(current => ({ ...current, [POLICY_FILENAME]: JSON.stringify(parseEgressPolicy(policy)) }))
       },
       config,
       close: async () => {

@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - 'packages/user-runtime/**'
+      - 'security/egress-gate/node-analyzer/**'
       - '.github/workflows/user-runtime.yml'
   push:
     branches: [main]
     tags: ['user-runtime-v*']
     paths:
       - 'packages/user-runtime/**'
+      - 'security/egress-gate/node-analyzer/**'
       - '.github/workflows/user-runtime.yml'
 
 jobs:
@@ -32,7 +34,21 @@ jobs:
           cache-dependency-path: packages/user-runtime/package-lock.json
       - run: npm ci --ignore-scripts
       - run: npm run typecheck
+      - run: npm run build
+      - run: node --check ../../security/egress-gate/node-analyzer/configure.mjs
+      - run: node --test ../../security/egress-gate/node-analyzer/configure.test.mjs
+        if: runner.os == 'Linux'
       - run: npm test
+      - name: Real node analyzer TLS and authentication transport
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          CADDY_DIR="$RUNNER_TEMP/sudo-runtime-caddy-2.10.2"
+          mkdir -p "$CADDY_DIR"
+          curl --fail --silent --show-error --location https://github.com/caddyserver/caddy/releases/download/v2.10.2/caddy_2.10.2_linux_amd64.tar.gz -o "$CADDY_DIR/caddy_2.10.2_linux_amd64.tar.gz"
+          curl --fail --silent --show-error --location https://github.com/caddyserver/caddy/releases/download/v2.10.2/caddy_2.10.2_checksums.txt -o "$CADDY_DIR/checksums.txt"
+          (cd "$CADDY_DIR" && grep '  caddy_2.10.2_linux_amd64.tar.gz$' checksums.txt | sha512sum --check && tar -xzf caddy_2.10.2_linux_amd64.tar.gz caddy)
+          CADDY_BINARY="$CADDY_DIR/caddy" node --import tsx test/live/nodeAnalyzerRelay.ts
       - name: Immutable historical contracts retain their exact bytes
         env:
           GIT_CONFIG_COUNT: '1'

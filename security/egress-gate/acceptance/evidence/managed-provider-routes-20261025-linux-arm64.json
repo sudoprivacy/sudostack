@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "provenance": {
+    "sudocode_commit": "608d32650bf667af261512bd213fc75286c04b74",
+    "nexus_commit": "2e6e2ceb9fade7d587ca23c4061d3fdf3d11cc9a",
+    "executable_sha256": "ba27a0d6ee0082eb4b4099be155962ba248d8486d7e2e1010a171eb3cb708401",
+    "features": [
+      "daemon",
+      "driver-ai",
+      "egress-gate-presidio"
+    ],
+    "profile": "dev",
+    "dependency_source_override": true,
+    "shipping_manifest_changed": false,
+    "platform": "linux-arm64",
+    "shared_sdk_candidate_sha256": "bf54db3392531bc9b4cd52f94f56cd7afabd6d278e1e453878f6df53171de501"
+  },
+  "authenticated_user_delegation": true,
+  "managed_agent_service": true,
+  "verified_at": "2026-10-25T13:47:50.146366+00:00",
+  "passed": true,
+  "scope": "candidate_cohost_provider_qualified_routes_linux_arm64",
+  "production_deployed": false,
+  "real_cloud_model_called": false,
+  "same_daemon": true,
+  "upstream": "synthetic_loopback",
+  "provider_qualified_routes": true,
+  "runner_sha256": {
+    "managed-session.py": "2ff0f7f8a24f3fc3522dbbf1f374b6d39a2f7251df31d229fc25942424c9dee1",
+    "managed-session.mjs": "9bfdd5e2fcd742a1991412fec29af1c77a943ba52208aabae36fc8a01c869d9f"
+  },
+  "checks": {
+    "independent_route_credentials": true,
+    "upstream_model_id_preserved": true,
+    "undeclared_alias_refused": true,
+    "local_original_retained": true,
+    "cloud_redacted": true
+  },
+  "cases": [
+    {
+      "scenario": "disabled-before",
+      "passed": true,
+      "upstream_requests": 1,
+      "caller_received_error": false,
+      "visible_answer": true,
+      "local_original_retained": true,
+      "model": "cloud:managed-fixture",
+      "policy_revision": 0,
+      "enabled": false,
+      "mode": "redact"
+    },
+    {
+      "scenario": "redact",
+      "passed": true,
+      "upstream_requests": 1,
+      "caller_received_error": false,
+      "visible_answer": true,
+      "local_original_retained": true,
+      "model": "cloud:managed-fixture",
+      "policy_revision": 1,
+      "enabled": true,
+      "mode": "redact",
+      "unknown_alias_refused": true
+    },
+    {
+      "scenario": "local-control",
+      "passed": true,
+      "upstream_requests": 1,
+      "caller_received_error": false,
+      "visible_answer": true,
+      "local_original_retained": true,
+      "model": "local:managed-fixture",
+      "policy_revision": 2,
+      "enabled": true,
+      "mode": "redact"
+    },
+    {
+      "scenario": "deny",
+      "passed": true,
+      "upstream_requests": 0,
+      "caller_received_error": true,
+      "visible_answer": false,
+      "local_original_retained": true,
+      "model": "cloud:managed-fixture",
+      "policy_revision": 3,
+      "enabled": true,
+      "mode": "deny"
+    },
+    {
+      "scenario": "outage",
+      "passed": true,
+      "upstream_requests": 0,
+      "caller_received_error": true,
+      "visible_answer": false,
+      "local_original_retained": true,
+      "model": "cloud:managed-fixture",
+      "policy_revision": 4,
+      "enabled": true,
+      "mode": "redact"
+    },
+    {
+      "scenario": "malformed",
+      "passed": true,
+      "upstream_requests": 0,
+      "caller_received_error": true,
+      "visible_answer": false,
+      "local_original_retained": true,
+      "model": "cloud:managed-fixture",
+      "policy_revision": 5,
+      "enabled": true,
+      "mode": "redact"
+    },
+    {
+      "scenario": "disabled-after",
+      "passed": true,
+      "upstream_requests": 1,
+      "caller_received_error": false,
+      "visible_answer": true,
+      "local_original_retained": true,
+      "model": "cloud:managed-fixture",
+      "policy_revision": 6,
+      "enabled": false,
+      "mode": "redact"
+    }
+  ]
+}

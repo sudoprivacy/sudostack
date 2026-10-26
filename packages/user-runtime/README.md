@@ -35,6 +35,35 @@ Credential renewal uses JSON Patch with atomic tests for the observed Secret UID
 
 Current Kubernetes delivery uses projected Secrets, including short-lived leaf keys and model configuration. Volatile delivery and its recovery path must be completed before treating this as the final storage design. The package has one source implementation; consumers must remove their copies when switching to the versioned package.
 
+## Egress policy delivery
+
+Version 0.2.0 projects one complete `egress-policy.json` alongside the existing
+model configuration. The native runtime reads its controller-owned file through
+`NEXUS_EGRESS_GATE_CONFIG`; no agent policy-write RPC is exposed.
+`configurePolicy` updates an existing owner's projected configuration without
+creating a Pod, replacing its volume or changing model credentials. Subsequent
+model updates, renewal, restart and rollback retain that policy.
+
+Applications use `@sudo/egress-policy` for validation, scoped storage, revision
+conflicts and comparison with the native service's actual status. Delivery does
+not imply enforcement: read `egress_gate.get_policy_status_v1` over the existing
+authenticated connection and compare its applied revision and mounts.
+
+For a node-shared analyzer, pass `egressAnalyzerRelay: { image, secretName }`.
+The optional `egressAnalyzer` image instead runs a dedicated analyzer in each
+Pod; these choices are mutually exclusive. The relay's credential Secret is
+mounted only in its separate container. Upstream address comes from the Pod's
+actual node identity, not tenant policy. Transport templates and real Caddy
+acceptance are shared here; node preparation lives in
+`security/egress-gate/node-analyzer`.
+
+`writeEgressPolicyFile` provides atomic local delivery for a host cohost or
+Nexus-connected CLI. Only its trusted controller may write the destination;
+agents require read-only access. `readEgressPolicyFile` loads bounded deployment
+defaults and rejects invalid UTF-8 without repeating policy values in errors.
+`buildCohostModelConfiguration` composes independent local and cloud model
+routes and preserves their separate credentials and provider selection.
+
 ## Work admission
 
 `WorkAdmission` is a process-local gate for control-plane work. Wrap each job's

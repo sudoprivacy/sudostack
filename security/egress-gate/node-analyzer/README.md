@@ -1,0 +1,75 @@
+# One semantic analyzer per compute node
+
+The native `egress_gate` service still owns every allow, redact and deny
+decision. Its Presidio client calls `http://127.0.0.1:59080`. A Caddy relay in
+the owner Pod sends classification requests to its actual Kubernetes node
+over authenticated TLS. The Chinese model is loaded once on that node.
+Direct host cohosts can use the existing loopback analyzer deployment.
+
+Transport composition is exported by `@sudo/user-runtime`. Its real Caddy
+acceptance covers correct and incorrect TLS identities, authentication,
+credential stripping, request isolation and the disabled Caddy admin API.
+Only `POST /analyze` is proxied. No access or body log is enabled.
+
+## Prepare a single-node deployment
+
+Build the shared SDK (`npm ci --ignore-scripts && npm run build` in
+`packages/user-runtime`). Build the analyzer from `../presidio/Dockerfile`
+at the reviewed commit. On the Linux compute node, create a private JSON
+configuration containing:
+
+```json
+{
+  "version": 1,
+  "dataDirectory": "/var/lib/sudo-egress-analyzer",
+  "bindAddress": "10.0.0.8",
+  "port": 9448,
+  "serverName": "egress-node.internal",
+  "analyzerImage": "sudo-presidio-zh:reviewed-commit",
+  "gatewayImage": "docker.io/library/caddy:2.10.2-alpine",
+  "namespace": "moss-sessions",
+  "relaySecretName": "sudo-egress-analyzer",
+  "kubeconfig": "/private/moss-kubeconfig"
+}
+```
+
+Use the node's actual private InternalIP for `bindAddress`. The gateway binds
+only that address. The analyzer itself is published only on host loopback
+port 59081. Protect that host from untrusted host processes. The example
+address and image tag must be replaced with observed deployment values.
+
+Run `node configure.mjs /private/node-analyzer.json` to prepare the private
+files and validate Compose. Add `--apply` to start the node service and
+deliver its namespace Secret. OpenSSL, Docker Compose and kubectl are required.
+The dedicated classifier password and TLS private keys never appear in
+command arguments, terminal output or Git. The authority key stays on the
+host and is not mounted in either container. Server-side Secret application
+does not create a last-applied annotation containing credential copies.
+
+Moss receives only `egressGate.analyzerRelay = { image, secretName }` plus
+its deployment's initial `defaultPolicyFile`. Each Pod uses Downward API
+`status.hostIP`; tenant policy cannot choose a different upstream. Only the
+relay mounts the Secret, runs as a separate UID and has a read-only root
+filesystem. Caddy's admin API and configuration persistence are disabled.
+Upgrade existing owner runtimes through the established maintenance path.
+
+The controller's policy file remains read-only inside the agent container.
+Moss saves policy revisions and shows the native service's actual applied
+revision. A Secret update alone is not proof of enforcement.
+
+## Lifecycle and acceptance
+
+An ordinary business-policy edit is request-scoped and restarts no analyzer,
+relay or cohost. Reapplying node preparation preserves the classifier password
+and certificates. Infrastructure credential or certificate rotation requires
+reloading the gateway and replacing relay Pods through runtime maintenance;
+the preparer rejects certificates expiring within a day. Protect and back up
+the private deployment directory. This preparer targets one compute node;
+additional nodes need gateway certificates under the same trusted authority
+before their owner Pods can use the shared relay Secret.
+
+Verify real classification through a canary Pod, refusal on invalid node TLS
+or credentials, and the runtime hook's analyzer-unavailable behavior. Then
+verify raw local-model control, redacted external-model input, dynamic
+on/off, saved-versus-applied status and controller/runtime restart recovery.
+Cloud defaults remain disabled while canary acceptance runs.

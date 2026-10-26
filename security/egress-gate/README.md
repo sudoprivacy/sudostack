@@ -9,7 +9,8 @@ way; only which mounts count as egress differs by form.
 |---|---|
 | Behaviour: hook, planes, detectors, redaction, policy | nexus-vfs `rust/egress_gate` |
 | Session runtime carrying it | sudocode `nexusd-cohost`, which forwards `egress-gate` / `egress-gate-presidio` to `nexus-cluster` and composes its default service set, so the gate arrives with the feature |
-| Shared assembly: build features, env contract, analyzer image, acceptance | here |
+| Shared assembly: policy contract, storage, delivery, analyzer image, acceptance | here and `packages/egress-policy`, `packages/user-runtime` |
+| Authenticated policy administration and UI | Moss |
 | Per-form wiring and acceptance records | each deployment repository (e.g. sudoedge runbook) |
 
 ## Build
@@ -21,50 +22,61 @@ the gate feature has no gate, and no environment variable can arm one. A
 build with it claims nothing until a deployment names the mounts below, so
 building it in changes no behaviour by itself.
 
-## Configuration contract
+## Live configuration contract
 
-All variables are read at boot. A value that does not parse, model mounts
-named on a build without the model driver, or an analyzer named on a build
-without the provider **aborts boot** — a typo in the setting that decides
-what may leave never leaves the daemon running ungated.
+The live-policy runtime uses one deployment variable,
+`NEXUS_EGRESS_GATE_CONFIG`, pointing to a controller-owned JSON file. The
+shared [policy package](../../packages/egress-policy) validates the complete
+document and owns scoped storage and revision conflicts. The existing native
+`egress_gate` service reloads an admitted revision before an outbound write.
+It exposes read-only `get_policy_status_v1`; agents have no policy mutation RPC.
 
-The current configuration surface is deployment environment variables and
-the analyzer YAML under `presidio/conf/`. It is not a DLP management API.
-The reviewed Moss system/platform settings expose no DLP policy controls.
+Moss supplies platform defaults and organization overrides through its
+authenticated settings API and **Data egress protection** admin page. The
+shared runtime SDK projects the policy read-only in managed cohost Pods or
+atomically replaces a trusted host cohost's policy file. Saving a desired
+revision and applying it are separate states, compared against the native
+service's actual report. The deployed runtime must carry this interface;
+source availability alone does not prove a production rollout.
 
-| Variable | Meaning | Default |
-|---|---|---|
-| `NEXUS_EGRESS_GATE_POLICY` | `redact`, `deny` or `observe` (log only) | `redact` |
-| `NEXUS_EGRESS_GATE_MODEL_MOUNTS` | comma-separated model mounts whose prompts leave the node | none gated |
-| `NEXUS_EGRESS_GATE_A2A_MOUNTS` | comma-separated mounts under which conversation transcripts are shared with another domain | none gated |
-| `NEXUS_EGRESS_GATE_PRESIDIO_URL` | the analyzer; must resolve to loopback | no contextual detection |
-| `NEXUS_EGRESS_GATE_PRESIDIO_LANGUAGE` | analyzer language | `zh` |
-| `NEXUS_EGRESS_GATE_PRESIDIO_THRESHOLD` | minimum score, 0–1 | `0.5` |
-| `NEXUS_EGRESS_GATE_PRESIDIO_ENTITIES` | entity types to request | all |
-| `NEXUS_EGRESS_GATE_PRESIDIO_TIMEOUT_MS` | per-write analyzer deadline | `2000` |
+The deployment repositories own initial profiles: Cloud defaults disabled
+with `/model` declared external; Edge protects `/cloud-model` and excludes
+local GPU `/model`; Private starts disabled until its customer's outbound
+boundary is configured. Bootstrap files seed fresh storage. Subsequent edits
+use the policy API and persist in Moss storage.
 
-A transcript is gated only under `NEXUS_EGRESS_GATE_A2A_MOUNTS`, never
-everywhere: a managed session's turns are themselves a conversation, so
-gating every transcript would redact what a user tells the agent on their own
-node. With neither mount list set, the gate is armed and claims nothing, and
-says so at boot. The analyzer image is `presidio/` here; run one per gated
-daemon, on loopback, because the text it classifies is sent to it.
+`modelMounts` identifies external model planes. `a2aMounts` identifies only
+cross-domain transcript planes: ordinary local session history retains its
+original content. Empty lists assert no coverage for those planes. Invalid
+startup policy aborts boot; malformed or rolled-back replacement policy denies
+writes on the last admitted planes until a valid revision is restored.
+
+`redact` replaces supported sensitive prose and denies detection failures or
+unsafe redaction. `deny` rejects sensitive writes. `observe` sends the original
+content and does not enforce confidentiality. Disabling the policy passes
+content unchanged while retaining the service and its applied status.
+
+The analyzer image is shared in `presidio/`. Host cohosts can call it directly
+on loopback. Managed runtimes can use the
+[node analyzer transport](node-analyzer/README.md), which loads one Chinese
+model per node and retains the native loopback-only analyzer boundary.
+Business-policy edits travel on each trusted classification request, without
+restarting the analyzer and without persisting another organization's rules.
 
 ## Assembly rules
 
 | Rule | Why | Enforced by |
 |---|---|---|
-| A Router credential that can reach a non-local model channel is held only by a mount listed in `NEXUS_EGRESS_GATE_MODEL_MOUNTS`. On new-api: non-local channels sit in their own group, reached by their own token; the local mount's token is in a group with local channels only. | The gate decides by mount. One token that reaches both a local GPU and a cloud provider makes every prompt on that mount potentially egress, and the gate cannot tell which. | none (acceptance demonstrates the split; no check prevents a deployment from merging the groups) |
+| A Router credential that can reach a non-local model channel is held only by a mount listed in policy `modelMounts`. On new-api: non-local channels sit in their own group, reached by their own token; the local mount's token is in a group with local channels only. | The gate decides by mount. One token that reaches both a local GPU and a cloud provider makes every prompt on that mount potentially egress, and the gate cannot tell which. | none (acceptance demonstrates the split; no check prevents a deployment from merging the groups) |
 | Prompts to a node-local model are not gated. | The local model is the one allowed to see customer data; redacting its prompts breaks the private-data path. | `egress_gate` `test_model_plane::a_prompt_to_a_local_mount_reaches_the_model_intact` |
 | Session turns are not gated; cross-domain conversations live under their own mount. | Sessions ride A2A transcripts. Only conversations shared with another domain are egress, and a path can reveal that only if they have their own namespace. | `egress_gate` `test_session_not_gated::a_session_turn_is_not_gated_by_default` (the namespace itself: none) |
 | The analyzer runs on loopback. | Classification sends the content to the analyzer. | `egress_gate` `presidio::tests::refuses_an_analyzer_off_loopback` (the provider refuses any URL that does not resolve to loopback) |
 | Bring a deployment up with `observe`, read the audit lines, then switch to `redact`. | A first deployment meets real traffic shapes the tests did not. | none |
 
 Per form: on SudoEdge the local GPU mount is ungated and the cloud mount is
-gated. On Sudo Cloud and Sudo Private every model endpoint is outside the
-node; which of them count as egress is the tenant's or the customer's
-policy, expressed through `NEXUS_EGRESS_GATE_MODEL_MOUNTS` and the rule
-above.
+gated. The Cloud profile declares `/model` external. Private deployments
+classify their model endpoints against the customer's boundary. Policy
+`modelMounts` declares the external planes in each form.
 
 ## Boundary
 
@@ -78,6 +90,48 @@ node writes straight to a remote broker. For cross-domain A2A to be gated, the
 messages travel through the sending node's own daemon first.
 
 ## Acceptance
+
+`acceptance/managed-session.py` exercises real managed ACP sessions against a
+caller-supplied `nexusd-cohost` executable. Set `GATE_BIN`, `NEXUS_PROTO_ROOT`
+(the matching Nexus proto directory), and `NODE_MODULES` (containing
+`@grpc/grpc-js` and `@grpc/proto-loader`). `WORK` must name a fresh private
+evidence directory. Linux uses owned transient user units; set
+`GATE_PROCESS_MODE=1` to use owned child processes, including on Windows.
+
+With `LIVE_POLICY=1`, one daemon runs disabled, redact, deny, analyzer outage,
+invalid analyzer output, and disabled again. The runner asserts actual native
+revision receipts, original local history, visible replies, and upstream
+request counts `1,1,0,0,0,1`. Session credentials use the production
+controller delegation flow. The analyzer fault endpoints and model upstream
+are synthetic loopback fixtures. The
+[Windows candidate receipt](acceptance/evidence/managed-live-policy-20261025-windows.json)
+and [Linux ARM64 receipt](acceptance/evidence/managed-live-policy-20261025-linux-arm64.json)
+record exact source and executable digests; they prove native session
+enforcement, while production rollout and real model quality require separate
+deployment acceptance. Keep generated TLS material outside Git.
+
+With `PROVIDER_ROUTES=1`, also set `SHARED_MODEL_BUILDER` to the built SDK's
+`dist/modelConfiguration.js`. The same runner uses
+`buildCohostModelConfiguration` to declare independent `/model` and
+`/cloud-model` accounts with different credentials and provider-qualified
+aliases for the same upstream model ID. A local control retains its original
+prompt while the cloud case is redacted. An undeclared alias must fail before
+the original cloud selection continues. The
+[Linux ARM64 provider-route receipt](acceptance/evidence/managed-provider-routes-20261025-linux-arm64.json)
+records seven cases with upstream counts `1,1,1,0,0,0,1`, credential selection,
+raw upstream model IDs and native policy receipts. This is a synthetic model
+control, not a GPU or production cloud-model acceptance.
+
+Set `SCODE_BIN` to a caller-supplied CLI executable to run the same matrix with
+real `scode --print` processes. The runner mints each CLI's node credential,
+uses a private home and node record, and checks the local transcript plus the
+same native policy receipts and upstream observations. It records both daemon
+and CLI executable digests. The user's node record and credentials are untouched.
+The CLI adds peer-only HTTP and unattached HTTP controls; both retain direct
+model behavior outside DLP. A managed CLI profile must choose a Nexus model
+route for coverage. The [CLI candidate receipt](acceptance/evidence/cli-live-policy-20261025-windows.json)
+records all eight cases and uses the shipping CLI dependency tag without a
+local override. Candidate receipts do not establish production deployment.
 
 `acceptance/run.sh` starts a gate-armed daemon, the analyzer, and a recording
 proxy in front of the real Router, then sends a prompt with a synthetic name,
