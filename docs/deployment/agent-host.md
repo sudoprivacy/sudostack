@@ -5,6 +5,11 @@ Cloud, Private and Edge share the deployment sequence described in
 adapters consume native component behavior. Installing another standalone
 Agent does not qualify an existing cohost product integration.
 
+Service startup and collaboration availability are separate deployment
+properties. See [availability and recovery](availability-and-recovery.md) for
+the proposed qualification boundary; a running process, replicated directory
+or successful multi-party chat does not establish tolerance of a host failure.
+
 ## Linux user-service placement
 
 Python 3.11+, user systemd and a source-bound native `nexusd-cohost` executable
@@ -162,3 +167,53 @@ its execution. A pass reports authenticated product/model acceptance, with
 Native identity/space/content-policy and multi-party delivery remain separate
 required qualification. The appliance or Cloud allocation adapter chooses a
 quiet point and owns its actual runtime lifecycle.
+
+## Device-owned deployment operations
+
+`device_operation.py` composes the existing service selection and original-product
+qualification in a one-shot user systemd unit. The worker lives outside Moss's
+service, so selecting a new Moss version does not end the deployment with the
+HTTP process. This adds no daemon, credential issuer or alternative session/model
+client. Cloud's Kubernetes placement continues to use its native lifecycle;
+this executor is the Linux user-service placement adapter.
+
+The device operator installs a private registry with `schemaVersion:1`, a stable
+`deploymentId`, an existing private `stateDirectory`, and `plans`. Each plan ID
+maps to `{path,sha256,ownerId,description}`. Its private, immutable plan contains
+`{schemaVersion:1,deploymentId,ownerId,selection,qualification}`: the last two
+fields are the existing source-owned plans above. Qualification must bind the
+same original owner. Paths, credentials and original session values stay in
+the private device record. No request can supply a shell command, executable,
+plan body or runtime download URL.
+
+```text
+python3 tools/deploy/device_operation.py inspect --registry PRIVATE_REGISTRY --plan-id APPROVED_ID
+python3 tools/deploy/device_operation.py submit --registry PRIVATE_REGISTRY --plan-id APPROVED_ID --operation-id ORIGINAL_ID
+python3 tools/deploy/device_operation.py query --registry PRIVATE_REGISTRY --operation-id ORIGINAL_ID
+```
+
+These operator commands are authorized by the actual device OS account. They
+are not an unprivileged remote-control API or a host sandbox. Moss must check
+its existing authenticated delegation, current permissions, target and approved
+plan before invoking the fixed adapter. Supplied actor labels cannot establish
+that authority. The installer account's broad OS rights do not become bounded
+OS confinement merely because a plan was checked. Bootstrap/recovery may use
+the same device-owned entry under the operator's OS authorization while Moss
+is unavailable.
+
+An operation ID reserves one private directory before systemd submission. Its
+receipt binds deployment, owner, approved plan hash, actual OS UID, executable
+runner and shared implementation hashes. Reusing that ID only reads the original
+operation; a conflicting request refuses. Submission uncertainty remains Unknown,
+and neither a missing receipt nor an inactive unit proves no effect. Query is
+read-only and remains possible after the plan is removed from the registry.
+The worker rechecks its immutable request, claims execution once and takes a
+device-wide nonblocking fence before the existing selection/qualification.
+No unit restart policy, automatic resend or automatic data rollback is added.
+Other operator configuration writers still require exclusive maintenance.
+
+A completed receipt proves the selected original product's native three-turn
+journey, not collaboration enrollment: `domainJoinAccepted` remains false.
+The process tests substitute systemd dispatch while exercising actual file,
+child-process, checkpoint and producer boundaries. Real systemd/controller
+handoff and real DGX product execution require their own device acceptance.
