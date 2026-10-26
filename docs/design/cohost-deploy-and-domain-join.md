@@ -104,6 +104,15 @@ frontend presents the choice; the lifecycle owner applies it. A local CLI
 profile retains daemon-free execution, while shared services are an explicit
 installation choice. Protocol/headless clients retain noninteractive startup.
 
+Choosing multi-agent mode first resolves an existing, configured and authorized
+Box. Agent attachment reuses that Box by default; a new local Nexus installation
+is needed only when no suitable Box is configured. An offline Box or pending
+Agent credential does not authorize silently replacing it with a new local
+service. Record discovery and authenticated attachment are distinct states, and
+unknown LAN announcements do not establish trust. Skipping multi-agent setup
+must not install or launch a daemon. Joining as an Agent never changes the
+Box's Raft voter membership; Node admission is a separate administrative action.
+
 The scode release updater already shares installation between startup prompts
 and `scode update`. The product's next integration binds that CLI package to
 the shared-service composition and controlled maintenance step
