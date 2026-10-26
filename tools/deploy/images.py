@@ -2,7 +2,6 @@
 """Retain verified offline images through K3s' managed, GC-pinned importer."""
 import argparse
 import hashlib
-from functools import cache
 import json
 import os
 from pathlib import Path
@@ -116,14 +115,26 @@ def canonical(ref):
 def archive_images(path):
     """Read config and OCI manifest identities without extracting image contents."""
     result = {}
-    with tarfile.open(path) as archive:
-        @cache
+    # Compressed tar seeks replay decompression from the beginning. Capture
+    # bounded metadata in one forward pass, skipping large layer payloads.
+    metadata, cached_bytes = {}, 0
+    with tarfile.open(path, mode='r|*') as stream:
+        for member in stream:
+            content = None
+            cached_bytes -= len(metadata.get(member.name, b'') or b'')
+            if member.isfile() and member.size <= 1024 * 1024:
+                cached_bytes += member.size
+                if cached_bytes > 64 * 1024 * 1024:
+                    raise ValueError('Image archive metadata exceeds 64 MiB')
+                with stream.extractfile(member) as payload:
+                    content = payload.read()
+            metadata[member.name] = content
+    if metadata:
         def read(name):
-            member = archive.getmember(name)
-            if not member.isfile() or member.size > 1024 * 1024:
+            content = metadata.get(name)
+            if content is None:
                 raise ValueError('Invalid image metadata: ' + name)
-            with archive.extractfile(member) as stream:
-                return stream.read()
+            return content
         for entry in json.loads(read('manifest.json')):
             content = read(entry['Config'])
             config = json.loads(content)
@@ -134,7 +145,7 @@ def archive_images(path):
                 if tag in result and result[tag] != value:
                     raise ValueError('Conflicting image identity: ' + tag)
                 result[tag] = dict(value)
-        if 'index.json' in archive.getnames():
+        if 'index.json' in metadata:
             if json.loads(read('oci-layout')).get('imageLayoutVersion') != '1.0.0':
                 raise ValueError('Unsupported OCI image layout')
             index = json.loads(read('index.json'))
@@ -199,6 +210,74 @@ def inspect_image(tag):
     return json.loads(result.stdout)['status']
 
 
+def digest_reference(tag, image):
+    """Bind a repository to the verified archive's root manifest or image index."""
+    digest = image.get('manifestDigest')
+    if digest is None:
+        return None
+    repository = tag.split('@', 1)[0]
+    if ':' in repository.rsplit('/', 1)[-1]:
+        repository = repository.rsplit(':', 1)[0]
+    return repository + '@' + digest
+
+
+def image_exists(reference, digest=None):
+    """Query exact containerd metadata through its native filters and quiet output."""
+    selector = 'name==' + json.dumps(reference)
+    if digest is not None:
+        selector += ',target.digest==' + json.dumps(digest)
+    result = subprocess.run(['k3s', 'ctr', '--namespace', 'k8s.io', 'images', 'list', '--quiet', selector],
+                            capture_output=True, text=True, encoding='utf-8', timeout=20, check=True)
+    names = result.stdout.splitlines()
+    if names not in ([], [reference]):
+        raise ValueError('Unexpected containerd image lookup: ' + reference)
+    return bool(names)
+
+
+def verify_manifest_reference(reference, digest):
+    """Refuse a conflicting image even when it shares the expected config identity."""
+    if image_exists(reference):
+        if not image_exists(reference, digest):
+            raise ValueError('Existing image manifest mismatch: ' + reference)
+        return True
+    return False
+
+
+def materialize_digest_reference(tag, image):
+    """Expose the exact imported manifest to CRI while preserving K3s' labels."""
+    reference = digest_reference(tag, image)
+    if reference is None:
+        return
+    digest = image['manifestDigest']
+    if not verify_manifest_reference(tag, digest):
+        raise ValueError('Imported image reference disappeared: ' + tag)
+    if not verify_manifest_reference(reference, digest):
+        # The local API copies the existing descriptor and managed pin labels.
+        # It neither transfers content nor overwrites an existing reference.
+        result = subprocess.run(['k3s', 'ctr', '--namespace', 'k8s.io', 'images', 'tag',
+                                 '--local', tag, reference], capture_output=True, text=True,
+                                encoding='utf-8', timeout=20)
+        if result.returncode:
+            # Another importer may have created the same immutable reference.
+            if 'already exists' not in result.stderr:
+                result.check_returncode()
+    if not verify_manifest_reference(reference, digest):
+        raise ValueError('Imported image digest reference disappeared: ' + reference)
+
+
+def image_observation(tag, image, status):
+    observation = {'id': status['id'], 'pinned': status.get('pinned', False)}
+    reference = digest_reference(tag, image)
+    if reference is not None:
+        observation['repoDigests'] = status.get('repoDigests') or []
+    return observation
+
+
+def image_ready(tag, image, status):
+    reference = digest_reference(tag, image)
+    return status.get('pinned') is True and (reference is None or reference in (status.get('repoDigests') or []))
+
+
 def retain_archive(path, expected, *, directory=IMAGES_DIRECTORY, timeout=300):
     """Publish atomically, then require CRI to report every exact image as pinned.
 
@@ -231,8 +310,14 @@ def retain_archive(path, expected, *, directory=IMAGES_DIRECTORY, timeout=300):
         status = inspect_image(tag)
         if status is not None and status.get('id') != expected_image['id']:
             raise ValueError('Existing image identity mismatch: ' + tag)
-        if status is not None and status.get('pinned') is True:
-            present[tag] = {'id': status['id'], 'pinned': True}
+        reference = digest_reference(tag, expected_image)
+        has_references = True
+        if reference is not None:
+            has_tag = verify_manifest_reference(tag, expected_image['manifestDigest'])
+            has_digest = verify_manifest_reference(reference, expected_image['manifestDigest'])
+            has_references = has_tag and has_digest
+        if status is not None and has_references and image_ready(tag, expected_image, status):
+            present[tag] = image_observation(tag, expected_image, status)
     if target.exists() and len(present) == len(images):
         return {'archive': str(target), 'sha256': expected, 'images': present}
     storage = archive_storage(path)
@@ -265,7 +350,7 @@ def retain_archive(path, expected, *, directory=IMAGES_DIRECTORY, timeout=300):
     # is enabled. Do not change K3s' cache, GC settings, or service lifecycle.
     os.utime(target, None)
     deadline = time.monotonic() + timeout
-    pending, observed = set(images), {}
+    pending, observed, materialized = set(images), {}, set()
     while pending:
         for tag in tuple(pending):
             status = inspect_image(tag)
@@ -274,8 +359,18 @@ def retain_archive(path, expected, *, directory=IMAGES_DIRECTORY, timeout=300):
                 continue
             if status.get('id') != images[tag]['id']:
                 raise ValueError('Imported image identity mismatch: ' + tag)
-            observed[tag] = {'id': status['id'], 'pinned': status.get('pinned', False)}
-            if status.get('pinned') is True:
+            observed[tag] = image_observation(tag, images[tag], status)
+            if digest_reference(tag, images[tag]) is not None and status.get('pinned') is True and tag not in materialized:
+                materialize_digest_reference(tag, images[tag])
+                materialized.add(tag)
+                # The CRI cache consumes asynchronous containerd image events.
+                status = inspect_image(tag)
+                if status is None:
+                    continue
+                if status.get('id') != images[tag]['id']:
+                    raise ValueError('Imported image identity mismatch: ' + tag)
+                observed[tag] = image_observation(tag, images[tag], status)
+            if image_ready(tag, images[tag], status):
                 pending.remove(tag)
         if not pending:
             return {'archive': str(target), 'sha256': expected, 'images': observed}

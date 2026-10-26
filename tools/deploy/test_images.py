@@ -230,6 +230,38 @@ class ImageRetentionTests(unittest.TestCase):
                 self.retain()
         self.assertFalse(self.directory.exists())
 
+    def test_compressed_layers_are_read_once_without_backward_seeks(self):
+        with tarfile.open(self.archive, 'w:gz') as archive:
+            for name, data in [('config.json', self.config), ('layer.tar', b'x' * (2 * 1024 * 1024)),
+                               ('manifest.json', json.dumps([{'Config': 'config.json', 'RepoTags': ['runtime:1']}]).encode())]:
+                member = tarfile.TarInfo(name)
+                member.size = len(data)
+                archive.addfile(member, io.BytesIO(data))
+        original_open = tarfile.open
+        class ForwardOnly(io.BufferedReader):
+            def seek(self, *args):
+                raise AssertionError('Compressed image import must not replay a layer')
+        with self.archive.open('rb') as raw, ForwardOnly(raw) as forward:
+            def open_forward(path, **kwargs):
+                return original_open(fileobj=forward, **kwargs)
+            with patch.object(images.tarfile, 'open', side_effect=open_forward):
+                self.assertEqual(images.archive_images(self.archive)[self.tag]['id'], self.image_id)
+
+
+    def test_metadata_cache_is_bounded_before_any_cri_side_effect(self):
+        with tarfile.open(self.archive, 'w:gz') as archive:
+            raw = b'x' * (1024 * 1024)
+            for number in range(65):
+                member = tarfile.TarInfo('metadata-' + str(number))
+                member.size = len(raw)
+                archive.addfile(member, io.BytesIO(raw))
+        with patch.object(images.subprocess, 'run') as run:
+            with self.assertRaisesRegex(ValueError, 'metadata exceeds 64 MiB'):
+                self.retain()
+            run.assert_not_called()
+        self.assertFalse(self.directory.exists())
+
+
 
 class OCIArchiveIdentityTests(unittest.TestCase):
     def setUp(self):
@@ -311,6 +343,88 @@ class OCIArchiveIdentityTests(unittest.TestCase):
         self.blobs[self.manifest_id] += b' '
         self.write()
         directory = self.root / 'retained'
+
+    def test_retention_waits_for_the_actual_cri_manifest_and_pin(self):
+        self.write()
+        reference = 'docker.io/library/runtime@' + self.manifest_id
+        def status(pinned=True, digests=None):
+            return {'id': self.config_id, 'pinned': pinned, 'repoDigests': digests or []}
+        responses = [status(False), status(), status(), status(digests=[reference])]
+        directory = self.root / 'retained'
+        with patch.object(images, 'inspect_image', side_effect=responses), \
+             patch.object(images, 'verify_manifest_reference', return_value=True), \
+             patch.object(images, 'materialize_digest_reference') as materialize, \
+             patch.object(images.time, 'sleep'):
+            result = images.retain_archive(self.archive, checksum(self.archive), directory=directory)
+        materialize.assert_called_once_with(self.tag, images.archive_images(self.archive)[self.tag])
+        self.assertEqual(result['images'][self.tag], status(digests=[reference]))
+        self.assertEqual(Path(result['archive']).read_bytes(), self.archive.read_bytes())
+        with patch.object(images, 'inspect_image', return_value=status(digests=[reference])), \
+             patch.object(images, 'verify_manifest_reference', return_value=True), \
+             patch.object(images, 'materialize_digest_reference', side_effect=AssertionError('Already ready')), \
+             patch.object(images.os, 'utime', side_effect=AssertionError('Already retained')):
+            self.assertEqual(images.retain_archive(self.archive, checksum(self.archive), directory=directory), result)
+
+
+    def test_correct_config_and_pin_cannot_replace_manifest_proof(self):
+        self.write()
+        with patch.object(images, 'inspect_image', return_value={'id': self.config_id, 'pinned': True}), \
+             patch.object(images, 'verify_manifest_reference', return_value=True), \
+             patch.object(images, 'materialize_digest_reference'):
+            with self.assertRaisesRegex(TimeoutError, 'imported and pinned'):
+                images.retain_archive(self.archive, checksum(self.archive), directory=self.root / 'retained', timeout=0)
+
+
+    def test_manifest_conflict_is_rejected_before_retaining_any_archive(self):
+        self.write()
+        with patch.object(images, 'inspect_image', return_value={'id': self.config_id, 'pinned': True}), \
+             patch.object(images, 'image_exists', side_effect=[True, False]), \
+             patch.object(images, 'materialize_digest_reference') as materialize:
+            with self.assertRaisesRegex(ValueError, 'manifest mismatch'):
+                images.retain_archive(self.archive, checksum(self.archive), directory=self.root / 'retained')
+            materialize.assert_not_called()
+        self.assertFalse((self.root / 'retained').exists())
+
+
+    def test_digest_alias_copies_metadata_locally_without_forcing_or_importing(self):
+        identity = self.identity()
+        reference = 'docker.io/library/runtime@' + self.manifest_id
+        completed = subprocess.CompletedProcess([], 0, reference + '\n', '')
+        with patch.object(images, 'verify_manifest_reference', side_effect=[True, False, True]), \
+             patch.object(images.subprocess, 'run', return_value=completed) as run:
+            images.materialize_digest_reference(self.tag, identity)
+        self.assertEqual(run.call_args.args[0], ['k3s', 'ctr', '--namespace', 'k8s.io', 'images',
+                                                'tag', '--local', self.tag, reference])
+
+
+    def test_concurrent_alias_creation_requires_the_exact_manifest_afterwards(self):
+        identity = self.identity()
+        for exists in [True, False]:
+            with self.subTest(exists=exists), \
+                 patch.object(images, 'verify_manifest_reference', side_effect=[True, False, exists]), \
+                 patch.object(images.subprocess, 'run', return_value=subprocess.CompletedProcess([], 1, '', 'already exists')):
+                if exists:
+                    images.materialize_digest_reference(self.tag, identity)
+                else:
+                    with self.assertRaisesRegex(ValueError, 'digest reference disappeared'):
+                        images.materialize_digest_reference(self.tag, identity)
+
+
+    def test_alias_permission_failure_is_preserved_without_retries(self):
+        identity = self.identity()
+        with patch.object(images, 'verify_manifest_reference', side_effect=[True, False]) as verify, \
+             patch.object(images.subprocess, 'run', return_value=subprocess.CompletedProcess([], 1, '', 'permission denied')) as run:
+            with self.assertRaises(subprocess.CalledProcessError):
+                images.materialize_digest_reference(self.tag, identity)
+            self.assertEqual(run.call_count, 1)
+            self.assertEqual(verify.call_count, 2)
+
+
+    def test_repository_port_is_kept_when_replacing_the_tag(self):
+        identity = self.identity()
+        self.assertEqual(images.digest_reference('localhost:5000/path/runtime:1', identity),
+                         'localhost:5000/path/runtime@' + self.manifest_id)
+
         with patch.object(images.subprocess, 'run') as run:
             with self.assertRaisesRegex(ValueError, 'OCI content does not match'):
                 images.retain_archive(self.archive, checksum(self.archive), directory=directory)
@@ -343,6 +457,22 @@ class OCIArchiveIdentityTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)[self.tag]['manifestDigest'], self.manifest_id)
         self.assertEqual(list(self.root.iterdir()), [self.archive])
+
+
+
+
+class ContainerdLookupTests(unittest.TestCase):
+    def test_native_filter_quotes_both_name_and_digest_and_uses_quiet_output(self):
+        name, digest = 'docker.io/library/runtime:1', 'sha256:' + 'a' * 64
+        with patch.object(images.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, name + '\n', '')) as run:
+            self.assertTrue(images.image_exists(name, digest))
+        self.assertEqual(run.call_args.args[0], ['k3s', 'ctr', '--namespace', 'k8s.io', 'images', 'list', '--quiet',
+                                                'name==' + json.dumps(name) + ',target.digest==' + json.dumps(digest)])
+
+    def test_unexpected_lookup_output_fails_closed(self):
+        with patch.object(images.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, 'another:tag\n', '')):
+            with self.assertRaisesRegex(ValueError, 'Unexpected containerd image lookup'):
+                images.image_exists('runtime:1')
 
 
 if __name__ == '__main__':
