@@ -1,5 +1,6 @@
 """Exercise archive identity, CRI pinning and restart recovery on a real owned K3s node."""
 import argparse
+import datetime
 import hashlib
 import io
 import json
@@ -79,6 +80,21 @@ def main():
             time.sleep(1)
         raise TimeoutError('The retained image must recover its exact manifest and CRI pin after restart')
 
+    def ready_generation(timeout):
+        """Observe a heartbeat from this kubelet incarnation before trusting cached images."""
+        started = datetime.datetime.fromisoformat(owned()['State']['StartedAt'].replace('Z', '+00:00'))
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            lease = subprocess.run(['docker', 'exec', node, '/bin/kubectl', '-n', 'kube-node-lease',
+                'get', 'lease', name, '--ignore-not-found', '-o', 'json'], capture_output=True, text=True, timeout=15)
+            if lease.returncode == 0 and lease.stdout.strip():
+                renewed = json.loads(lease.stdout)['spec']['renewTime']
+                if datetime.datetime.fromisoformat(renewed.replace('Z', '+00:00')) >= started:
+                    return {'startedAt': started.isoformat(), 'renewTime': renewed}
+            assert owned()['State']['Running']
+            time.sleep(1)
+        raise TimeoutError('The current kubelet must publish a fresh heartbeat')
+
     try:
         node = execute('docker', 'run', '-d', '--name', name, '--hostname', name,
             '--label', 'com.sudoprivacy.acceptance=' + label, '--privileged', '--cpus', '2', '--memory', '2g',
@@ -110,16 +126,8 @@ def main():
         assert result['images'][tag] == wait_identity()
         proof['phases'].append({'imported': result})
         execute('docker', 'restart', node, timeout=90)
-        # Startup briefly clears pins; wait only for readiness and observation.
-        deadline = time.monotonic() + 60
-        while time.monotonic() < deadline:
-            ping = subprocess.run(['k3s', 'crictl', 'info'], capture_output=True, timeout=15)
-            if ping.returncode == 0:
-                break
-            time.sleep(1)
-        else:
-            raise TimeoutError('The owned CRI must restart')
-        proof['phases'].append({'restart': wait_identity()})
+        ready = ready_generation(60)
+        proof['phases'].append({'restart': wait_identity(), 'ready': ready})
         target = Path(result['archive'])
         before = target.stat().st_mtime_ns
         assert retain_archive(archive, checksum(archive), directory=retained) == result

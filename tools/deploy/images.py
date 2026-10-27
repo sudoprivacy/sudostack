@@ -222,11 +222,13 @@ def digest_reference(tag, image):
     return repository + '@' + digest
 
 
-def image_exists(reference, digest=None):
+def image_exists(reference, digest=None, *, pinned=False):
     """Query exact containerd metadata through its native filters and quiet output."""
     selector = 'name==' + json.dumps(reference)
     if digest is not None:
         selector += ',target.digest==' + json.dumps(digest)
+    if pinned:
+        selector += ',labels."io.cri-containerd.pinned"==pinned'
     result = subprocess.run(['k3s', 'ctr', '--namespace', 'k8s.io', 'images', 'list', '--quiet', selector],
                             capture_output=True, text=True, encoding='utf-8', timeout=20, check=True)
     names = result.stdout.splitlines()
@@ -276,7 +278,12 @@ def image_observation(tag, image, status):
 
 def image_ready(tag, image, status):
     reference = digest_reference(tag, image)
-    return status.get('pinned') is True and (reference is None or reference in (status.get('repoDigests') or []))
+    if status.get('pinned') is not True:
+        return False
+    if reference is None:
+        return True
+    return reference in (status.get('repoDigests') or []) and \
+        image_exists(tag, image['manifestDigest'], pinned=True) and image_exists(reference, image['manifestDigest'])
 
 
 def retain_archive(path, expected, *, directory=IMAGES_DIRECTORY, timeout=300):
@@ -351,7 +358,7 @@ def retain_archive(path, expected, *, directory=IMAGES_DIRECTORY, timeout=300):
     # is enabled. Do not change K3s' cache, GC settings, or service lifecycle.
     os.utime(target, None)
     deadline = time.monotonic() + timeout
-    pending, observed, materialized = set(images), {}, set()
+    pending, observed = set(images), {}
     while pending:
         for tag in tuple(pending):
             status = inspect_image(tag)
@@ -361,9 +368,8 @@ def retain_archive(path, expected, *, directory=IMAGES_DIRECTORY, timeout=300):
             if status.get('id') != images[tag]['id']:
                 raise ValueError('Imported image identity mismatch: ' + tag)
             observed[tag] = image_observation(tag, images[tag], status)
-            if digest_reference(tag, images[tag]) is not None and status.get('pinned') is True and tag not in materialized:
+            if digest_reference(tag, images[tag]) is not None and status.get('pinned') is True:
                 materialize_digest_reference(tag, images[tag])
-                materialized.add(tag)
                 # The CRI cache consumes asynchronous containerd image events.
                 status = inspect_image(tag)
                 if status is None:
