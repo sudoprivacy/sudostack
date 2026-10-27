@@ -13,6 +13,8 @@ from cos_bundle import checksum, descriptor, https_base, matches
 
 def local_files(directory):
     data = descriptor(directory / 'bundle.json')
+    if data.get('kind', 'atlas') != 'atlas':
+        raise ValueError('The Atlas publisher cannot publish a device action bundle')
     files = dict(data['files'])
     for name in ('bundle.json', 'SHA256SUMS'):
         path = directory / name
