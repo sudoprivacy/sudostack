@@ -401,18 +401,20 @@ class OCIArchiveIdentityTests(unittest.TestCase):
         reference = 'docker.io/library/runtime@' + self.manifest_id
         def status(pinned=True, digests=None):
             return {'id': self.config_id, 'pinned': pinned, 'repoDigests': digests or []}
-        responses = [status(False), status(), status(), status(digests=[reference])]
+        responses = [status(False), status(), status(), status(digests=[reference]), status(digests=[reference])]
         directory = self.root / 'retained'
         with patch.object(images, 'inspect_image', side_effect=responses), \
              patch.object(images, 'verify_manifest_reference', return_value=True), \
+             patch.object(images, 'image_exists', return_value=True), \
              patch.object(images, 'materialize_digest_reference') as materialize, \
              patch.object(images.time, 'sleep'):
             result = images.retain_archive(self.archive, checksum(self.archive), directory=directory)
-        materialize.assert_called_once_with(self.tag, images.archive_images(self.archive)[self.tag])
+        materialize.assert_called_with(self.tag, images.archive_images(self.archive)[self.tag])
         self.assertEqual(result['images'][self.tag], status(digests=[reference]))
         self.assertEqual(Path(result['archive']).read_bytes(), self.archive.read_bytes())
         with patch.object(images, 'inspect_image', return_value=status(digests=[reference])), \
              patch.object(images, 'verify_manifest_reference', return_value=True), \
+             patch.object(images, 'image_exists', return_value=True), \
              patch.object(images, 'materialize_digest_reference', side_effect=AssertionError('Already ready')), \
              patch.object(images.os, 'utime', side_effect=AssertionError('Already retained')):
             self.assertEqual(images.retain_archive(self.archive, checksum(self.archive), directory=directory), result)
@@ -425,6 +427,22 @@ class OCIArchiveIdentityTests(unittest.TestCase):
              patch.object(images, 'materialize_digest_reference'):
             with self.assertRaisesRegex(TimeoutError, 'imported and pinned'):
                 images.retain_archive(self.archive, checksum(self.archive), directory=self.root / 'retained', timeout=0)
+
+    def test_retained_archive_reconciles_when_cri_still_reports_the_previous_pin(self):
+        self.write()
+        expected = checksum(self.archive)
+        directory = self.root / 'retained'
+        directory.mkdir()
+        (directory / (expected + '.tar.gz')).write_bytes(self.archive.read_bytes())
+        reference = images.digest_reference(self.tag, self.identity())
+        status = {'id': self.config_id, 'pinned': True, 'repoDigests': [reference]}
+        with patch.object(images, 'inspect_image', return_value=status), \
+             patch.object(images, 'verify_manifest_reference', return_value=True), \
+             patch.object(images, 'image_exists', side_effect=[False, True, True]), \
+             patch.object(images, 'materialize_digest_reference') as materialize:
+            actual = images.retain_archive(self.archive, expected, directory=directory)
+        materialize.assert_called_with(self.tag, images.archive_images(self.archive)[self.tag])
+        self.assertEqual(actual['images'][self.tag], status)
 
 
     def test_manifest_conflict_is_rejected_before_retaining_any_archive(self):
@@ -486,6 +504,22 @@ class OCIArchiveIdentityTests(unittest.TestCase):
 
 
 class ContainerdLookupTests(unittest.TestCase):
+    def test_cri_cache_cannot_substitute_for_native_pin_or_digest_reference(self):
+        tag = 'docker.io/library/runtime:1'
+        identity = {'manifestDigest': 'sha256:' + 'a' * 64}
+        reference = images.digest_reference(tag, identity)
+        status = {'pinned': True, 'repoDigests': [reference]}
+        for native in ([False], [True, False], [True, True]):
+            with self.subTest(native=native), patch.object(images, 'image_exists', side_effect=native):
+                self.assertEqual(images.image_ready(tag, identity, status), native == [True, True])
+
+    def test_native_pin_is_checked_in_containerd_metadata(self):
+        tag = 'docker.io/library/runtime:1'
+        with patch.object(images.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, '', '')) as run:
+            self.assertFalse(images.image_exists(tag, pinned=True))
+        self.assertEqual(run.call_args.args[0][-1],
+                         'name==' + json.dumps(tag) + ',labels."io.cri-containerd.pinned"==pinned')
+
     def test_native_filter_quotes_both_name_and_digest_and_uses_quiet_output(self):
         name, digest = 'docker.io/library/runtime:1', 'sha256:' + 'a' * 64
         with patch.object(images.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, name + '\n', '')) as run:
