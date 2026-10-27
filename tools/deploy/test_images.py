@@ -3,6 +3,7 @@ import hashlib
 import gzip
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -230,6 +231,7 @@ class ImageRetentionTests(unittest.TestCase):
                 self.retain()
         self.assertFalse(self.directory.exists())
 
+
     def test_compressed_layers_are_read_once_without_backward_seeks(self):
         with tarfile.open(self.archive, 'w:gz') as archive:
             for name, data in [('config.json', self.config), ('layer.tar', b'x' * (2 * 1024 * 1024)),
@@ -260,6 +262,23 @@ class ImageRetentionTests(unittest.TestCase):
                 self.retain()
             run.assert_not_called()
         self.assertFalse(self.directory.exists())
+
+
+    @unittest.skipIf(sys.platform == 'win32', 'The deployment CLI uses Unix executables')
+    def test_cli_retains_containerd_failure_diagnostics(self):
+        cli = self.root / 'k3s'
+        cli.write_text('#!/bin/sh\nprintf "containerd fixture: connection refused\\n" >&2\nexit 23\n')
+        cli.chmod(0o755)
+        result = subprocess.run([sys.executable, images.__file__, '--archive', str(self.archive),
+            '--sha256', checksum(self.archive)], capture_output=True, text=True,
+            env={**os.environ, 'PATH': str(self.root) + os.pathsep + os.environ.get('PATH', '')})
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('containerd fixture: connection refused', result.stderr)
+        self.assertIn('CalledProcessError', result.stderr)
+        self.assertIn('exit status 23', result.stderr)
+        self.assertEqual(result.stdout, '')
+
+
 
 
 
@@ -343,6 +362,39 @@ class OCIArchiveIdentityTests(unittest.TestCase):
         self.blobs[self.manifest_id] += b' '
         self.write()
         directory = self.root / 'retained'
+        with patch.object(images.subprocess, 'run') as run:
+            with self.assertRaisesRegex(ValueError, 'OCI content does not match'):
+                images.retain_archive(self.archive, checksum(self.archive), directory=directory)
+            run.assert_not_called()
+        self.assertFalse(directory.exists())
+
+    def test_corrupt_config_is_rejected_even_when_the_manifest_descriptor_matches(self):
+        self.blobs[self.config_id] += b' '
+        with self.assertRaisesRegex(ValueError, 'OCI config content does not match'):
+            self.identity()
+
+    def test_symlink_manifest_blob_is_not_followed(self):
+        self.write(symlink='blobs/sha256/' + self.manifest_id[7:])
+        with self.assertRaisesRegex(ValueError, 'Invalid image metadata'):
+            images.archive_images(self.archive)
+
+    def test_wrong_config_link_is_rejected(self):
+        other = b'{"architecture":"arm64","os":"linux"}'
+        other_id = 'sha256:' + hashlib.sha256(other).hexdigest()
+        self.blobs[other_id] = other
+        self.index['manifests'] = [self.descriptor({**self.manifest, 'config': {
+            **self.manifest['config'], 'digest': other_id, 'size': len(other)}})]
+        with self.assertRaisesRegex(ValueError, 'Missing or ambiguous OCI manifest'):
+            self.identity()
+
+    def test_inspect_cli_is_read_only_and_works_without_k3s(self):
+        self.write()
+        result = subprocess.run([sys.executable, images.__file__, '--inspect', '--archive', str(self.archive)],
+                                capture_output=True, text=True, cwd=self.root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)[self.tag]['manifestDigest'], self.manifest_id)
+        self.assertEqual(list(self.root.iterdir()), [self.archive])
+
 
     def test_retention_waits_for_the_actual_cri_manifest_and_pin(self):
         self.write()
@@ -425,38 +477,10 @@ class OCIArchiveIdentityTests(unittest.TestCase):
         self.assertEqual(images.digest_reference('localhost:5000/path/runtime:1', identity),
                          'localhost:5000/path/runtime@' + self.manifest_id)
 
-        with patch.object(images.subprocess, 'run') as run:
-            with self.assertRaisesRegex(ValueError, 'OCI content does not match'):
-                images.retain_archive(self.archive, checksum(self.archive), directory=directory)
-            run.assert_not_called()
-        self.assertFalse(directory.exists())
 
-    def test_corrupt_config_is_rejected_even_when_the_manifest_descriptor_matches(self):
-        self.blobs[self.config_id] += b' '
-        with self.assertRaisesRegex(ValueError, 'OCI config content does not match'):
-            self.identity()
 
-    def test_symlink_manifest_blob_is_not_followed(self):
-        self.write(symlink='blobs/sha256/' + self.manifest_id[7:])
-        with self.assertRaisesRegex(ValueError, 'Invalid image metadata'):
-            images.archive_images(self.archive)
 
-    def test_wrong_config_link_is_rejected(self):
-        other = b'{"architecture":"arm64","os":"linux"}'
-        other_id = 'sha256:' + hashlib.sha256(other).hexdigest()
-        self.blobs[other_id] = other
-        self.index['manifests'] = [self.descriptor({**self.manifest, 'config': {
-            **self.manifest['config'], 'digest': other_id, 'size': len(other)}})]
-        with self.assertRaisesRegex(ValueError, 'Missing or ambiguous OCI manifest'):
-            self.identity()
 
-    def test_inspect_cli_is_read_only_and_works_without_k3s(self):
-        self.write()
-        result = subprocess.run([sys.executable, images.__file__, '--inspect', '--archive', str(self.archive)],
-                                capture_output=True, text=True, cwd=self.root)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(json.loads(result.stdout)[self.tag]['manifestDigest'], self.manifest_id)
-        self.assertEqual(list(self.root.iterdir()), [self.archive])
 
 
 
@@ -473,6 +497,7 @@ class ContainerdLookupTests(unittest.TestCase):
         with patch.object(images.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, 'another:tag\n', '')):
             with self.assertRaisesRegex(ValueError, 'Unexpected containerd image lookup'):
                 images.image_exists('runtime:1')
+
 
 
 if __name__ == '__main__':
