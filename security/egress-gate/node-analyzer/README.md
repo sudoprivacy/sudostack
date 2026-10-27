@@ -62,7 +62,7 @@ add `"relayMode": "shared"`. The shared SDK fixes the relay upstream to
 `bindAddress` inside its infrastructure-owned Caddyfile. It retains TLS name
 verification, the private CA and the classification credential. Pod placement
 and its Downward API address cannot redirect that upstream. Tenant policy
-cannot change the mode or address. SDK 0.2.1 provides this rendering option.
+cannot change the mode or address. SDK 0.2.2 provides this rendering option.
 Use a new private state directory when changing the placement identity.
 
 For shared placement, the analyzer host needs Docker Compose and enough
