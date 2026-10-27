@@ -30,6 +30,10 @@ test('malformed private deployment input is refused without repeating its values
   assert.match(result.stderr, /Invalid node analyzer deployment JSON/)
   assert(!result.stderr.includes('private-test-secret'))
   assert(!existsSync(f.configuration.dataDirectory))
+  const invalidPlacement = f.run({ ...f.configuration, relayMode: 'arbitrary' })
+  assert.notEqual(invalidPlacement.status, 0)
+  assert.match(invalidPlacement.stderr, /Invalid node analyzer deployment configuration/)
+  assert(!existsSync(f.configuration.dataDirectory))
   const invalid = f.run({ ...f.configuration, namespace: undefined })
   assert.notEqual(invalid.status, 0)
   assert(!existsSync(f.configuration.dataDirectory))
@@ -67,4 +71,17 @@ test('a different node binding cannot replace an existing deployment or change i
   assert.match(result.stderr, /different node or namespace/)
   assert.equal(readFileSync(marker, 'utf8'), previous)
   assert.equal(statSync(f.configuration.dataDirectory).mode & 0o777, 0o755)
+})
+
+test('shared placement cannot silently replace a node-bound deployment identity', { skip: process.platform !== 'linux' }, t => {
+  const f = fixture(t)
+  mkdirSync(f.configuration.dataDirectory)
+  const marker = join(f.configuration.dataDirectory, 'deployment.json')
+  const { serverName, bindAddress, port, namespace, relaySecretName } = f.configuration
+  const previous = JSON.stringify({ version: 1, serverName, bindAddress, port, namespace, relaySecretName })
+  writeFileSync(marker, previous)
+  const result = f.run({ ...f.configuration, relayMode: 'shared' })
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /different node or namespace/)
+  assert.equal(readFileSync(marker, 'utf8'), previous)
 })

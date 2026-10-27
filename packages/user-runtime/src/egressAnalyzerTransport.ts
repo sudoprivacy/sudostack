@@ -3,13 +3,17 @@ import { isIP } from 'node:net'
 export const EGRESS_ANALYZER_RELAY_PORT = 59080
 
 /** Render the controller-owned relay Secret's Caddyfile; credentials are a separate import. */
-export function nodeAnalyzerRelayConfiguration(options: { serverName: string; port: number }): string {
+export function nodeAnalyzerRelayConfiguration(options: { serverName: string; port: number; upstreamAddress?: string }): string {
   if (typeof options.serverName !== 'string' || !/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/.test(options.serverName) || options.serverName.length > 253) {
     throw new Error('Analyzer TLS server name must be a DNS name')
   }
   if (!Number.isInteger(options.port) || options.port < 1024 || options.port > 65535) {
     throw new Error('Analyzer node port must be between 1024 and 65535')
   }
+  if (options.upstreamAddress !== undefined && (isIP(options.upstreamAddress) !== 4 || options.upstreamAddress === '0.0.0.0')) {
+    throw new Error('Shared analyzer upstream must be a specific IPv4 address')
+  }
+  const upstream = options.upstreamAddress ?? '{$NEXUS_DLP_NODE_IP}'
   return `{
   admin off
   persist_config off
@@ -27,7 +31,7 @@ http://127.0.0.1:${EGRESS_ANALYZER_RELAY_PORT} {
     request_body {
       max_size 8MB
     }
-    reverse_proxy https://{$NEXUS_DLP_NODE_IP}:${options.port} {
+    reverse_proxy https://${upstream}:${options.port} {
       import /relay/authorization.caddy
       header_up Host ${options.serverName}
       transport http {
