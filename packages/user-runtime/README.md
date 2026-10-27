@@ -53,7 +53,11 @@ For a node-shared analyzer, pass `egressAnalyzerRelay: { image, secretName }`.
 The optional `egressAnalyzer` image instead runs a dedicated analyzer in each
 Pod; these choices are mutually exclusive. The relay's credential Secret is
 mounted only in its separate container. Upstream address comes from the Pod's
-actual node identity, not tenant policy. Transport templates and real Caddy
+actual node identity or, since 0.2.1, an administrator-fixed shared analyzer
+address in that Secret. The infrastructure renderer's `upstreamAddress` option
+accepts a specific IPv4 address and retains private TLS identity verification.
+This option is absent from tenant policy and the Moss management API.
+Transport templates and real Caddy
 acceptance are shared here; node preparation lives in
 `security/egress-gate/node-analyzer`.
 

@@ -12,7 +12,7 @@ function parsePrivateJson(text) {
   try { return JSON.parse(text) } catch { throw new Error('Invalid node analyzer deployment JSON') }
 }
 const configuration = parsePrivateJson(readFileSync(process.argv[2], 'utf8'))
-const allowed = ['version', 'dataDirectory', 'bindAddress', 'port', 'serverName', 'analyzerImage', 'gatewayImage', 'namespace', 'relaySecretName', 'kubeconfig']
+const allowed = ['version', 'dataDirectory', 'bindAddress', 'port', 'serverName', 'analyzerImage', 'gatewayImage', 'namespace', 'relaySecretName', 'kubeconfig', 'relayMode']
 if (!configuration || typeof configuration !== 'object' || Array.isArray(configuration) ||
   Object.keys(configuration).some(key => !allowed.includes(key)) || configuration.version !== 1 ||
   typeof configuration.dataDirectory !== 'string' || !isAbsolute(configuration.dataDirectory) || resolve(configuration.dataDirectory) === '/' ||
@@ -20,10 +20,12 @@ if (!configuration || typeof configuration !== 'object' || Array.isArray(configu
   !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(configuration.namespace) ||
   typeof configuration.relaySecretName !== 'string' || configuration.relaySecretName.length > 253 ||
   !/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/.test(configuration.relaySecretName) ||
-  ![configuration.analyzerImage, configuration.gatewayImage].every(image => typeof image === 'string' && image && !/[\s\u0000]/.test(image))) {
+  ![configuration.analyzerImage, configuration.gatewayImage].every(image => typeof image === 'string' && image && !/[\s\u0000]/.test(image)) ||
+  (configuration.relayMode !== undefined && !['node', 'shared'].includes(configuration.relayMode))) {
   throw new Error('Invalid node analyzer deployment configuration')
 }
-const relay = nodeAnalyzerRelayConfiguration(configuration)
+const isShared = configuration.relayMode === 'shared'
+const relay = nodeAnalyzerRelayConfiguration({ ...configuration, ...(isShared ? { upstreamAddress: configuration.bindAddress } : {}) })
 // Validate every public transport field before creating private state.
 nodeAnalyzerGatewayConfiguration({ ...configuration, passwordHash: '$2a$14$' + 'a'.repeat(53) })
 if (!Object.values(networkInterfaces()).flat().some(address =>
@@ -35,7 +37,8 @@ if (existsSync(root) && (!lstatSync(root).isDirectory() || lstatSync(root).isSym
 const marker = join(root, 'deployment.json')
 if (existsSync(root) && !existsSync(marker) && readdirSync(root).length) throw new Error('Refusing to initialize a nonempty unowned deployment directory')
 const identity = { version: 1, serverName: configuration.serverName, bindAddress: configuration.bindAddress,
-  port: configuration.port, namespace: configuration.namespace, relaySecretName: configuration.relaySecretName }
+  port: configuration.port, namespace: configuration.namespace, relaySecretName: configuration.relaySecretName,
+  ...(isShared ? { relayMode: 'shared' } : {}) }
 if (existsSync(marker) && JSON.stringify(parsePrivateJson(readFileSync(marker, 'utf8'))) !== JSON.stringify(identity)) {
   throw new Error('Existing analyzer belongs to a different node or namespace')
 }
@@ -107,4 +110,5 @@ if (process.argv.includes('--apply')) {
   execute('kubectl', [...kube, 'apply', '--server-side', '--field-manager=sudo-egress-infrastructure', '-f', p('relay-secret.json')])
 }
 console.log(JSON.stringify({ prepared: true, applied: process.argv.includes('--apply'), namespace: configuration.namespace,
-  relaySecretName: configuration.relaySecretName, serverName: configuration.serverName, port: configuration.port }))
+  relaySecretName: configuration.relaySecretName, serverName: configuration.serverName, port: configuration.port,
+  relayMode: isShared ? 'shared' : 'node' }))

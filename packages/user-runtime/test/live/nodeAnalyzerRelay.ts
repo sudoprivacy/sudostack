@@ -86,7 +86,7 @@ try {
   const relay = relocate(nodeAnalyzerRelayConfiguration({ serverName: 'egress-node.internal', port: gatewayPort }))
     .replace('127.0.0.1:59080', `127.0.0.1:${relayPort}`)
   await writeFile(join(root, 'authorization.caddy'), `header_up Authorization "Basic ${Buffer.from(`classifier:${password}`).toString('base64')}"\n`, { mode: image ? 0o640 : 0o600 })
-  const start = async (name: string, config: string) => {
+  const start = async (name: string, config: string, nodeAddress = '127.0.0.1') => {
     const path = join(root, `${name}.Caddyfile`)
     await writeFile(path, config, { mode: image ? 0o640 : 0o600 })
     const args = ['run', '--config', path, '--adapter', 'caddyfile']
@@ -94,7 +94,7 @@ try {
     if (image) {
       const created = spawnSync('docker', ['create', ...restricted,
         '--mount', `type=bind,src=${root},dst=${root},readonly`,
-        '--env', 'NEXUS_DLP_NODE_IP=127.0.0.1', '--env', 'XDG_CONFIG_HOME=/scratch/config',
+        '--env', `NEXUS_DLP_NODE_IP=${nodeAddress}`, '--env', 'XDG_CONFIG_HOME=/scratch/config',
         '--env', 'XDG_DATA_HOME=/scratch/data', image, ...args], { encoding: 'utf8' })
       assert.equal(created.status, 0, created.stderr)
       id = created.stdout.trim()
@@ -102,7 +102,7 @@ try {
       createdContainers.push(id)
     }
     const child = spawn(image ? 'docker' : binary!, id ? ['start', '--attach', id] : args, {
-      windowsHide: true, env: { ...process.env, NEXUS_DLP_NODE_IP: '127.0.0.1', XDG_CONFIG_HOME: root, XDG_DATA_HOME: root },
+      windowsHide: true, env: { ...process.env, NEXUS_DLP_NODE_IP: nodeAddress, XDG_CONFIG_HOME: root, XDG_DATA_HOME: root },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
     child.stdout!.on('data', value => childrenLogs.push(String(value)))
@@ -144,7 +144,13 @@ try {
   await start('relay-wrong-identity', relay.replaceAll('egress-node.internal', 'wrong-node.internal'))
   assert.equal((await waitForStatus(502)).status, 502, 'An untrusted node identity must fail TLS verification')
   assert.equal(requests, before)
-  console.log(JSON.stringify({ passed: true, caddy: '2.10.2', containerSecurity: image ? 'uid1002, shared group, cap-drop ALL, no-new-privileges, read-only root' : undefined, cases: ['TLS identity', 'authenticated classification', 'request isolation', 'credential stripping', 'loopback paths', 'admin disabled', 'bad credentials rejected', 'wrong TLS name rejected'] }))
+  await stop(processes[3]!)
+  await writeFile(join(root, 'authorization.caddy'), `header_up Authorization "Basic ${Buffer.from(`classifier:${password}`).toString('base64')}"\n`)
+  const shared = relocate(nodeAnalyzerRelayConfiguration({ serverName: 'egress-node.internal', port: gatewayPort, upstreamAddress: '127.0.0.1' }))
+    .replace('127.0.0.1:59080', `127.0.0.1:${relayPort}`)
+  await start('relay-shared', shared, '192.0.2.111')
+  assert.deepEqual(await (await waitForStatus(200, ['shared-fixture'])).json(), { terms: ['shared-fixture'] })
+  console.log(JSON.stringify({ passed: true, caddy: '2.10.2', containerSecurity: image ? 'uid1002, shared group, cap-drop ALL, no-new-privileges, read-only root' : undefined, cases: ['TLS identity', 'authenticated classification', 'request isolation', 'credential stripping', 'loopback paths', 'admin disabled', 'bad credentials rejected', 'wrong TLS name rejected', 'controller-fixed shared upstream'] }))
 } finally {
   for (const child of processes) await stop(child)
   for (const id of createdContainers) assert.equal(spawnSync('docker', ['rm', id], { encoding: 'utf8' }).status, 0)
