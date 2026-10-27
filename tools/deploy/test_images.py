@@ -1,5 +1,6 @@
 """Offline image retention must survive GC without admitting wrong or partial images."""
 import hashlib
+import gzip
 import io
 import json
 from pathlib import Path
@@ -8,6 +9,7 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import images
@@ -24,15 +26,31 @@ class ImageRetentionTests(unittest.TestCase):
         self.config = b'{"architecture":"amd64","os":"linux"}'
         self.image_id = 'sha256:' + hashlib.sha256(self.config).hexdigest()
         self.tag = 'docker.io/library/runtime:1'
+        self.disk = SimpleNamespace(total=100 * 1024**3, free=80 * 1024**3)
+        disk_patch = patch.object(images.shutil, 'disk_usage', return_value=self.disk)
+        disk_patch.start()
+        self.addCleanup(disk_patch.stop)
         self.make_archive()
 
-    def make_archive(self, entries=None):
-        entries = entries or [{'Config': 'config.json', 'RepoTags': ['runtime:1']}]
+    def make_archive(self, entries=None, layers=None, manifest_last=False):
+        layers = layers or {}
+        entries = entries or [{'Config': 'config.json', 'RepoTags': ['runtime:1'], 'Layers': list(layers)}]
+        metadata = [('manifest.json', json.dumps(entries).encode()), ('config.json', self.config)]
+        members = list(layers.items()) + metadata if manifest_last else metadata + list(layers.items())
         with tarfile.open(self.archive, 'w:gz') as archive:
-            for name, data in [('manifest.json', json.dumps(entries).encode()), ('config.json', self.config)]:
+            for name, data in members:
                 member = tarfile.TarInfo(name)
                 member.size = len(data)
                 archive.addfile(member, io.BytesIO(data))
+
+    def layer(self, files):
+        stream = io.BytesIO()
+        with tarfile.open(fileobj=stream, mode='w') as layer:
+            for name, content in files.items():
+                member = tarfile.TarInfo(name)
+                member.size = len(content)
+                layer.addfile(member, io.BytesIO(content))
+        return stream.getvalue()
 
     def status(self, *, pinned=True, image_id=None):
         return subprocess.CompletedProcess([], 0, json.dumps({'status': {
@@ -123,6 +141,95 @@ class ImageRetentionTests(unittest.TestCase):
             self.retain()
         self.assertFalse(self.directory.exists())
 
+    def test_observed_compute_headroom_is_rejected_before_cri_or_publication(self):
+        self.disk.total, self.disk.free = 52_721_041_408, 8_459_059_200
+        with patch.object(images.subprocess, 'run', return_value=self.status()) as run:
+            with self.assertRaisesRegex(ValueError, 'Insufficient space'):
+                self.retain()
+            run.assert_not_called()
+        self.assertFalse(self.directory.exists())
+
+    def test_gzip_layer_expansion_is_budgeted_before_publication(self):
+        layer = self.layer({'model.bin': b'0' * 1024**2})
+        self.make_archive(layers={'layer.tar.gz': gzip.compress(layer)})
+        self.assertLess(self.archive.stat().st_size, 64 * 1024)
+        self.disk.free = 20 * 1024**3 + 512 * 1024
+        with patch.object(images.subprocess, 'run', return_value=self.status()):
+            with self.assertRaisesRegex(ValueError, 'Insufficient space.*unpack='):
+                self.retain()
+        self.assertFalse(self.directory.exists())
+
+    def test_cold_content_and_unpacked_snapshot_both_require_space(self):
+        self.make_archive(layers={'layer.tar': self.layer({'model.bin': b'0' * 1024**2})})
+        self.disk.free = 20 * 1024**3 + 1536 * 1024
+        with patch.object(images.subprocess, 'run', return_value=self.status()):
+            with self.assertRaisesRegex(ValueError, 'Insufficient space'):
+                self.retain()
+        self.assertFalse(self.directory.exists())
+
+    def test_small_layer_files_include_filesystem_allocation_overhead(self):
+        self.make_archive(layers={'layer.tar': self.layer({f'files/{index}': b'x' for index in range(1024)})})
+        self.disk.free = 20 * 1024**3 + 4 * 1024**2
+        with patch.object(images.subprocess, 'run', return_value=self.status()):
+            with self.assertRaisesRegex(ValueError, 'Insufficient space'):
+                self.retain()
+        self.assertFalse(self.directory.exists())
+
+    def test_capacity_loss_during_copy_does_not_publish_hidden_partial(self):
+        self.make_archive(layers={'layer.tar': self.layer({'model.bin': b'0' * 1024**2})})
+        copy = images.shutil.copyfileobj
+
+        def consume_space(source, stream):
+            copy(source, stream)
+            self.disk.free = 20 * 1024**3 + 512 * 1024
+
+        with patch.object(images.subprocess, 'run', return_value=self.status()), \
+             patch.object(images.shutil, 'copyfileobj', side_effect=consume_space), \
+             patch.object(images.os, 'utime', side_effect=AssertionError('Do not trigger K3s import')):
+            with self.assertRaisesRegex(ValueError, 'Insufficient space'):
+                self.retain()
+        self.assertEqual(list(self.directory.iterdir()), [])
+
+    def test_missing_image_reimport_requires_space_before_touching_retained_archive(self):
+        with patch.object(images.subprocess, 'run', return_value=self.status()):
+            previous = self.retain()
+        self.disk.free = 2 * 1024**3
+        with patch.object(images.subprocess, 'run', return_value=self.status(pinned=False)), \
+             patch.object(images.os, 'utime', side_effect=AssertionError('Do not trigger K3s import')):
+            with self.assertRaisesRegex(ValueError, 'Insufficient space'):
+                self.retain()
+        self.assertEqual(Path(previous['archive']).read_bytes(), self.archive.read_bytes())
+
+    def test_healthy_retained_image_is_a_noop_even_when_node_is_full(self):
+        with patch.object(images.subprocess, 'run', return_value=self.status()):
+            previous = self.retain()
+        self.disk.free = 0
+        with patch.object(images.subprocess, 'run', return_value=self.status()), \
+             patch.object(images, 'archive_storage', side_effect=AssertionError('No new import needs budgeting')), \
+             patch.object(images.os, 'utime', side_effect=AssertionError('Do not reimport')):
+            self.assertEqual(self.retain(), previous)
+
+    def test_streamed_layers_can_precede_the_docker_manifest(self):
+        self.make_archive(layers={'layer.tar.gz': gzip.compress(self.layer({'model.bin': b'x' * 8192}))}, manifest_last=True)
+        storage = images.archive_storage(self.archive)
+        self.assertEqual(storage['unpackBytes'], 8192 + 4096)
+        with patch.object(images.subprocess, 'run', return_value=self.status()):
+            self.assertIn(self.tag, self.retain()['images'])
+
+    def test_missing_layer_is_rejected_before_a_watched_archive_is_created(self):
+        self.make_archive([{'Config': 'config.json', 'RepoTags': ['runtime:1'], 'Layers': ['missing.tar']}])
+        with patch.object(images.subprocess, 'run', return_value=self.status()):
+            with self.assertRaisesRegex(ValueError, 'Cannot estimate expanded image layer: missing.tar'):
+                self.retain()
+        self.assertFalse(self.directory.exists())
+
+    def test_unsupported_layer_compression_is_rejected_before_publication(self):
+        self.make_archive(layers={'layer.zstd': b'\x28\xb5\x2f\xfd' + b'x' * 1024})
+        with patch.object(images.subprocess, 'run', return_value=self.status()):
+            with self.assertRaisesRegex(ValueError, 'Cannot estimate expanded image layer'):
+                self.retain()
+        self.assertFalse(self.directory.exists())
+
 
 class OCIArchiveIdentityTests(unittest.TestCase):
     def setUp(self):
@@ -130,6 +237,10 @@ class OCIArchiveIdentityTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
         self.archive = self.root / 'runtime.tar.gz'
+        disk_patch = patch.object(images.shutil, 'disk_usage', return_value=SimpleNamespace(
+            total=100 * 1024**3, free=80 * 1024**3))
+        disk_patch.start()
+        self.addCleanup(disk_patch.stop)
         self.config = b'{"architecture":"amd64","os":"linux"}'
         self.config_id = 'sha256:' + hashlib.sha256(self.config).hexdigest()
         self.tag = 'docker.io/library/runtime:1'
