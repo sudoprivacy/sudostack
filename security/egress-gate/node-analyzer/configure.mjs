@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { mkdirSync, chmodSync, existsSync, lstatSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join, resolve } from 'node:path'
+import { networkInterfaces } from 'node:os'
 import { nodeAnalyzerGatewayConfiguration, nodeAnalyzerRelayConfiguration } from '../../../packages/user-runtime/dist/egressAnalyzerTransport.js'
 
 if (process.platform !== 'linux') throw new Error('Node analyzer deployment requires Linux')
@@ -25,6 +26,10 @@ if (!configuration || typeof configuration !== 'object' || Array.isArray(configu
 const relay = nodeAnalyzerRelayConfiguration(configuration)
 // Validate every public transport field before creating private state.
 nodeAnalyzerGatewayConfiguration({ ...configuration, passwordHash: '$2a$14$' + 'a'.repeat(53) })
+if (!Object.values(networkInterfaces()).flat().some(address =>
+  address?.family === 'IPv4' && address.address === configuration.bindAddress)) {
+  throw new Error('Analyzer bind address does not belong to this host')
+}
 const root = resolve(configuration.dataDirectory)
 if (existsSync(root) && (!lstatSync(root).isDirectory() || lstatSync(root).isSymbolicLink())) throw new Error('Private deployment directory must be a real directory')
 const marker = join(root, 'deployment.json')
