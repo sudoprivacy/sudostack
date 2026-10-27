@@ -26,6 +26,9 @@ if (!configuration || typeof configuration !== 'object' || Array.isArray(configu
 }
 const isShared = configuration.relayMode === 'shared'
 const relay = nodeAnalyzerRelayConfiguration({ ...configuration, ...(isShared ? { upstreamAddress: configuration.bindAddress } : {}) })
+if (isShared && !relay.includes(`reverse_proxy https://${configuration.bindAddress}:${configuration.port} {`)) {
+  throw new Error('The installed runtime SDK does not support the requested shared analyzer address')
+}
 // Validate every public transport field before creating private state.
 nodeAnalyzerGatewayConfiguration({ ...configuration, passwordHash: '$2a$14$' + 'a'.repeat(53) })
 if (!Object.values(networkInterfaces()).flat().some(address =>
