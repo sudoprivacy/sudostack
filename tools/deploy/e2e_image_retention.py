@@ -3,6 +3,7 @@ import argparse
 import datetime
 import hashlib
 import io
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -55,7 +56,7 @@ def main():
     identity = fixture_archive(archive, tag, 'accepted')
     reference = tag.rsplit(':', 1)[0] + '@' + identity['manifestDigest']
     name = 'codex-owned-' + label
-    node = None
+    node, network = None, None
     original_path = os.environ.get('PATH', '')
     proof = {'success': False, 'realKubernetes': True, 'image': identity, 'reference': reference, 'phases': []}
 
@@ -96,8 +97,14 @@ def main():
         raise TimeoutError('The current kubelet must publish a fresh heartbeat')
 
     try:
+        network = execute('docker', 'network', 'create', '--label', 'com.sudoprivacy.acceptance=' + label, name).strip()
+        network_info = json.loads(execute('docker', 'network', 'inspect', network))[0]
+        assert network_info['Labels']['com.sudoprivacy.acceptance'] == label
+        address = str(ipaddress.ip_network(network_info['IPAM']['Config'][0]['Subnet'])[2])
+        proof['network'] = {'id': network, 'address': address}
         node = execute('docker', 'run', '-d', '--name', name, '--hostname', name,
             '--label', 'com.sudoprivacy.acceptance=' + label, '--privileged', '--cpus', '2', '--memory', '2g',
+            '--network', network, '--ip', address,
             '--memory-swap', '2g', '--tmpfs', '/run', '--tmpfs', '/var/run',
             '--mount', 'type=bind,source=' + retained.as_posix() + ',target=/var/lib/rancher/k3s/agent/images',
             K3S_IMAGE, 'server', '--disable', 'traefik', '--disable', 'servicelb', '--disable', 'metrics-server',
@@ -126,6 +133,7 @@ def main():
         assert result['images'][tag] == wait_identity()
         proof['phases'].append({'imported': result})
         execute('docker', 'restart', node, timeout=90)
+        assert owned()['NetworkSettings']['Networks'][name]['IPAddress'] == address
         ready = ready_generation(60)
         proof['phases'].append({'restart': wait_identity(), 'ready': ready})
         target = Path(result['archive'])
@@ -148,11 +156,22 @@ def main():
         proof['success'] = True
     finally:
         os.environ['PATH'] = original_path
-        if node is not None:
-            owned()
-            execute('docker', 'stop', node, timeout=60)
-            proof['ownedNodeStopped'] = not owned()['State']['Running']
-        (root / 'receipt.json').write_text(json.dumps(proof, indent=2), encoding='utf-8')
+        try:
+            if node is not None:
+                owned()
+                execute('docker', 'stop', node, timeout=60)
+                proof['ownedNodeStopped'] = not owned()['State']['Running']
+                with (root / 'node.private.log').open('w') as log:
+                    subprocess.run(['docker', 'logs', node], stdout=log, stderr=log, check=True)
+                execute('docker', 'rm', node)
+                proof['ownedNodeRemoved'] = True
+            if network is not None:
+                current = json.loads(execute('docker', 'network', 'inspect', network))[0]
+                assert current['Id'] == network and current['Labels']['com.sudoprivacy.acceptance'] == label
+                execute('docker', 'network', 'rm', network)
+                proof['ownedNetworkRemoved'] = True
+        finally:
+            (root / 'receipt.json').write_text(json.dumps(proof, indent=2), encoding='utf-8')
     print(json.dumps(proof))
 
 
