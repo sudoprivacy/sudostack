@@ -191,6 +191,63 @@ void test('an owner rollout waits for drain, retains the PVC and blocks competin
   assert.equal(kube.objects.has('upgrade-secret'), false)
 })
 
+for (const phase of ['Succeeded', 'Failed']) {
+  void test(`an owner upgrade replaces a ${phase} Pod without waiting for its stopped runtime`, async t => {
+    const kube = platform()
+    t.mock.method(NexusZoneApiClient, 'withMtls', () => ({ mintUserRuntime: async () => runtimeCredential('alice'), close() {} }))
+    const configuration = { 'sudocode.json': '{"model":"retained"}', 'backend-config.json': '{"mounts":[]}' }
+    const old = new UserPodService(options, kube.resources, async () => {})
+    await old.resolve('alice', configuration)
+    await old.close()
+    const pod = kube.objects.get('pod')!
+    const pvc = kube.objects.get('pvc')!
+    const secretId = kube.objects.get('secret')!.metadata.uid
+    pod.status = { phase, conditions: [{ type: 'Ready', status: 'False' }] }
+    let readyCalls = 0
+    const next = new UserPodService({ ...options, image: 'runtime:next-verified' }, kube.resources, async () => {
+      assert.notEqual(kube.objects.get('pod')!.metadata.uid, pod.metadata.uid,
+        'a terminal runtime cannot answer an authenticated readiness probe')
+      readyCalls++
+    })
+    t.after(() => next.close())
+    let drainCalls = 0
+    await next.upgrade('alice', async previous => {
+      assert.equal(previous, undefined, 'the owner must still drain controller-side work without a live old runtime')
+      assert.equal(kube.objects.get('pod'), pod)
+      drainCalls++
+    }, configuration)
+    assert.equal(drainCalls, 1)
+    assert.equal(readyCalls, 1, 'the replacement must pass authenticated readiness')
+    assert.equal(kube.objects.get('pvc'), pvc)
+    assert.equal(kube.objects.get('secret')!.metadata.uid, secretId)
+    assert.notEqual(kube.objects.get('pod')!.metadata.uid, pod.metadata.uid)
+    assert.equal((await next.inspect('alice')).isDrifted, false)
+    for (const [key, value] of Object.entries(configuration)) {
+      assert.equal(Buffer.from(kube.objects.get('secret')!.data![key]!, 'base64').toString(), value)
+    }
+    assert.equal(kube.objects.has('upgrade-secret'), false)
+  })
+}
+
+void test('an upgrade of a terminal Pod checks the Secret owner before draining any work', async t => {
+  const kube = platform()
+  t.mock.method(NexusZoneApiClient, 'withMtls', () => ({ mintUserRuntime: async () => runtimeCredential('alice'), close() {} }))
+  const old = new UserPodService(options, kube.resources, async () => {})
+  await old.resolve('alice')
+  await old.close()
+  const pod = kube.objects.get('pod')!
+  pod.status = { phase: 'Succeeded' }
+  const secret = kube.objects.get('secret')!
+  secret.metadata.annotations = { ...secret.metadata.annotations, 'moss.sudo.dev/runtime-owner': 'another-owner' }
+  const next = new UserPodService(options, kube.resources, async () => { throw new Error('A stopped runtime must not be probed') })
+  t.after(() => next.close())
+  let isDrainCalled = false
+  await assert.rejects(next.upgrade('alice', async () => { isDrainCalled = true }), /Secret belongs to another owner/)
+  assert.equal(isDrainCalled, false)
+  assert.equal(kube.objects.get('pod'), pod)
+  assert.equal(kube.objects.has('upgrade-secret'), false)
+})
+
 void test('concurrent discovery shares authentication for an older Pod and preserves its configuration', async t => {
   const kube = platform()
   let issued = 0

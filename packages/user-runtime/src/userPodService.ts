@@ -290,9 +290,19 @@ export class UserPodService {
       // Pod before checking whether its agents can safely drain.
       let previous: UserRuntimeConnectionConfig | undefined
       if (pod) {
-        previous = await this.runtimeConnection(ownerId)
-        await this.refreshUpgradeIdentity(ownerId, pod)
-        await this.ready(previous, ownerId, this.lifecycle.signal)
+        const connection = await this.runtimeConnection(ownerId)
+        if (pod.status?.phase === 'Succeeded' || pod.status?.phase === 'Failed') {
+          // Terminal Pods cannot answer mTLS. Validate retained ownership before
+          // letting the controller drain work and replace only this Pod.
+          const secret = await this.readAllocationResource('secret', name)
+          if (!secret?.metadata.uid || secret.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) {
+            throw new Error('User Pod Secret belongs to another owner or lacks an identity')
+          }
+        } else {
+          previous = connection
+          await this.refreshUpgradeIdentity(ownerId, pod)
+          await this.ready(previous, ownerId, this.lifecycle.signal)
+        }
         await this.assertUpgradePod(ownerId, pod)
       }
       await drain(previous)
