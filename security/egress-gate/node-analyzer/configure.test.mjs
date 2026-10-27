@@ -85,3 +85,17 @@ test('shared placement cannot silently replace a node-bound deployment identity'
   assert.match(result.stderr, /different node or namespace/)
   assert.equal(readFileSync(marker, 'utf8'), previous)
 })
+
+test('an older renderer cannot silently ignore the shared upstream address', { skip: process.platform !== 'linux' }, t => {
+  const f = fixture(t)
+  const entry = join(f.root, 'configure.mjs')
+  writeFileSync(entry, readFileSync(script, 'utf8').replace("from '../../../packages/user-runtime/dist/egressAnalyzerTransport.js'", "from './legacy-renderer.mjs'"))
+  writeFileSync(join(f.root, 'legacy-renderer.mjs'),
+    'export const nodeAnalyzerRelayConfiguration = () => "https://{$NEXUS_DLP_NODE_IP}:9448"; export const nodeAnalyzerGatewayConfiguration = () => "";')
+  const input = join(f.root, 'shared.json')
+  writeFileSync(input, JSON.stringify({ ...f.configuration, relayMode: 'shared' }))
+  const result = spawnSync(process.execPath, [entry, input], { encoding: 'utf8' })
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /installed runtime SDK does not support/)
+  assert(!existsSync(f.configuration.dataDirectory))
+})
