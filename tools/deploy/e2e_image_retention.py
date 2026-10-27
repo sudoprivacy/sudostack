@@ -3,7 +3,6 @@ import argparse
 import datetime
 import hashlib
 import io
-import ipaddress
 import json
 import os
 from pathlib import Path
@@ -14,6 +13,7 @@ import uuid
 
 from artifacts import checksum
 from images import archive_images, inspect_image, retain_archive
+from e2e_docker_network import create_owned_network, remove_owned_network
 
 K3S_IMAGE = 'rancher/k3s@sha256:5e0707cfd1239b358ef73f3254bc3eadc027dd30cd5ec6ca41e29e47652a1b8c'
 
@@ -97,20 +97,19 @@ def main():
         raise TimeoutError('The current kubelet must publish a fresh heartbeat')
 
     try:
-        network = execute('docker', 'network', 'create', '--label', 'com.sudoprivacy.acceptance=' + label, name).strip()
-        network_info = json.loads(execute('docker', 'network', 'inspect', network))[0]
-        assert network_info['Labels']['com.sudoprivacy.acceptance'] == label
-        address = str(ipaddress.ip_network(network_info['IPAM']['Config'][0]['Subnet'])[2])
-        proof['network'] = {'id': network, 'address': address}
-        node = execute('docker', 'run', '-d', '--name', name, '--hostname', name,
+        network = create_owned_network(name, label)
+        address = network['address']
+        proof['network'] = network
+        node = execute('docker', 'create', '--name', name, '--hostname', name,
             '--label', 'com.sudoprivacy.acceptance=' + label, '--privileged', '--cpus', '2', '--memory', '2g',
-            '--network', network, '--ip', address,
+            '--network', network['id'], '--ip', address,
             '--memory-swap', '2g', '--tmpfs', '/run', '--tmpfs', '/var/run',
             '--mount', 'type=bind,source=' + retained.as_posix() + ',target=/var/lib/rancher/k3s/agent/images',
             K3S_IMAGE, 'server', '--disable', 'traefik', '--disable', 'servicelb', '--disable', 'metrics-server',
             '--disable', 'coredns', '--disable', 'local-storage', timeout=180).strip()
         assert len(node) == 64
         owned()
+        execute('docker', 'start', node)
         wrapper = bridge / 'k3s'
         wrapper.write_text('#!/bin/sh\nset -eu\ntool="$1"\nshift\ncase "$tool" in\n'
             'crictl) exec docker exec ' + node + ' /bin/crictl --runtime-endpoint unix:///run/k3s/containerd/containerd.sock "$@" ;;\n'
@@ -166,9 +165,7 @@ def main():
                 execute('docker', 'rm', node)
                 proof['ownedNodeRemoved'] = True
             if network is not None:
-                current = json.loads(execute('docker', 'network', 'inspect', network))[0]
-                assert current['Id'] == network and current['Labels']['com.sudoprivacy.acceptance'] == label
-                execute('docker', 'network', 'rm', network)
+                remove_owned_network(network, label)
                 proof['ownedNetworkRemoved'] = True
         finally:
             (root / 'receipt.json').write_text(json.dumps(proof, indent=2), encoding='utf-8')
