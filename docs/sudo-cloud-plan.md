@@ -21,7 +21,7 @@ config:
   flowchart:
     curve: linear
     nodeSpacing: 15
-    rankSpacing: 80
+    rankSpacing: 25
 ---
 flowchart TB
   DESK["SudoWork 桌面端<br/>与浏览器共享 renderer / 对话工作台<br/>稳定版 0.2.38 · 升级基线已准备<br/>0.2.39 官方原包 18 项作为历史基线<br/>发布流程 #1315 已全绿合并<br/>多企业切换 #1318 · 修复已推送 / CI 复验中<br/>新候选 0.2.40 / scode 0.2.37 待构建验收<br/>最终稳定发布 / 实际应用内升级待完成"]
