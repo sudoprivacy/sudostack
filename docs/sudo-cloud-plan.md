@@ -11,7 +11,7 @@
 <a id="architecture"></a>
 ## 1 · 系统架构
 
-第一图保留 Cloud/Edge 的全部原节点与连线，并补入飞书按人绑定、专属 Moss Agent 及持久 Session。节点分别标明合入、发布、部署与验收状态；Ethan 本人按成员路由、连续对话、共享 WebUI 历史与实际 Key 扣费已验，两人隔离等剩余项见 §9。旧版本、失败与详细验收均保留在正文/附录，不由控制器版本推断计算 Pod 已升级。
+第一图保留 Cloud/Edge 的全部原节点与连线，并补入飞书按人绑定、专属 Moss Agent 及持久 Session。节点分别标明合入、发布、部署与验收状态；Ethan 本人按成员路由、连续对话、共享 WebUI 历史与实际 Key 扣费已验，同群双人隔离、撤权恢复与原生 IM 工具允许/拒绝/超时已验；其余项见 §9。旧版本、失败与详细验收均保留在正文/附录，不由控制器版本推断计算 Pod 已升级。
 
 <!-- cloud-plan:first-diagram -->
 ```mermaid
@@ -21,10 +21,10 @@ config:
   flowchart:
     curve: linear
     nodeSpacing: 15
-    rankSpacing: 25
+    rankSpacing: 15
 ---
 flowchart TB
-  DESK["SudoWork 桌面端<br/>与浏览器共享 renderer / 对话工作台<br/>稳定版 0.2.40 / scode 0.2.37<br/>#1315 / #1318 全绿正常合并 · b0cbc995<br/>官方 Nightly / RC / 稳定三平台全绿 · GitHub/COS 字节一致<br/>云 / 本地工具、身份、历史与账单 18 项已验<br/>原安装器 + 全新配置首启 / 真实 0.2.38 应用内更新已验<br/>原会话 / 旧文件 / 模型记忆 / 工具与 owner 账单保留<br/>旧后台锁 exe 已复现 / 正常退出服务后恢复<br/>修复 #1330 · 专项 22 项 / 全量 3611 项通过 · CI 待全绿<br/>QA 状态、主机注册、协议与快捷方式已还原"]
+  DESK["SudoWork 桌面端<br/>与浏览器共享 renderer / 对话工作台<br/>稳定版 0.2.40 / scode 0.2.37<br/>#1315 / #1318 全绿正常合并 · b0cbc995<br/>官方 Nightly / RC / 稳定三平台全绿 · GitHub/COS 字节一致<br/>云 / 本地工具、身份、历史与账单 18 项已验<br/>原安装器 + 全新配置首启 / 真实 0.2.38 应用内更新已验<br/>原会话 / 旧文件 / 模型记忆 / 工具与 owner 账单保留<br/>旧后台锁 exe 已复现 / 正常退出服务后恢复<br/>修复 #1330 已全绿合并 · b4b98c90<br/>0.2.41 #1332 全绿入队 / 无人工恢复升级待验<br/>QA 状态、主机注册、协议与快捷方式已还原"]
   BROWSER["浏览器 · laptop"]
   FEISHU["飞书 Moss 机器人 · SudoPrivacy → 数牍科技<br/>企业对应关系已由用户确认<br/>cli_aa574ee4baf85cf0 · 已发布 / 入群<br/>单一接收器已切公司 / Ethan 已本人绑定公司 Moss<br/>原 OPC 身份、Key、会话与历史完整保留<br/>公司群真实回复 / 原会话续接 / 跨企业拒绝已验<br/>白桂东已本人绑定 / 同群独立回复与 owner 扣费已验"]
 
@@ -34,12 +34,12 @@ flowchart TB
     end
     subgraph MOSSVM["控制平面 VM"]
       CADDY["Caddy 443"]
-      MOSS["moss-server 43127 · 现生产正式 0.1.88<br/>9 项正式发布 CI / 113 项隔离包检查通过<br/>旧网络失败保留 / 同源重跑全绿 / 保护切换完成<br/>公司普通成员 / Moss 显式授权 / 原失败开户已恢复<br/>认证 / 组织 / 会话 / 当前权限可见 Agents<br/>实际 owner 权限、Key 与计费<br/>Secret / Service / PVC / Pod / NetworkPolicy 编排<br/>IM 私聊工具确认 #465 · 专项 23 项通过<br/>真实 JSON 字符串参数已补回归 / 新源码 2abc1d5e CI 进行中<br/>生产 ¥7.30 → $1 入账 / 成员消费已验<br/>尹已找到经办人 / 商户退款提示余额不足<br/>旧单财务退付、退款记录与余额核销待完成"]
+      MOSS["moss-server 43127 · 现生产正式 0.1.89<br/>#465 正常合并 624f8fbe · 正式发布 9 项 CI 全绿<br/>113 项包检查 / 外置 Nexus026 兼容 114 项通过<br/>保护切换完成 / 外置 broker026 原进程保留<br/>公司普通成员 / Moss 显式授权 / 原失败开户已恢复<br/>认证 / 组织 / 会话 / 当前权限可见 Agents<br/>实际 owner 权限、Key 与计费<br/>Secret / Service / PVC / Pod / NetworkPolicy 编排<br/>原生 IM 工具私聊允许 / 拒绝 / 两分钟超时已验<br/>群确认 / 重复确认拒绝 / 原历史与会话保留<br/>生产 ¥7.30 → $1 入账 / 成员消费已验<br/>尹已找到经办人 / 原单尚无成功退款凭证<br/>退款记账与核销规则未定 / 现金退付待完成"]
       HUMAN["已验证的飞书发送人 ↔ 企业成员<br/>一个人类账号可加入多个企业<br/>角色 / Moss 使用权 / Key / 账单按成员独立<br/>本人登录 + 私聊一次性码 · 不借连接 owner Key<br/>公司新成员默认普通角色 · Moss 单独授权<br/>撤销 / 接收实例租约复核"]
       MAGENT["每企业 × 获授权人：唯一 Moss Agent<br/>独立身份 / home / memory · 多个持久 Session<br/>与个人 Agent 共用引擎 / 工作台<br/>管理员 + 指定成员 · Web/API 授权<br/>QA 授予 / 撤销 / 跨 owner 8 项已验<br/>Ethan OPC 保留 / 数牍科技普通成员与独立 Moss 已验<br/>公司模型账户 9987 / 实际 Pod Key 匹配 / 独立扣费已验<br/>白桂东公司 Moss 已本人绑定 / 独立 Key 与实际 Pod 已验<br/>同群双人 Agent / 会话 / 历史隔离已验<br/>跨 owner 续接 / 实际撤销拒绝 / 恢复原会话已验"]
       MSESSION["持久 Session 映射 · #443 已部署<br/>企业 + Moss Agent + 连接 + 群/私聊<br/>同群按人隔离 · Web / 桌面续接<br/>#1302 共用工作台 · IM 历史已验<br/>OPC /new / resume / 跨 owner 拒绝已验<br/>公司 /resume / 跨企业拒绝 / 拒绝后原会话回复已验<br/>空闲凭据过期后回复 / OPC 原历史保留<br/>同群双人隔离 / 跨 owner 拒绝 / 撤销与恢复已验<br/>拒绝不进模型、不扣费 / 原会话指针保留<br/>重复入站一次执行仍待现场复验"]
       DB[("moss.db")]
-      NEXUSD["nexusd-cluster 8443 · 实际 standalone 0.8.24<br/>已核对运行二进制 SHA 与插件<br/>旧 0.8.22 → 新版 → 回退 → 再升级隔离演练通过<br/>真实受保护升级后飞书回复与历史通过<br/>原签名身份 / 已存凭据 / 配置保留<br/>控制面凭据签发 / secrets / 跨组织 broker"]
+      NEXUSD["nexusd-cluster 8443 · 实际 standalone 0.8.26<br/>实际二进制 / 官方资产 SHA 与 Vault 插件已核对<br/>旧 0.8.24 → 0.8.26 → 回退 → 再升级演练通过<br/>复用其他工作线真实升级与双客户端验收<br/>Moss089 切换保留原 broker PID / TLS / VFS / Vault<br/>原签名身份 / 已存凭据 / 配置保留<br/>控制面凭据签发 / secrets / 跨组织 broker"]
     end
     subgraph COMPUTEVM["计算 VM · k3s"]
       subgraph POD["同一用户的 allocation Pod × 1..N · 各自独立存储"]
@@ -99,7 +99,7 @@ flowchart TB
   GPUSTACK --> QWEN
   EROUTER -->|云模型渠道 · 需上游凭据| ROUTER
   ENEXUS ==>|受闸的本地跨域信箱 · mTLS · A2A| NEXUSD
-  FEISHU -->|事件 / 回复 · Ethan 按人路由已验 / 第二成员待验| MOSS
+  FEISHU -->|事件 / 回复 · 同群双人隔离 / 私聊工具确认已验| MOSS
   MOSS -->|先绑定与授权 · 目标流程| HUMAN
   HUMAN -->|实际 owner| MAGENT
   MAGENT --> MSESSION
@@ -120,7 +120,7 @@ flowchart TB
 
 **会话契约必须完整。** 逐跳接入保留消息发送、流式回复、工具事件、权限审批、取消和恢复，明确 cluster 与 cohost 的 PCB 归属和会话定位。信箱消息与浏览器会话事件通过协议适配；外部 spawn 兼容路径保留 fd 隧道契约。Cloud 的当前 cohost 入口与真实验收见 §3、§9，旧外部 scode 部署记录见附录。
 
-**模型调用经过 Nexus。** 会话由上述控制链路建立；推理路径为 `cohost 内的 scode → 本地 Nexus 模型驱动 → SudoRouter → LLM`；模型请求和返回进入同一治理接缝。盒子本地推理已使用 `nexus:///model`、本地 new-api 与 GPUStack。Cloud 已在真实用户 Pod 验证本地 Nexus `/model`、实际 owner 的独立 SudoRouter 凭据和工作台账单；新按人飞书路由已验证 Ethan 本人的两轮群回复与 Key 420 的真实用量；第二成员及其他生产边界仍见 §9。收到回复与费用记入正确 owner 分别取证，计费规则集中见 §5.1。盒子记录见 G2。
+**模型调用经过 Nexus。** 会话由上述控制链路建立；推理路径为 `cohost 内的 scode → 本地 Nexus 模型驱动 → SudoRouter → LLM`；模型请求和返回进入同一治理接缝。盒子本地推理已使用 `nexus:///model`、本地 new-api 与 GPUStack。Cloud 已在真实用户 Pod 验证本地 Nexus `/model`、实际 owner 的独立 SudoRouter 凭据和工作台账单；按人飞书路由已验证 Ethan 数牍科技 Router9987 与白桂东 Router1083 的独立 Key、实际 Pod、同群会话和用量；Ethan 原 OPC 凭据与历史保留。原生工具确认及其余生产边界统一见 §9。收到回复与费用记入正确 owner 分别取证，计费规则集中见 §5.1。盒子记录见 G2。
 
 **两种客户端，同一套接口。** 桌面端（企业模式）直连 moss 的客户端接口；浏览器走前端 VM 上的 webui server，它再打同一套接口。差别只在客户端形态，不在协议。
 
@@ -941,6 +941,128 @@ flowchart LR
 <a id="delivery"></a>
 ## 9 · 当前交付与验收
 
+**2026-10-29 18:27 检查点。** 本节是当前交付的统一入口，第一图使用同一检查点。下方历史保留全部旧状态与失败证据。源码合并、正式包、生产程序和真实会话分别核对。
+
+| 工作 | 当前结果 | 剩余事项 / 详细记录 |
+|---|---|---|
+| 每人专属 Moss 与使用权 | Ethan 与白桂东已本人绑定数牍科技各自的 Moss；同群独立 Agent、会话、历史、实际 Pod、Key 与账单通过；Ethan OPC 保留 | 同企业跨 owner 续接拒绝、实际撤权不进模型且不扣费、恢复原会话共 8 项边界通过；白桂东原授权已恢复；§2.5 / §2.6 |
+| 同账号多个企业 | 普通成员开户恢复；同一人类账号同时保留 OPC 与公司普通 user，不重复建人 | 正式 WebUI 本人短信登录、取消切换、切公司、刷新、非成员企业 403、返回 OPC 共 5 项通过；原 12 个 OPC 会话 ID 保留 |
+| 当前生产 Moss | 正式 0.1.89 / `624f8fbe` 已上线；#465 正常合并，全部 9 项正式发布 CI、113 项包检查及外置 Nexus026 兼容 114 项通过 | 配置、身份、权限、历史、账单及外置 broker026 原进程保留；不由控制器版本推断计算 Pod 已升级 |
+| 飞书原生工具确认 | 同一真实公司会话内，私聊允许写读、明确拒绝、两分钟不批准后超时均通过；真实文件存在/不存在与工具结果分别核对 | 群内批准与重复私聊批准拒绝；原会话指针和历史保留；实际上游事件重投的一次执行仍待现场复验，不能用重复批准命令代替 |
+| 控制面 Nexus | 实际 standalone 0.8.26；复用其他工作线的官方资产、024→026→024→026 演练、受保护生产升级与桌面/WebUI 会话验收 | 本线独立核对官方 Linux 资产摘要、实际二进制与 Vault 插件；Moss089 部署保留原 PID、TLS 身份与存储；计算 Pod 仍单独核对 |
+| 桌面与 WebUI 共用界面 | 稳定 0.2.40、三平台正式发布、GitHub/COS 字节、原生 18 项及真实 038→040 升级保留 | 首次升级的旧服务锁文件缺陷已复现并人工恢复；修复 #1330 全绿后正常合并 `b4b98c90`；0.2.41 #1332 全绿入正常队列，仍需新官方包及无人工服务退出的真实升级 |
+| 当前 WebUI | 生产 `b0cbc995`，双架构、备份、新旧静态资源、正常登录、Agent×模板、回复/重载及独立 owner 扣费已验 | 本人企业切换 5 项与运营中心桌面/手机已验；当前返回 OPC，原会话保留；新桌面候选发布不等于 WebUI 已部署 |
+| 运行环境与计费 | QA、Ethan OPC 及数牍科技两人的实际 gVisor Pod 均核对 scode/cohost 0.2.37、Nexus0.8.24 与 digest；有效计算清单仍为 085 | 本轮原生允许/拒绝/超时，仅 Router9987 Key432 新增准确请求与用量；按稳定 request_id 与时间区间核对 token 增量，详见下文；白桂东其他合法流量不归因于本验收 |
+| 容量与其他工作线 | #109/#451 已全绿合并；复用已有 VM、缓存镜像、peer Nexus026 与共享浏览器/编译器实现 | #1329 专家/技能库已由原工作线合入；SDK612 与运行时清单升级仍由其工作线维护；本轮保留有效 085 Pod 清单 |
+| 支付、回调与退款 | 原 ¥7.30→$1 唯一入账及 7quota 消费通过；用户选择线下退款；尹已找到经办人，截图可退 ¥7.30 但商户提交报余额不足 | 尹 10/29 15:14 确认退款记账、退款金额及 Router 扣减规则未定，建议设计开发后再完整测；仍无现金退款凭证或余额核销证据，未再创建支付单或手改余额 |
+| 原分享与图布局 | #119 全部 12 项 CI 后正常合并并发布，原分享桌面/手机与完整字节已验；本次保留 peer #120 的 Cloud/Private 出口说明 | 首图 27 节点 33 连线、全部 17 图、原 23 份折叠历史逐字保留，另添本次替换前首图与检查点完整留档；公开视觉与本次源字节另验；自动紧凑布局 FR 同步实际完整图 |
+
+### 9.0 本轮现场证据与剩余工作
+
+- **Moss 正式发布与生产切换：** [#465](https://github.com/sudoprivacy/moss/pull/465)已正常合并，[server-v0.1.89 正式任务](https://github.com/sudoprivacy/moss/actions/runs/40820664740)全部 9 项成功。官方归档 SHA256 `c3cbab37b9b681c01c60525b60269ed85c6f85e44e228bc4829ff2fc30a8c6fd`，原包 113 项检查通过。发现另一工作线已将外置 issuer 升为 026 后，本线停止原 024 身份假设，先独立核验官方资产和生产二进制，再在隔离环境补外置 026 兼容检查共 114 项；原失败回执保留。09:40 UTC 保护输入并排空后切到 089，逐表及逐会话核对身份、角色、绑定、计费与历史，健康和就绪均通过，输入围栏释放；外置 broker 同一 PID/start ticks、二进制、Vault 插件和配置不变。数据库备份和 088 回退产物保留。
+- **原生 IM 三种工具结果：** 同一 Ethan 公司 Moss 会话 `ac834d58` 中，允许一次精确 QA 文件写入与读取，拒绝一次写入，以及两分钟不发送任何批准而等待实际超时，分别得到最终群回复。每次私聊请求的 Agent、原会话、工具、路径及内容均核对。实际 owner Pod 启动参数确定 Nexus 根为 `/data/files`，绝对 `/workspace/` 对应 `/data/files/workspace/`；独立只读核验允许文件的真实字节与 SHA、拒绝/超时文件不存在，并检查两条成功工具结果或一条失败工具结果。群批准和重复私聊批准均失败，未创建私聊会话指针，也未替换原群会话或旧历史；没有用 WebSocket 代替这三次 IM 确认。
+- **准确账单归属：** 实际 Pod Key 指纹 `22fe60bf700ab8fe` 匹配 Ethan 公司 Router9987、Key432。三阶段请求数及 quota 为 allow 3 请求/12934quota；deny 2 请求/7956quota；expire 2 请求/8773quota，各阶段 token 累计增量与稳定 `request_id` 日志之和严格一致。网关用户日志 `id` 是每次重新编号的展示位置；早期验收脚本误将它当持久 ID，原统计回执已保留并更正，不能把早期多算值当实际扣费。没有额外模型重放或余额调整。
+- **失败与覆盖边界：** 首次自动化未正确解析飞书私聊卡片的转义 JSON，因此没有发出批准，请求正常过期；其后修正卡片解码并使用独立明确标记。另保留群卡片最终标记识别、项目相对文件路径假设的原失败，纠正测试读取方式后检查真实 VFS 字节，未修改产品权限或绕过授权。上述证据覆盖工具确认、群内批准拒绝、重复批准拒绝与过期；真实飞书上游同一事件重投仍未现场验收。
+- **Nexus 与计算环境：** 其他工作线的 024→026→024→026 演练、受保护升级和双客户端原会话/文件验收已复用；本线独立确认生产 026 二进制 SHA256 `369905212735ccd657ead90db5912717e4fa2ee1599017a676c940658768b197`，Vault 插件 `33021d50136c31817d507091a24b0d6e35abc1913551c1e1db3f797c82abc542`。有效计算清单仍为 `server-v0.1.85`，实际 owner Pod 保持 scode/cohost037、Pod Nexus024、ABI7 与原 PVC；Moss089、外置 broker026 和计算 Pod 版本分别记录。
+- **桌面发布收尾：** [#1330](https://github.com/sudoprivacy/sudowork/pull/1330)全部 38 项源码检查通过、3 项条件跳过后正常队列合并 `b4b98c90`。它在替换引擎前正常退出空闲服务并等待句柄释放；活跃 Agent 或共享 Box 拒绝时保留旧文件和失败回执，不强杀进程。22 项专项及完整 3611 通过/29 跳过保留。[0.2.41 #1332](https://github.com/sudoprivacy/sudowork/pull/1332)集成全量 3613 通过/29 跳过，40 项 CI 成功、3 项条件跳过，已申请正常队列；尚未将它视为已发布。仍需官方三平台候选、实际 038 应用内升级无需人工服务恢复、原会话/文件/账单、稳定推广和相应线上复验。原 038→040 人工恢复、18 项原生及主机/QA 状态还原证据完整保留。
+- **成员、界面与付款已验范围：** 白桂东本人绑定和同群独立回复、实际跨 owner 拒绝、撤权不入模型/不扣费及恢复原会话的 8 项边界通过，原显式使用权已恢复，无需再配合。Ethan 正式 WebUI 本人短信登录与 OPC/公司切换 5 项通过，OPC 原 12 会话保留。生产 WebUI 仍为 `b0cbc995`，Agent 与模板分开保存、真实回复/重载及 owner 用量已验，运营中心桌面/手机已验。原订单 `MORG663fbb1e4fd446ffa93b63f2` 唯一到账早于任何观察 GET，没有查单 sync 或人工补额；这是异步回调业务证据，没有捕获原始入口 HTTP200。原 ¥7.30 线下退款、组织记录与余额核销仍无完成证据；尹最新建议待记账和扣减规则设计开发后再完整验收，原经办与商户余额不足截图保留。新公司获赠 $10 QA 额度单独记账，不混入实付或退款证据。
+- **文档来源与去重：** 本次以包含 peer #120 Cloud/Private 出口状态的实际 main 为基底；相关内容原样保留。浏览器、共享编译器、专家/技能库和 Nexus026 采用已完成的原工作线成果；不重复开发，也不把 dev 最新提交当已部署。原分享 ID、链接、评论和访问设置保留，Markdown 与 HTML 从同一源构建。以下折叠区完整保存被替换的首图与检查点，其他既有历史与图表逐字保留。
+
+<details class="history-record">
+<summary>2026-10-29 11:16：上一检查点总图与交付原文（完整留档）</summary>
+
+<pre>第一张图原文
+---
+config:
+  layout: dagre
+  flowchart:
+    curve: linear
+    nodeSpacing: 15
+    rankSpacing: 25
+---
+flowchart TB
+  DESK[&quot;SudoWork 桌面端&lt;br/&gt;与浏览器共享 renderer / 对话工作台&lt;br/&gt;稳定版 0.2.40 / scode 0.2.37&lt;br/&gt;#1315 / #1318 全绿正常合并 · b0cbc995&lt;br/&gt;官方 Nightly / RC / 稳定三平台全绿 · GitHub/COS 字节一致&lt;br/&gt;云 / 本地工具、身份、历史与账单 18 项已验&lt;br/&gt;原安装器 + 全新配置首启 / 真实 0.2.38 应用内更新已验&lt;br/&gt;原会话 / 旧文件 / 模型记忆 / 工具与 owner 账单保留&lt;br/&gt;旧后台锁 exe 已复现 / 正常退出服务后恢复&lt;br/&gt;修复 #1330 · 专项 22 项 / 全量 3611 项通过 · CI 待全绿&lt;br/&gt;QA 状态、主机注册、协议与快捷方式已还原&quot;]
+  BROWSER[&quot;浏览器 · laptop&quot;]
+  FEISHU[&quot;飞书 Moss 机器人 · SudoPrivacy → 数牍科技&lt;br/&gt;企业对应关系已由用户确认&lt;br/&gt;cli_aa574ee4baf85cf0 · 已发布 / 入群&lt;br/&gt;单一接收器已切公司 / Ethan 已本人绑定公司 Moss&lt;br/&gt;原 OPC 身份、Key、会话与历史完整保留&lt;br/&gt;公司群真实回复 / 原会话续接 / 跨企业拒绝已验&lt;br/&gt;白桂东已本人绑定 / 同群独立回复与 owner 扣费已验&quot;]
+
+  subgraph CLOUD[&quot;☁️ sudocloud · 多租户 · 信任域 CA_A&quot;]
+    subgraph FRONTENDVM[&quot;前端 VM · 独立部署&quot;]
+      WEBUI[&quot;Sudowork WebUI server&lt;br/&gt;浏览器入口 · HTTPS&lt;br/&gt;桌面 / 浏览器共享 renderer · 对话工作台&lt;br/&gt;现生产 b0cbc995 · #1318 正常合并 / 官方双架构镜像&lt;br/&gt;数据库备份 / 原配置 / 旧静态资源保留&lt;br/&gt;实际登录 / Agent × 模板 / 回复重载 / owner 扣费已验&lt;br/&gt;未验手机号禁止企业切换已验&lt;br/&gt;本人短信企业切换 5 项通过 / 原 OPC 12 会话保留&quot;]
+    end
+    subgraph MOSSVM[&quot;控制平面 VM&quot;]
+      CADDY[&quot;Caddy 443&quot;]
+      MOSS[&quot;moss-server 43127 · 现生产正式 0.1.88&lt;br/&gt;9 项正式发布 CI / 113 项隔离包检查通过&lt;br/&gt;旧网络失败保留 / 同源重跑全绿 / 保护切换完成&lt;br/&gt;公司普通成员 / Moss 显式授权 / 原失败开户已恢复&lt;br/&gt;认证 / 组织 / 会话 / 当前权限可见 Agents&lt;br/&gt;实际 owner 权限、Key 与计费&lt;br/&gt;Secret / Service / PVC / Pod / NetworkPolicy 编排&lt;br/&gt;IM 私聊工具确认 #465 · 专项 23 项通过&lt;br/&gt;真实 JSON 字符串参数已补回归 / 新源码 2abc1d5e CI 进行中&lt;br/&gt;生产 ¥7.30 → $1 入账 / 成员消费已验&lt;br/&gt;尹已找到经办人 / 商户退款提示余额不足&lt;br/&gt;旧单财务退付、退款记录与余额核销待完成&quot;]
+      HUMAN[&quot;已验证的飞书发送人 ↔ 企业成员&lt;br/&gt;一个人类账号可加入多个企业&lt;br/&gt;角色 / Moss 使用权 / Key / 账单按成员独立&lt;br/&gt;本人登录 + 私聊一次性码 · 不借连接 owner Key&lt;br/&gt;公司新成员默认普通角色 · Moss 单独授权&lt;br/&gt;撤销 / 接收实例租约复核&quot;]
+      MAGENT[&quot;每企业 × 获授权人：唯一 Moss Agent&lt;br/&gt;独立身份 / home / memory · 多个持久 Session&lt;br/&gt;与个人 Agent 共用引擎 / 工作台&lt;br/&gt;管理员 + 指定成员 · Web/API 授权&lt;br/&gt;QA 授予 / 撤销 / 跨 owner 8 项已验&lt;br/&gt;Ethan OPC 保留 / 数牍科技普通成员与独立 Moss 已验&lt;br/&gt;公司模型账户 9987 / 实际 Pod Key 匹配 / 独立扣费已验&lt;br/&gt;白桂东公司 Moss 已本人绑定 / 独立 Key 与实际 Pod 已验&lt;br/&gt;同群双人 Agent / 会话 / 历史隔离已验&lt;br/&gt;跨 owner 续接 / 实际撤销拒绝 / 恢复原会话已验&quot;]
+      MSESSION[&quot;持久 Session 映射 · #443 已部署&lt;br/&gt;企业 + Moss Agent + 连接 + 群/私聊&lt;br/&gt;同群按人隔离 · Web / 桌面续接&lt;br/&gt;#1302 共用工作台 · IM 历史已验&lt;br/&gt;OPC /new / resume / 跨 owner 拒绝已验&lt;br/&gt;公司 /resume / 跨企业拒绝 / 拒绝后原会话回复已验&lt;br/&gt;空闲凭据过期后回复 / OPC 原历史保留&lt;br/&gt;同群双人隔离 / 跨 owner 拒绝 / 撤销与恢复已验&lt;br/&gt;拒绝不进模型、不扣费 / 原会话指针保留&lt;br/&gt;重复入站一次执行仍待现场复验&quot;]
+      DB[(&quot;moss.db&quot;)]
+      NEXUSD[&quot;nexusd-cluster 8443 · 实际 standalone 0.8.24&lt;br/&gt;已核对运行二进制 SHA 与插件&lt;br/&gt;旧 0.8.22 → 新版 → 回退 → 再升级隔离演练通过&lt;br/&gt;真实受保护升级后飞书回复与历史通过&lt;br/&gt;原签名身份 / 已存凭据 / 配置保留&lt;br/&gt;控制面凭据签发 / secrets / 跨组织 broker&quot;]
+    end
+    subgraph COMPUTEVM[&quot;计算 VM · k3s&quot;]
+      subgraph POD[&quot;同一用户的 allocation Pod × 1..N · 各自独立存储&quot;]
+        subgraph SBX[&quot;gVisor runsc · 系统调用沙箱&quot;]
+          CNEXUS[&quot;nexusd-cohost 0.2.37 · QA / Ethan 企业 Pod 已验&lt;br/&gt;生效清单 server-v0.1.85&lt;br/&gt;Nexus 0.8.24 · ABI 7 · binary digest 已读回&lt;br/&gt;每 Pod 一个 daemon / 本地 Kernel&lt;br/&gt;真实文件工具 / 续接 / owner Key 扣费通过&quot;]
+          SCODE[&quot;进程内 scode 0.2.37 · commit 4b9b5f8&lt;br/&gt;gVisor QA / Ethan 企业 Pod 实测版本与 digest 一致&lt;br/&gt;各 owner 独立 Key 指纹匹配&lt;br/&gt;真实回复 / 写读工具 / 历史续接通过&lt;br/&gt;已有其他 owner 不由清单推断升级&lt;br/&gt;多 Agent / Session 执行&quot;]
+        end
+      end
+      UPVC[&quot;每个 allocation 的独立 PVC&lt;br/&gt;Agent 记忆 · 会话历史 · 项目文件&quot;]
+      NETPOL[&quot;NetworkPolicy · 出站白名单&quot;]
+    end
+  end
+
+  subgraph EDGE[&quot;📦 sudoedge · 单组织设备 · 信任域 CA_B · 默认联网&quot;]
+    EWEB[&quot;Sudowork WebUI server&lt;br/&gt;盒子 26808 · 无需 Electron&quot;]
+    EPG[(&quot;WebUI PostgreSQL&quot;)]
+    EMOSS[&quot;本地 Moss 43127&lt;br/&gt;登录 · 会话 API · 历史 · 工作区&lt;br/&gt;直接调用本地 ManagedAgentService&quot;]
+    EDB[(&quot;本地 moss.db&quot;)]
+    subgraph EBOX[&quot;本地 cohost daemon · 按组织部署&quot;]
+      ENEXUS[&quot;nexusd-cohost&lt;br/&gt;ManagedAgentService · Kernel&lt;br/&gt;身份 · VFS · /model 与 /cloud-model&lt;br/&gt;内置内容出口闸 · 云调用与跨域信箱&quot;]
+      ETOOLS[&quot;进程内 scode 执行引擎&lt;br/&gt;由 cohost 承载 · tools · send&quot;]
+    end
+    EPRESIDIO[&quot;本地 Presidio 中文分析器&lt;br/&gt;loopback 59080 · 为出口闸识别实体&quot;]
+    EROUTER[&quot;本地 SudoRouter · new-api&lt;br/&gt;模型目录 · 凭据 · 本地及云渠道&quot;]
+    GPUSTACK[&quot;GPUStack → vLLM&lt;br/&gt;本地 GPU 推理&quot;]
+    QWEN[&quot;DGX GPU · Qwen 本地模型&quot;]
+  end
+
+  ROUTER[&quot;云端 SudoRouter · new-api&lt;br/&gt;sudorouter.ai / api / hk&quot;]
+  LLM[&quot;云模型 provider · LLM&quot;]
+
+  DESK --&gt;|wss| CADDY
+  BROWSER --&gt;|HTTPS| WEBUI
+  WEBUI --&gt;|HTTP + WS| CADDY
+  CADDY --&gt; MOSS
+  MOSS --&gt; DB
+  MOSS --&gt;|mTLS · secrets 与跨组织| NEXUSD
+  MOSS --&gt;|服务账户 · Secret / Service / PVC / Pod / NetworkPolicy| COMPUTEVM
+  MOSS ==&gt;|可信用户路由 · 委派身份 · mTLS&lt;br/&gt;会话控制 · 流式 · 审批 · 取消| CNEXUS
+  SCODE &lt;--&gt;|进程内 KernelSyscall| CNEXUS
+  CNEXUS --&gt;|Nexus 状态与文件接口| UPVC
+  SCODE --&gt;|Bash · Pod 本地项目 I/O| UPVC
+  CNEXUS --&gt;|模型请求与回复 · Nexus driver-ai&lt;br/&gt;实际 owner 的独立 SudoRouter Key| ROUTER
+  ROUTER --&gt; LLM
+  NETPOL -.-&gt;|DNS · 控制平面 · 公网 443| POD
+  CNEXUS &lt;--&gt;|mTLS · 身份与跨域服务| NEXUSD
+
+  BROWSER --&gt;|LAN SSH 隧道 · localhost:12808| EWEB
+  EWEB --&gt; EPG
+  EWEB --&gt;|HTTP + WS · 本地应用接口| EMOSS
+  EMOSS --&gt; EDB
+  EMOSS ==&gt;|mTLS · 会话控制 / 流式 / 审批 / 取消 / 恢复| ENEXUS
+  ETOOLS &lt;--&gt;|进程内 KernelSyscall| ENEXUS
+  ENEXUS --&gt;|/model 本地原文 · /cloud-model 受闸 · 独立 token| EROUTER
+  ENEXUS -.-&gt;|出口分类 · 规则与凭据检测 + 中文 NER| EPRESIDIO
+  EROUTER --&gt;|本地渠道| GPUSTACK
+  GPUSTACK --&gt; QWEN
+  EROUTER --&gt;|云模型渠道 · 需上游凭据| ROUTER
+  ENEXUS ==&gt;|受闸的本地跨域信箱 · mTLS · A2A| NEXUSD
+  FEISHU --&gt;|事件 / 回复 · Ethan 按人路由已验 / 第二成员待验| MOSS
+  MOSS --&gt;|先绑定与授权 · 目标流程| HUMAN
+  HUMAN --&gt;|实际 owner| MAGENT
+  MAGENT --&gt; MSESSION
+  MSESSION --&gt;|持久身份与原生绑定| DB
+  MSESSION --&gt;|复用 owner 委派控制链路| CNEXUS
+
 **2026-10-29 11:16 检查点。** 本节是当前交付的统一入口；第一图使用同一现场检查点。合并、正式发布、部署和真实验收分别留证，旧记录集中在折叠附录。
 
 | 工作 | 当前结果 | 下一项验收 / 唯一详细记录 |
@@ -972,6 +1094,9 @@ flowchart LR
 - **支付实际范围：** 原单MORG663fbb1e4fd446ffa93b63f2的¥7.30实付、$1唯一到账及7quota成员消费保留；到账先于任何观察GET，未查单sync或人工补额，这是异步回调业务证据，未捕获原始入口HTTP200。尹斌臣10/29已找到商户经办人，反馈资金已结算到公司账户；原始退款截图仍显示可退¥7.30，但提交提示“余额不足”，没有证据表明渠道退款期限已过，也没有成功退款凭证。其后再次确认Moss缺MORG组织退款记录，线下退钱不会自动扣回SudoRouter余额。已按用户选择的线下流程继续@尹协调公司财务处理原单、提供经办人和退付凭证，并确认已消费额度的核销规则；消息正文与@对象已读回。未再创建或支付新单，也未直接改生产余额。现金回执和余额冲销尚未完成；缺口说明及vault搜索说明已保留，现有支付API私钥不当作商户后台密码，旧个人积分退款不用于MORG组织订单。新公司9987的$10为已授权管理员QA赠额，有独立记录，未混入实付订单或退款证据。
 - **其他工作线去重：** 浏览器#1323、Moss#466及共享编译器#1327已由其他工作线合入；#465已基于包含SDK0.58.11的实际dev重新验证，未重复开发浏览器/编译器。新的专家库#1329仍由其工作线维护。本页稳定040、当前生产WebUI和实际计算清单分别留证，不把最新dev自动当作已发布或已部署。
 - **原图与源：** 第一图全部节点、连线、容器、PVC及Cloud/Edge颗粒度保留；§2.6仅保留设计，当前实施集中于本节。上一检查点中被更新的首图标注与状态原文完整保留在下面折叠区。Markdown与HTML同源构建，继续保留原分享ID、链接、评论和访问设置。
+
+</pre>
+</details>
 
 <details class="history-record">
 <summary>2026-10-28 22:02：上一检查点总图标注与交付原文（完整留档）</summary>
