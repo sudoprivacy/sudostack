@@ -7,15 +7,23 @@ nodes, 33 directed relationships and nested deployment and trust boundaries.
 The source is the marked first Mermaid block in [sudo-cloud-plan.md](sudo-cloud-plan.md)
 at the same commit as this request. The generated HTML comes from that source;
 use its complete labels, stable IDs, edge directions, styles and group membership.
-There are 17 diagrams in the document and 23 folded historical records.
+There are 17 diagrams in the updated source and 25 folded historical records;
+all 24 records from the preceding published checkpoint remain byte-identical.
 
-The 29 October local check uses Mermaid 11.12.1 and authored Dagre TB with
-nodeSpacing=15 and rankSpacing=25. Its SVG is 3555.477 × 4400.5, ratio 0.807971.
-At 1440 × 1100, the diagram fits into a 1148 × 760 viewport as 581.738 × 720.
-At 390 × 844, it fits as 305.999 × 378.726 inside 346 × 607.672. Both views
-preserve the complete graph with no document overflow. The preceding published
-checkpoint was also checked on both screen sizes: ratio 0.890539, 27 nodes,
-33 relationships, all 17 diagrams and all 22 then-existing folded records.
+The 30 October local check uses Mermaid 11.12.1 and authored Dagre TB with
+nodeSpacing=60 and rankSpacing=15. Its SVG is 3881.727 × 4619.5, ratio 0.840291.
+At 1440 × 1100 it fits as 605.009 × 720 into a 1148 × 760 viewport; at
+390 × 844 it fits as 305.999 × 364.159 into 346 × 607.672. Desktop light and
+mobile dark retain all 27 nodes, 33 relationships and 17 diagrams without
+document overflow. Edge endpoints/directions and group membership are unchanged.
+The initial local attempt kept nodeSpacing=15 after updating the labels and
+measured 3555.477 × 4619.5, ratio 0.769667; that failed receipt is preserved.
+Horizontal spacing was adjusted while keeping the same aspect-ratio assertion.
+
+These measurements qualify the local source. Public byte and visual checks
+belong to the publication receipt; local geometry alone does not prove delivery.
+The preceding published plan121 used nodeSpacing=15/rankSpacing=15, measured
+3555.477 × 4355.5 (ratio 0.816319), and contained 24 folded historical records.
 
 The aspect ratio is acceptable, but long edges and large empty areas inside
 groups still make fit-to-window text too small. The product layout improvement
@@ -48,7 +56,7 @@ summarize labels, merge nodes or hide version, failure or pending-acceptance tex
 6. Validate desktop/mobile, both themes, comments open/closed, delayed fonts,
    cold loading, hidden-to-visible transitions, resize and renderer failure.
    Zero-sized containers must not cache an invalid layout. Keep all 17 diagrams,
-   23 folded histories, navigation and original anchors working.
+   25 folded histories, navigation and original anchors working.
 7. Compare the published bytes to the reviewed canonical HTML, then check real
    public screenshots. Keep raw SVG/source available for 100% detail inspection.
 
@@ -56,6 +64,23 @@ Primary references: [Mermaid layouts](https://mermaid.js.org/config/layouts),
 [ELK wrapping strategy](https://eclipse.dev/elk/reference/options/org-eclipse-elk-layered-wrapping-strategy.html).
 The current fixture uses Mermaid 11; validate the applicable loading and
 configuration contract rather than assuming newer documentation applies unchanged.
+
+## Previous compound-graph measurement text (historical)
+
+<details>
+<summary>29 October request measurements, preserved verbatim</summary>
+
+<pre>There are 17 diagrams in the document and 23 folded historical records.
+
+The 29 October local check uses Mermaid 11.12.1 and authored Dagre TB with
+nodeSpacing=15 and rankSpacing=25. Its SVG is 3555.477 × 4400.5, ratio 0.807971.
+At 1440 × 1100, the diagram fits into a 1148 × 760 viewport as 581.738 × 720.
+At 390 × 844, it fits as 305.999 × 378.726 inside 346 × 607.672. Both views
+preserve the complete graph with no document overflow. The preceding published
+checkpoint was also checked on both screen sizes: ratio 0.890539, 27 nodes,
+33 relationships, all 17 diagrams and all 22 then-existing folded records.
+</pre>
+</details>
 
 ## Earlier measurements and request (historical fixture)
 
