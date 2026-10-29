@@ -39,6 +39,17 @@ Current Kubernetes delivery uses projected Secrets, including short-lived leaf k
 
 ## Egress policy delivery
 
+For a phased runtime rollout, `ownerRuntimeOverrides` maps selected owner IDs
+to a verified `release` and optional analyzer or relay configuration. The default
+release and analyzer configuration continue to serve other owners. Selected
+owners retain their issuer, namespace, storage, resource limits and model
+credentials. All allocations use the same owner selection, while each still
+requires its own explicit `upgrade`. Ordinary execution continues to refuse
+configuration drift, and replacement verifies the selected image and binary.
+The trusted deployment supplies this snapshot; tenant content policy cannot
+select a release or redirect the analyzer. Controller restarts must load the
+same selection until the rollout is completed or explicitly rolled back.
+
 Version 0.2.0 projects one complete `egress-policy.json` alongside the existing
 model configuration. The native runtime reads its controller-owned file through
 `NEXUS_EGRESS_GATE_CONFIG`; no agent policy-write RPC is exposed.
