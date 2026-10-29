@@ -594,7 +594,7 @@ flowchart LR
 
 - **共享组件：** [Nexus #470](https://github.com/nexi-lab/nexus-vfs/pull/470) 对既有服务的动态策略扩展已随 `v0.8.25` 发布；后续正式 `v0.8.26` 保留该能力，并补充节点认证和持久化修复。[sudostack #112](https://github.com/sudoprivacy/sudostack/pull/112) 的 `@sudo/user-runtime 0.2.2` 已正式发布。配置、作用域存储和 Pod 送达复用共享包；Cloud、Private、Edge 保留各自部署输入。分析器可放在受信控制节点或计算节点，owner Pod 仅需增加小型 relay，并校验 TLS、CA 和分类凭据；租户策略只持有 loopback 地址。
 - **Private 代码已交付：** [sudoprivate #5](https://github.com/sudoprivacy/sudoprivate/pull/5) 在 Linux、Windows CI 全绿后合入。正式 SDK 包的干净安装、默认关闭和启用示例、共享/节点分析器选择均通过消费者检查。本轮 Private 没有生产环境，后续客户安装仍需现场验收。
-- **腾讯云仍待完成 DLP 模型链路：** 实际控制器为正式 Moss `0.1.88`，生效默认运行时已是 cohost；专用账号通过默认入口获得真实 `gpt-6-luna` 回复并保留原文，新建 legacy K8s 会话被拒绝。策略 API/UI 的隔离验收已通过，全局保持关闭，测试组织已恢复继承关闭。共享分析器的 TLS、认证与业务词识别已验通，现有 owner Pod 尚无分析 relay。[sudocode #1088](https://github.com/sudoprivacy/sudocode/pull/1088) 由另一工作线补验 Nexus `0.8.26` 组合，再经过完整 CI、正常合并队列和同源 CLI/cohost `0.2.38` 发布；[Moss #461](https://github.com/sudoprivacy/moss/pull/461) 已完成正式 SDK 的隔离 Linux、PostgreSQL 和管理后台验证，仍待最终运行时锁定、完整源码 CI、正式发布与生产真实 LLM 的脱敏、拒绝和故障验收。
+- **腾讯云仍待完成 DLP 模型链路：** 10/29 在正式 Moss `0.1.88` 验证了生效默认运行时 cohost；专用账号通过默认入口获得真实 `gpt-6-luna` 回复并保留原文，新建 legacy K8s 会话被拒绝。策略 API/UI 的隔离验收已通过，全局保持关闭，测试组织已恢复继承关闭。共享分析器的 TLS、认证与业务词识别已验通，现有 owner Pod 尚无分析 relay。[sudocode #1088](https://github.com/sudoprivacy/sudocode/pull/1088) 由另一工作线补验 Nexus `0.8.26` 组合，再经过完整 CI、正常合并队列和同源 CLI/cohost `0.2.38` 发布；[Moss #461](https://github.com/sudoprivacy/moss/pull/461) 已完成正式 SDK 的隔离 Linux、PostgreSQL 和管理后台验证，仍待最终运行时锁定、完整源码 CI、正式发布与生产真实 LLM 的脱敏、拒绝和故障验收。交付可保持平台默认关闭，但须验明从 Moss 管理页动态开启后实际生效，并可再次关闭。
 - **范围：** Cloud／Edge cohost 和连接相应 Nexus 构建的 CLI 复用同一出口闸。未连接 Nexus 的独立 CLI 暂不强制 DLP；Edge 生产部署、真实跨域 A2A 和制品出口分别验收。
 
 ---
