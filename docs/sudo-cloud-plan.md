@@ -577,18 +577,25 @@ flowchart LR
 模型请求与返回也经过 Nexus：调用方以独立 stem 写 `.prompt`，读取对应 `.reply` 流；并发调用使用不同 stem，同 stem 重写表示重新请求。模型驱动随 `driver-ai` 构建进入产物，网络目标由部署策略决定。接触隐私原始数据的会话使用盒子本地模型。
 
 
-**共享安全组件与验收边界（2026-10-09）：** 三种部署形态共用组件机制，共享装配归 `sudostack/security/`，行为归 Nexus、sudocode、Moss。下表的“已验证”只适用于注明路径；设计与已合入代码不自动等于生产生效。
+**共享安全组件与验收边界（2026-10-29 更新）：** 三种部署形态共用组件机制，共享装配归 `sudostack/security/`，行为归 Nexus、sudocode、Moss。下表的“已验证”只适用于注明路径；设计与已合入代码不自动等于生产生效。
 
 | 层面 | 当前机制与证据 | 下一验收 |
 |---|---|---|
 | 身份与跨域信任（L1） | Nexus 节点/客户端使用 mTLS；foreign CA 与反向服务端信任锚、认证身份盖章和外域仅可访问信箱的围栏已有历史真实 broker 验证。Moss 到盒子执行 Nexus 使用独立身份。浏览器通过本机 HTTP 与 SSH 隧道接入。 | cohost 云端迁移后重复逐跳身份、过期、吊销和越界回归；不得将浏览器 HTTP 记成 mTLS。 |
 | 工作区与隔离（L2） | Moss 校验会话 owner、原生 session、managed PID 与 agent；文件操作使用 owner 凭据，拒绝跨会话仓库定位和子路径逃逸。云端历史记录使用 gVisor；盒子未安装 gVisor。ReBAC 与插件身份透传代码按实际部署启用。 | 最新真实文件读写和重启恢复；云 pod NetworkPolicy（G1）及业务数据读治理（G4）。 |
-| 模型与内容出口（L3） | 内容闸只覆盖经过本机 kernel 且列为出口的挂载。模型按 `NEXUS_EGRESS_GATE_MODEL_MOUNTS`、跨域信箱按 `NEXUS_EGRESS_GATE_A2A_MOUNTS` 选择；本地会话消息与 `/model` 不脱敏。检测规则与回环 Presidio 组合，按允许/拒绝/脱敏返回；JSON 结构保持，识别器失联拒绝外发，配置错误拒绝启动。真实模型 40 项和受控上游 deny/outage 已通过。 | 注入独立云模型挂载后验证真实生产外发；跨域信箱必须先改为经本地 kernel 中转。 |
+| 模型与内容出口（L3） | 复用 Nexus `egress_gate` 服务，只检查经过本机 kernel 且被部署策略列为出口的挂载。Moss API/UI 管理平台默认、组织覆盖、允许/拒绝/脱敏及实际应用状态，策略动态送达运行时。挂载是否外发按部署选择：盒子本地 `/model` 可排除，Cloud 的 `/model` 可受闸。本地会话保留原文；外发 JSON 保持结构，检测服务故障或结果非法时拒绝此次调用。历史真实模型 40 项与受控 deny/outage 证据保留。 | 腾讯云真实 LLM 的脱敏、拒绝、检测故障、热更新、原文保留及重启/凭据恢复；跨域信箱仍需先经本地 kernel 中转。 |
 | Router 与凭据 | 默认 online；已配置的云渠道默认 enabled/external，本地固定 local。独立 Router token，关闭跨组重试。本地失败不会改走云端。primary Nexus vault 保存系统机密；盒子 Router 状态使用内存盘。 | 云密钥加密引导、运行时只交给受闸挂载，重启后解密重注入；当前未配置云 key，不能记为完成。 |
 | 审计与制品 | 闸日志只记路径、身份、类别和数量，40 项验收检查日志不含命中原文；信箱 `from` 盖章随 raft 持久化。 | ShareOne 制品出口、业务数据返回脱敏与审计各自验收。 |
 | 形态差异 | Cloud 为托管多租户控制面；Private 在客户网络自营同一套服务；Edge 提供本地 GPU、独立信任域和一键纯本地。出口是否跨域由部署策略决定。 | 盒上 ShareOne 随盒部署、A2A 下发运维任务与 artifact 治理仍属后续工作。 |
 
 **当前约束：** 接触客户原始数据的任务固定使用本地模型；纯本地模式同时阻断主机与 Docker 公网出口，保留 LAN 与本地推理。云端会话控制、跨域 A2A、ShareOne 制品和模型调用是分别需要验收的出口，不能用单项模型扫描覆盖所有通道。
+
+**Cloud／Private DLP 交付（2026-10-29）：**
+
+- **共享组件：** [Nexus #470](https://github.com/nexi-lab/nexus-vfs/pull/470) 对既有服务的动态策略扩展已随 `v0.8.25` 发布；[sudostack #112](https://github.com/sudoprivacy/sudostack/pull/112) 的 `@sudo/user-runtime 0.2.2` 已正式发布。配置、作用域存储和 Pod 送达复用共享包；Cloud、Private、Edge 保留各自部署输入。分析器可放在受信控制节点或计算节点，owner Pod 仅需增加小型 relay，并校验 TLS、CA 和分类凭据；租户策略只持有 loopback 地址。
+- **Private 代码已交付：** [sudoprivate #5](https://github.com/sudoprivacy/sudoprivate/pull/5) 在 Linux、Windows CI 全绿后合入。正式 SDK 包的干净安装、默认关闭和启用示例、共享/节点分析器选择均通过消费者检查。本轮 Private 没有生产环境，后续客户安装仍需现场验收。
+- **腾讯云仍待完成模型链路：** 实际控制器为正式 Moss `0.1.88`；策略 API/UI 的隔离验收已通过，全局保持关闭，测试组织已恢复继承关闭。共享分析器的 TLS、认证与业务词识别已验通，现有 owner Pod 尚无分析 relay。[sudocode #1088](https://github.com/sudoprivacy/sudocode/pull/1088) 正等待合并队列，之后发布同源 CLI/cohost `0.2.38`；[Moss #461](https://github.com/sudoprivacy/moss/pull/461) 已完成正式 SDK 的隔离 Linux、PostgreSQL 和管理后台验证，仍待最终运行时锁定、完整源码 CI、正式发布与生产真实 LLM 验收。
+- **范围：** Cloud／Edge cohost 和连接相应 Nexus 构建的 CLI 复用同一出口闸。未连接 Nexus 的独立 CLI 暂不强制 DLP；Edge 生产部署、真实跨域 A2A 和制品出口分别验收。
 
 ---
 
