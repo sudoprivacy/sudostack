@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { createEgressPolicy, parseEgressPolicy, POLICY_FILENAME, POLICY_ENVIRONMENT, type EgressPolicy } from '@sudo/egress-policy'
 import { NexusZoneApiClient, userRuntimeServerName, createUserRuntimeCredentialBundle, type SessionCredential, type NexusVfsTlsConfig } from '@nexus-ai-fs/vfs-client'
 import { buildKubectlBaseArgs, kubectlApply, readK8sResource, deleteK8sResource, observeK8sRuntime, refreshK8sPodProjection, type K8sResource } from './k8sResources.js'
-import { parseCohostBuild, type RuntimeRelease } from './runtimeRelease.js'
+import { parseCohostBuild, RuntimeReleaseSchema, type RuntimeRelease } from './runtimeRelease.js'
 import { renewRuntimeSecretData } from './runtimeSecret.js'
 import { PRIMARY_RUNTIME_ALLOCATION as PRIMARY_ALLOCATION, runtimeAllocationId as allocationName } from './agentRuntimeHomes.js'
 export interface UserRuntimeConnectionConfig {
@@ -34,6 +34,13 @@ const DATA_ROOT = '/data'
 const RUNTIME_PORT = 8443
 const CREDENTIAL_VALIDITY_SECS = 300
 
+/** Trusted deployment selection; identity, storage and issuer stay on the root service. */
+export interface UserPodRuntimeProfile {
+  release: RuntimeRelease
+  egressAnalyzer?: { image: string; memoryLimit?: string; cpuLimit?: string }
+  egressAnalyzerRelay?: { image: string; secretName: string }
+}
+
 export interface UserPodOptions {
   allocationId?: string
   image: string
@@ -52,6 +59,7 @@ export interface UserPodOptions {
   release?: RuntimeRelease
   egressAnalyzer?: { image: string; memoryLimit?: string; cpuLimit?: string }
   egressAnalyzerRelay?: { image: string; secretName: string }
+  ownerRuntimeOverrides?: Readonly<Record<string, UserPodRuntimeProfile>>
 }
 
 interface UserPodConnection {
@@ -68,6 +76,17 @@ export interface UserPodResources {
   remove?: (kind: 'pods' | 'secrets', name: string, uid: string) => Promise<void>
   observe?: (name: string) => Promise<{ version: string; binaryDigest: string }>
   refreshProjection?: (name: string, uid: string, ownerId: string) => Promise<void>
+}
+
+export interface UserPodInspection {
+  ownerId: string
+  allocationId: string
+  isPresent: boolean
+  isDrifted: boolean
+  phase: string
+  expectedImage: string
+  observedImageDigest: string | null
+  releaseId: string | null
 }
 
 function kubernetesResources(options: UserPodOptions): UserPodResources {
@@ -184,6 +203,7 @@ function userPodManifests(ownerId: string, options: UserPodOptions) {
 export class UserPodService {
   private allocationRoot?: UserPodService
   private readonly allocations = new Map<string, UserPodService>()
+  private readonly ownerServices = new Map<string, UserPodService>()
   private readonly connections = new Map<string, Promise<UserPodConnection>>()
   private readonly pendingResolutions = new Map<string, Promise<UserPodConnection>>()
   private readonly pendingDiscoveries = new Map<string, Promise<UserRuntimeConnectionConfig | undefined>>()
@@ -208,6 +228,27 @@ export class UserPodService {
     }
     this.runtimeHost = host.hostname
     if (options.release && options.release.image.reference !== options.image) throw new Error('User runtime image differs from the shared release manifest')
+    if (options.ownerRuntimeOverrides) {
+      const profiles: Record<string, UserPodRuntimeProfile> = Object.fromEntries(Object.entries(options.ownerRuntimeOverrides).map(([ownerId, profile]) => {
+        userRuntimeServerName(ownerId)
+        return [ownerId, { release: RuntimeReleaseSchema.parse(profile.release),
+          ...(profile.egressAnalyzer ? { egressAnalyzer: { ...profile.egressAnalyzer } } : {}),
+          ...(profile.egressAnalyzerRelay ? { egressAnalyzerRelay: { ...profile.egressAnalyzerRelay } } : {}) }]
+      }))
+      this.options = { ...this.options, ownerRuntimeOverrides: profiles }
+      const { ownerRuntimeOverrides: _overrides, release: _release,
+        egressAnalyzer: _analyzer, egressAnalyzerRelay: _relay, ...placement } = this.options
+      for (const [ownerId, profile] of Object.entries(profiles)) {
+        this.ownerServices.set(ownerId, new UserPodService({ ...placement, ...profile,
+          image: profile.release.image.reference }, this.resources, this.ready))
+      }
+    }
+  }
+
+  private runtimeForOwner(ownerId: string): UserPodService | undefined {
+    const selected = this.ownerServices.get(ownerId)
+    if (selected && this.lifecycle.signal.aborted) throw new Error('User Pod service is closed')
+    return selected
   }
 
   /** Scope placement and retained storage while preserving the signed user identity. */
@@ -244,7 +285,9 @@ export class UserPodService {
   }
 
   /** Report version drift without provisioning a missing runtime. */
-  async inspect(ownerId: string) {
+  async inspect(ownerId: string): Promise<UserPodInspection> {
+    const selected = this.runtimeForOwner(ownerId)
+    if (selected) return selected.inspect(ownerId)
     const pod = await this.readAllocationResource('pod', userPodName(ownerId, this.options.allocationId))
     if (pod && pod.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) throw new Error('User Pod belongs to another owner')
     const expected = userPodManifests(ownerId, this.options).pod
@@ -269,6 +312,8 @@ export class UserPodService {
 
   /** Serialize rollouts across controllers; only the Pod is replaced and the owner PVC is retained. */
   async upgrade(ownerId: string, drain: (previous?: UserRuntimeConnectionConfig) => Promise<void>, configuration?: Record<string, string>): Promise<UserRuntimeConnectionConfig> {
+    const selected = this.runtimeForOwner(ownerId)
+    if (selected) return selected.upgrade(ownerId, drain, configuration)
     if (this.lifecycle.signal.aborted) throw new Error('User Pod service is closed')
     if (!this.resources.remove) throw new Error('Runtime replacement is unavailable')
     const name = userPodName(ownerId, this.options.allocationId)
@@ -414,6 +459,8 @@ export class UserPodService {
 
   /** Discover an existing owner box without creating a Pod or workspace for a list request. */
   async find(ownerId: string): Promise<UserRuntimeConnectionConfig | undefined> {
+    const selected = this.runtimeForOwner(ownerId)
+    if (selected) return selected.find(ownerId)
     if (this.lifecycle.signal.aborted) throw new Error('User Pod service is closed')
     let discovery = this.pendingDiscoveries.get(ownerId)
     if (!discovery) {
@@ -456,6 +503,8 @@ export class UserPodService {
   }
 
   async resolve(ownerId: string, configuration?: Record<string, string>): Promise<UserRuntimeConnectionConfig> {
+    const selected = this.runtimeForOwner(ownerId)
+    if (selected) return selected.resolve(ownerId, configuration)
     if (this.lifecycle.signal.aborted) throw new Error('User Pod service is closed')
     userPodName(ownerId, this.options.allocationId)
     let resolution = this.pendingResolutions.get(ownerId)
@@ -474,6 +523,8 @@ export class UserPodService {
 
   /** Deliver policy to an existing verified runtime without changing its model backend. */
   async configurePolicy(ownerId: string, input: EgressPolicy): Promise<UserRuntimeConnectionConfig | undefined> {
+    const selected = this.runtimeForOwner(ownerId)
+    if (selected) return selected.configurePolicy(ownerId, input)
     const policy = parseEgressPolicy(input)
     if (!(await this.find(ownerId))) return undefined
     await this.resolve(ownerId)
@@ -647,6 +698,7 @@ export class UserPodService {
   /** Disconnect controller transports while retaining owned Pods and user volumes. */
   async close(): Promise<void> {
     this.lifecycle.abort()
+    await Promise.allSettled([...this.ownerServices.values()].map(service => service.close()))
     if (!this.allocationRoot) {
       await Promise.allSettled([...this.allocations.values()].map(service => service.close()))
       this.allocations.clear()
