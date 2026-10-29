@@ -10,9 +10,9 @@ use its complete labels, stable IDs, edge directions, styles and group membershi
 There are 17 diagrams in the document and 23 folded historical records.
 
 The 29 October local check uses Mermaid 11.12.1 and authored Dagre TB with
-nodeSpacing=15 and rankSpacing=25. Its SVG is 3555.477 × 4184.5, ratio 0.849678.
-At 1440 × 1100, the diagram fits into a 1148 × 760 viewport as 611.767 × 720.
-At 390 × 844, it fits as 305.999 × 360.137 inside 346 × 607.672. Both views
+nodeSpacing=15 and rankSpacing=25. Its SVG is 3555.477 × 4256.5, ratio 0.835305.
+At 1440 × 1100, the diagram fits into a 1148 × 760 viewport as 601.418 × 720.
+At 390 × 844, it fits as 305.999 × 366.333 inside 346 × 607.672. Both views
 preserve the complete graph with no document overflow. The preceding published
 checkpoint was also checked on both screen sizes: ratio 0.890539, 27 nodes,
 33 relationships, all 17 diagrams and all 22 then-existing folded records.
