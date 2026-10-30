@@ -34,7 +34,7 @@ flowchart TB
     end
     subgraph MOSSVM["控制平面 VM"]
       CADDY["Caddy 443"]
-      MOSS["moss-server 43127 · 现生产正式 0.1.91<br/>#470 / server-v0.1.91 已发布 · 由原工作线部署验收<br/>浏览器运行环境 public SDK 0.58.14 / 原 profile 保留<br/>#465 / 089 基线：正式发布 9 项 CI 全绿<br/>113 项包检查 / 外置 Nexus026 兼容 114 项通过<br/>保护切换完成 / 身份与历史保留 / 原生计算清单 085 保留<br/>公司普通成员 / Moss 显式授权 / 原失败开户已恢复<br/>认证 / 组织 / 会话 / 当前权限可见 Agents<br/>实际 owner 权限、Key 与计费<br/>Secret / Service / PVC / Pod / NetworkPolicy 编排<br/>原生 IM 工具私聊允许 / 拒绝 / 两分钟超时已验<br/>群确认 / 重复确认拒绝 / 原历史与会话保留<br/>生产 ¥7.30 → $1 入账 / 成员消费已验<br/>尹已找到经办人 / 原单尚无成功退款凭证<br/>退款记账与核销规则未定 / 现金退付待完成"]
+      MOSS["moss-server 43127 · 现生产正式 0.1.92<br/>#479 / runtime SDK 0.2.3 · 单 owner relay 与同会话模型恢复已验<br/>模型出口 DLP 仍待合格新版 cohost<br/>#470 / server-v0.1.91 已发布 · 由原工作线部署验收<br/>浏览器运行环境 public SDK 0.58.14 / 原 profile 保留<br/>#465 / 089 基线：正式发布 9 项 CI 全绿<br/>113 项包检查 / 外置 Nexus026 兼容 114 项通过<br/>保护切换完成 / 身份与历史保留 / 原生计算清单 085 保留<br/>公司普通成员 / Moss 显式授权 / 原失败开户已恢复<br/>认证 / 组织 / 会话 / 当前权限可见 Agents<br/>实际 owner 权限、Key 与计费<br/>Secret / Service / PVC / Pod / NetworkPolicy 编排<br/>原生 IM 工具私聊允许 / 拒绝 / 两分钟超时已验<br/>群确认 / 重复确认拒绝 / 原历史与会话保留<br/>生产 ¥7.30 → $1 入账 / 成员消费已验<br/>尹已找到经办人 / 原单尚无成功退款凭证<br/>退款记账与核销规则未定 / 现金退付待完成"]
       HUMAN["已验证的飞书发送人 ↔ 企业成员<br/>一个人类账号可加入多个企业<br/>角色 / Moss 使用权 / Key / 账单按成员独立<br/>本人登录 + 私聊一次性码 · 不借连接 owner Key<br/>公司新成员默认普通角色 · Moss 单独授权<br/>撤销 / 接收实例租约复核"]
       MAGENT["每企业 × 获授权人：唯一 Moss Agent<br/>独立身份 / home / memory · 多个持久 Session<br/>与个人 Agent 共用引擎 / 工作台<br/>管理员 + 指定成员 · Web/API 授权<br/>QA 授予 / 撤销 / 跨 owner 8 项已验<br/>Ethan OPC 保留 / 数牍科技普通成员与独立 Moss 已验<br/>公司模型账户 9987 / 实际 Pod Key 匹配 / 独立扣费已验<br/>白桂东公司 Moss 已本人绑定 / 独立 Key 与实际 Pod 已验<br/>同群双人 Agent / 会话 / 历史隔离已验<br/>跨 owner 续接 / 实际撤销拒绝 / 恢复原会话已验"]
       MSESSION["持久 Session 映射 · #443 已部署<br/>企业 + Moss Agent + 连接 + 群/私聊<br/>同群按人隔离 · Web / 桌面续接<br/>#1302 共用工作台 · IM 历史已验<br/>OPC /new / resume / 跨 owner 拒绝已验<br/>公司 /resume / 跨企业拒绝 / 拒绝后原会话回复已验<br/>空闲凭据过期后回复 / OPC 原历史保留<br/>同群双人隔离 / 跨 owner 拒绝 / 撤销与恢复已验<br/>拒绝不进模型、不扣费 / 原会话指针保留<br/>重复入站一次执行仍待现场复验"]
@@ -590,11 +590,12 @@ flowchart LR
 
 **当前约束：** 接触客户原始数据的任务固定使用本地模型；纯本地模式同时阻断主机与 Docker 公网出口，保留 LAN 与本地推理。云端会话控制、跨域 A2A、ShareOne 制品和模型调用是分别需要验收的出口，不能用单项模型扫描覆盖所有通道。
 
-**Cloud／Private DLP 交付（2026-10-29）：**
+**Cloud／Private DLP 交付（2026-10-30）：**
 
-- **共享组件：** [Nexus #470](https://github.com/nexi-lab/nexus-vfs/pull/470) 对既有服务的动态策略扩展已随 `v0.8.25` 发布；后续正式 `v0.8.26` 保留该能力，并补充节点认证和持久化修复。[sudostack #112](https://github.com/sudoprivacy/sudostack/pull/112) 的 `@sudo/user-runtime 0.2.2` 已正式发布。配置、作用域存储和 Pod 送达复用共享包；Cloud、Private、Edge 保留各自部署输入。分析器可放在受信控制节点或计算节点，owner Pod 仅需增加小型 relay，并校验 TLS、CA 和分类凭据；租户策略只持有 loopback 地址。
-- **Private 代码已交付：** [sudoprivate #5](https://github.com/sudoprivacy/sudoprivate/pull/5) 在 Linux、Windows CI 全绿后合入。正式 SDK 包的干净安装、默认关闭和启用示例、共享/节点分析器选择均通过消费者检查。本轮 Private 没有生产环境，后续客户安装仍需现场验收。
-- **腾讯云仍待完成 DLP 模型链路：** 10/29 在正式 Moss `0.1.88` 验证了生效默认运行时 cohost；专用账号通过默认入口获得真实 `gpt-6-luna` 回复并保留原文，新建 legacy K8s 会话被拒绝。策略 API/UI 的隔离验收已通过，全局保持关闭，测试组织已恢复继承关闭。共享分析器的 TLS、认证与业务词识别已验通，现有 owner Pod 尚无分析 relay。[sudocode #1088](https://github.com/sudoprivacy/sudocode/pull/1088) 由另一工作线补验 Nexus `0.8.26` 组合，再经过完整 CI、正常合并队列和同源 CLI/cohost `0.2.38` 发布；[Moss #461](https://github.com/sudoprivacy/moss/pull/461) 已完成正式 SDK 的隔离 Linux、PostgreSQL 和管理后台验证，仍待最终运行时锁定、完整源码 CI、正式发布与生产真实 LLM 的脱敏、拒绝和故障验收。交付可保持平台默认关闭，但须验明从 Moss 管理页动态开启后实际生效，并可再次关闭。
+- **共享组件：** [Nexus #470](https://github.com/nexi-lab/nexus-vfs/pull/470) 的原生 hook 动态策略代码已随 `v0.8.25`／`v0.8.26` 发布；须核对模型运行时实际编译的服务，外置 slim issuer 的版本不能代表模型面的出口闸。[sudostack #122](https://github.com/sudoprivacy/sudostack/pull/122) 的正式 `@sudo/user-runtime 0.2.3` 与 [Moss #479](https://github.com/sudoprivacy/moss/pull/479) 支持按 owner 选择已验证清单和分析 relay，复用既有受控升级。配置、作用域存储和 Pod 送达仍在共享包；Cloud、Private、Edge 保留各自部署输入。分析器可放在受信控制节点或计算节点，relay 校验 TLS、CA 和分类凭据，租户策略只持有 loopback 地址。
+- **Private 代码已交付：** [sudoprivate #6](https://github.com/sudoprivacy/sudoprivate/pull/6) 的 PR 与 main 均通过 Linux、Windows 检查，固定正式 SDK `0.2.3`。干净安装、默认关闭／启用示例、共享／节点分析器及单 owner 版本选择五项消费者测试通过；同一新增断言在旧 `0.2.2` 上失败。本轮 Private 没有生产环境，客户安装仍需现场验收。
+- **腾讯云控制面、relay 与恢复已验：** 正式 [Moss `0.1.92`](https://github.com/sudoprivacy/moss/releases/tag/server-v0.1.92) 九项发布作业全绿后部署。仅专用 owner 增加 relay，实际 cohost 仍为 `0.2.37`／Nexus `0.8.24`、清单 `085`。控制面重启与 Pod 替换后，同一 PVC、原会话逐条历史及真实模型记忆保留，已有模型凭据可用；另外 14 个 owner Pod 未变。新部署的 relay 实测保护词、整条客户记录、请求策略隔离及管理接口拒绝。默认 cohost、新建 legacy K8s 拒绝和策略 API/UI 隔离沿用此前验收；平台保持关闭 revision `6`，测试组织继承关闭 revision `8`。[Cloud 验收记录](https://github.com/sudoprivacy/sudocloud/blob/3e17ecab917ab7b44e7a7f32d27875f44098307e/profiles/acceptance/2026-10-30-owner-cold-recovery.json) 保留缺失镜像导致的原 90 秒就绪失败、SDK 回滚、同源镜像恢复与成功重验。升级前须现查实际计算节点镜像缓存；卷检查使用已有权限读取 Pod 引用的具体 PVC。
+- **模型出口闸仍待验收：** 当前 `0.2.37` 内置的 Nexus `0.8.24` 尚不能提供所需动态策略状态。合格同源 CLI/cohost 正式包由原工作线继续通过完整门禁和正常合并队列；本线复用其结果。随后须在生产真实模型上验明允许、脱敏、拒绝、检测服务故障、热更新生效与恢复关闭。共享分类器已通和 API/UI 能保存策略均不能替代这项验收；交付可保持平台默认关闭，但须能从 Moss 管理页开启后实际生效并再次关闭。
 - **范围：** Cloud／Edge cohost 和连接相应 Nexus 构建的 CLI 复用同一出口闸。未连接 Nexus 的独立 CLI 暂不强制 DLP；Edge 生产部署、真实跨域 A2A 和制品出口分别验收。
 
 ---
@@ -953,7 +954,7 @@ flowchart LR
 | 桌面与 WebUI 共用界面 | 稳定040既有证据保留；041的 #1330/#1332/#1334 正常合并；精确2c4a1fab全量质量与官方候选三平台全绿；原生云/本地18项、真实全新安装与首次启动通过 | 候选推广40964911986正在回归；正式人工审核、RC/稳定资产及真实038→041无人工服务退出升级仍待完成，不以040的人工恢复代替 |
 | 当前 WebUI | 生产 `b0cbc995`，双架构、备份、新旧静态资源、正常登录、Agent×模板、回复/重载及独立 owner 扣费已验 | 本人企业切换 5 项与运营中心桌面/手机已验；当前返回 OPC，原会话保留；新桌面候选发布不等于 WebUI 已部署 |
 | 运行环境与计费 | QA、Ethan OPC 及数牍科技两人的实际 gVisor Pod 均核对 scode/cohost 0.2.37、Nexus0.8.24 与 digest；有效计算清单仍为 085 | 089 飞书工具允许/拒绝/超时仅 Router9987 Key432 新增精确用量；041 原生云/本地仅独立 QA owner9932 扣费，对照9930不变，重载不新增用量；按稳定 request_id 与时间区间归因，不计入白桂东其他合法流量 |
-| 容量与其他工作线 | #109/#451 已合并；复用既有VM、Nexus026、共享浏览器与编译器；Moss091/SDK05814正式上线及模型回归由原工作线完成 | SudoWork #1331 的浏览器 UI/官方消费产物、真实图交互与手机输入仍由原工作线维护；本线固定041候选，不重复其工作或推断新UI已上线 |
+| 容量与其他工作线 | #109/#451 已合并；复用既有VM、Nexus026、共享浏览器与编译器；Moss092 与 DLP 灰度恢复见 §6.1；原工作线 Moss091/browser SDK05814 正式上线及模型回归证据保留 | SudoWork #1331 的浏览器 UI/官方消费产物、真实图交互与手机输入仍由原工作线维护；本线固定041候选，不重复其工作或推断新UI已上线 |
 | 支付、回调与退款 | 原 ¥7.30→$1 唯一入账及 7quota 消费通过；用户选择线下退款；尹已找到经办人，截图可退 ¥7.30 但商户提交报余额不足 | 尹 10/29 15:14 确认退款记账、退款金额及 Router 扣减规则未定，建议设计开发后再完整测；仍无现金退款凭证或余额核销证据，未再创建支付单或手改余额 |
 | 原分享与图布局 | #121 正常合并并发布的证据保留；同一分享ID、评论及设置沿用；保留 #120 Cloud/Private 出口说明 | 本次更新保留首图27节点/33连线、17图和原24份折叠历史；另存替换前首图、检查点及正文旧状态；本地桌面/手机视觉通过，公开字节与视觉随发布核验；041最终交付结果另行回填 |
 
