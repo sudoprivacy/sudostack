@@ -711,3 +711,60 @@ void test('retirement refuses a Pod owned by someone else and a runtime held by 
   assert.equal(kube.objects.get('pod')!.metadata.uid, pod.metadata.uid, 'an upgrading owner keeps its Pod')
   assert.equal(kube.objects.get('upgrade-secret')!.metadata.annotations!['moss.sudo.dev/upgrade-operation'], 'another-controller')
 })
+
+void test('the fleet listing reports each owner allocation with a Pod and ignores other Pods', async t => {
+  const kube = platform(true)
+  t.mock.method(NexusZoneApiClient, 'withMtls', () => ({ mintUserRuntime: async (owner: string) => runtimeCredential(owner), close() {} }))
+  const runtime = new UserPodService(options, kube.resources, async () => {})
+  t.after(() => runtime.close())
+  await runtime.resolve('alice')
+  await runtime.forAllocation('secondary').resolve('alice')
+  await runtime.resolve('bob')
+  await runtime.retire('bob')
+  kube.objects.set('pod:moss-user-renamed', { metadata: { name: 'moss-user-renamed', uid: randomUUID(),
+    labels: { app: 'moss-user-runtime' }, annotations: { 'moss.sudo.dev/runtime-owner': 'mallory' } } })
+  const listed = await runtime.runtimes()
+  assert.deepEqual(listed.map(({ ownerId, allocationId, podName, phase }) => ({ ownerId, allocationId, podName, phase }))
+    .sort((left, right) => left.allocationId.localeCompare(right.allocationId)), [
+    { ownerId: 'alice', allocationId: 'primary', podName: userPodName('alice'), phase: 'Running' },
+    { ownerId: 'alice', allocationId: 'secondary', podName: userPodName('alice', 'secondary'), phase: 'Running' },
+  ])
+})
+
+void test('inspection reports an upgrade lock, and recovery removes only a stale lock nobody here holds', async t => {
+  const kube = platform()
+  t.mock.method(NexusZoneApiClient, 'withMtls', () => ({ mintUserRuntime: async () => runtimeCredential('alice'), close() {} }))
+  const runtime = new UserPodService(options, kube.resources, async () => {})
+  t.after(() => runtime.close())
+  await runtime.resolve('alice')
+  const started = new Date('2026-11-02T07:11:00Z')
+  assert.equal((await runtime.inspect('alice')).upgradeLock, null)
+  assert.equal(await runtime.recoverUpgradeLock('alice', started), false)
+
+  // An upgrade in this process holds its lock until it finishes.
+  let finishDrain!: () => void
+  let draining!: () => void
+  const isDraining = new Promise<void>(resolve => { draining = resolve })
+  const upgrade = runtime.upgrade('alice', () => { draining(); return new Promise<void>(resolve => { finishDrain = resolve }) })
+  await isDraining
+  const held = kube.objects.get('upgrade-secret')!
+  held.metadata.creationTimestamp = '2026-11-02T06:58:00Z'
+  assert.deepEqual((await runtime.inspect('alice')).upgradeLock, { createdAt: '2026-11-02T06:58:00Z' })
+  await assert.rejects(runtime.recoverUpgradeLock('alice', started), /holds the runtime upgrade lock/)
+  finishDrain()
+  await upgrade
+  assert.equal(kube.objects.has('upgrade-secret'), false)
+
+  const stale = (createdAt: string, owner = 'alice') => kube.objects.set('upgrade-secret', { metadata: {
+    name: `${userPodName('alice')}-upgrade`, uid: randomUUID(), creationTimestamp: createdAt,
+    annotations: { 'moss.sudo.dev/runtime-owner': owner, 'moss.sudo.dev/upgrade-operation': 'interrupted' } } })
+  stale('2026-11-02T07:11:00Z')
+  await assert.rejects(runtime.recoverUpgradeLock('alice', started), /not older than this controller/)
+  stale('2026-11-02T06:58:00Z', 'bob')
+  await assert.rejects(runtime.recoverUpgradeLock('alice', started), /another owner/)
+  assert.equal(kube.objects.has('upgrade-secret'), true)
+  stale('2026-11-02T06:58:00Z')
+  assert.equal(await runtime.recoverUpgradeLock('alice', started), true)
+  assert.equal(kube.objects.has('upgrade-secret'), false)
+  assert.equal((await runtime.inspect('alice')).upgradeLock, null)
+})

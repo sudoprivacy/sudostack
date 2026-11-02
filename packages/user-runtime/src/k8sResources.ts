@@ -9,7 +9,7 @@ import { join } from 'node:path'
 const execFileAsync = promisify(execFile)
 const ResourceSchema = z.object({
   metadata: z.object({
-    name: z.string(), uid: z.string().optional(), resourceVersion: z.string().optional(),
+    name: z.string(), uid: z.string().optional(), resourceVersion: z.string().optional(), creationTimestamp: z.string().optional(),
     annotations: z.record(z.string(), z.string()).optional(),
     labels: z.record(z.string(), z.string()).optional(),
   }).passthrough(),
@@ -36,6 +36,18 @@ export async function readK8sResource(base: string[], kind: string, name: string
     throw formatKubectlApplyError(null, String((error as { stderr?: unknown }).stderr ?? ''), 'get')
   }
   return stdout.trim() ? ResourceSchema.parse(JSON.parse(stdout)) : undefined
+}
+
+/** List one kind by label selector through the controller's Kubernetes identity. */
+export async function listK8sResources(base: string[], kind: 'pods', selector: string): Promise<K8sResource[]> {
+  let stdout: string
+  try {
+    ({ stdout } = await execFileAsync('kubectl', [...base, 'get', kind, '--selector', selector, '-o', 'json'],
+      { windowsHide: true, timeout: 30_000, maxBuffer: 32 * 1024 * 1024 }))
+  } catch (error) {
+    throw formatKubectlApplyError(null, String((error as { stderr?: unknown }).stderr ?? ''), 'get')
+  }
+  return z.object({ items: z.array(ResourceSchema) }).parse(JSON.parse(stdout)).items
 }
 
 /** Keep credentials in stdin and report only the Kubernetes error category. */

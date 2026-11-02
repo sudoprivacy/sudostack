@@ -3,7 +3,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { z } from 'zod'
 import { createEgressPolicy, parseEgressPolicy, POLICY_FILENAME, POLICY_ENVIRONMENT, type EgressPolicy } from '@sudo/egress-policy'
 import { NexusZoneApiClient, userRuntimeServerName, createUserRuntimeCredentialBundle, type SessionCredential, type NexusVfsTlsConfig } from '@nexus-ai-fs/vfs-client'
-import { buildKubectlBaseArgs, kubectlApply, readK8sResource, deleteK8sResource, observeK8sRuntime, refreshK8sPodProjection, type K8sResource } from './k8sResources.js'
+import { buildKubectlBaseArgs, kubectlApply, readK8sResource, listK8sResources, deleteK8sResource, observeK8sRuntime, refreshK8sPodProjection, type K8sResource } from './k8sResources.js'
 import { parseCohostBuild, RuntimeReleaseSchema, type RuntimeRelease } from './runtimeRelease.js'
 import { renewRuntimeSecretData } from './runtimeSecret.js'
 import { PRIMARY_RUNTIME_ALLOCATION as PRIMARY_ALLOCATION, runtimeAllocationId as allocationName } from './agentRuntimeHomes.js'
@@ -33,6 +33,8 @@ const APP_LABEL = 'moss-user-runtime'
 const DATA_ROOT = '/data'
 const RUNTIME_PORT = 8443
 const CREDENTIAL_VALIDITY_SECS = 300
+/** Upgrade locks this process holds, by namespace and name, across every service instance. */
+const heldUpgradeLocks = new Set<string>()
 
 /** Trusted deployment selection; identity, storage and issuer stay on the root service. */
 export interface UserPodRuntimeProfile {
@@ -74,6 +76,7 @@ export interface UserPodResources {
   read: (kind: string, name: string) => Promise<K8sResource | undefined>
   write: (manifest: Record<string, unknown>, verb?: 'create' | 'apply' | 'patch') => Promise<void>
   remove?: (kind: 'pods' | 'secrets', name: string, uid: string) => Promise<void>
+  list?: (kind: 'pods', selector: string) => Promise<K8sResource[]>
   observe?: (name: string) => Promise<{ version: string; binaryDigest: string }>
   refreshProjection?: (name: string, uid: string, ownerId: string) => Promise<void>
 }
@@ -87,6 +90,17 @@ export interface UserPodInspection {
   expectedImage: string
   observedImageDigest: string | null
   releaseId: string | null
+  /** An upgrade or retirement in progress, or one an interrupted controller left behind. */
+  upgradeLock: { createdAt: string | null } | null
+}
+
+/** One owner allocation that currently has a Pod. */
+export interface UserRuntimePlacement {
+  ownerId: string
+  allocationId: string
+  podName: string
+  phase: string
+  createdAt: string | null
 }
 
 function kubernetesResources(options: UserPodOptions): UserPodResources {
@@ -95,6 +109,7 @@ function kubernetesResources(options: UserPodOptions): UserPodResources {
     read: (kind, name) => readK8sResource(base, kind, name),
     write: (manifest, verb) => kubectlApply(base, manifest, verb),
     remove: (kind, name, uid) => deleteK8sResource(base, options.namespace, kind, name, uid),
+    list: (kind, selector) => listK8sResources(base, kind, selector),
     observe: name => observeK8sRuntime(base, name),
     refreshProjection: (name, uid, ownerId) => refreshK8sPodProjection(base, name, uid, ownerId),
   }
@@ -288,14 +303,55 @@ export class UserPodService {
   async inspect(ownerId: string): Promise<UserPodInspection> {
     const selected = this.runtimeForOwner(ownerId)
     if (selected) return selected.inspect(ownerId)
-    const pod = await this.readAllocationResource('pod', userPodName(ownerId, this.options.allocationId))
+    const name = userPodName(ownerId, this.options.allocationId)
+    const [pod, lock] = await Promise.all([this.readAllocationResource('pod', name), this.readAllocationResource('secret', `${name}-upgrade`)])
     if (pod && pod.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) throw new Error('User Pod belongs to another owner')
+    if (lock && lock.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) throw new Error('Runtime upgrade lock belongs to another owner')
     const expected = userPodManifests(ownerId, this.options).pod
     return { ownerId, allocationId: this.options.allocationId ?? PRIMARY_ALLOCATION, isPresent: Boolean(pod), isDrifted: Boolean(pod && (pod.metadata.annotations?.[SPEC_ANNOTATION] !== expected.metadata.annotations[SPEC_ANNOTATION] ||
       (this.options.release && pod.status?.phase === 'Running' && !this.isReleaseImage(pod)))),
       phase: pod?.status?.phase ?? 'absent', expectedImage: this.options.image,
       observedImageDigest: pod?.status?.containerStatuses?.find(container => container.name === 'runtime')?.imageID ?? null,
-      releaseId: this.options.release?.releaseId ?? null }
+      releaseId: this.options.release?.releaseId ?? null,
+      upgradeLock: lock ? { createdAt: lock.metadata.creationTimestamp ?? null } : null }
+  }
+
+  /** Every owner allocation with a Pod in this namespace, for fleet views. It provisions nothing. */
+  async runtimes(): Promise<UserRuntimePlacement[]> {
+    if (!this.resources.list) throw new Error('Runtime listing is unavailable')
+    const pods = await this.resources.list('pods', `app=${APP_LABEL}`)
+    return pods.flatMap(pod => {
+      const ownerId = pod.metadata.annotations?.[OWNER_ANNOTATION]
+      const allocationId = pod.metadata.annotations?.[ALLOCATION_ANNOTATION] ?? PRIMARY_ALLOCATION
+      // Pod names derive from owner and allocation; anything else is not an owner runtime.
+      try { if (!ownerId || pod.metadata.name !== userPodName(ownerId, allocationId)) return [] }
+      catch { return [] }
+      return [{ ownerId, allocationId, podName: pod.metadata.name, phase: pod.status?.phase ?? 'Unknown',
+        createdAt: pod.metadata.creationTimestamp ?? null }]
+    })
+  }
+
+  /**
+   * Remove an upgrade lock that an interrupted controller left behind. Only a
+   * lock this process does not hold, naming this owner, and created at least a
+   * second before `createdBefore` is removed, by its observed UID. The caller
+   * passes its own start time after draining peer controllers. Returns false
+   * when the owner has no lock.
+   */
+  async recoverUpgradeLock(ownerId: string, createdBefore: Date): Promise<boolean> {
+    const selected = this.runtimeForOwner(ownerId)
+    if (selected) return selected.recoverUpgradeLock(ownerId, createdBefore)
+    if (!this.resources.remove) throw new Error('Runtime lock recovery is unavailable')
+    const lockName = `${userPodName(ownerId, this.options.allocationId)}-upgrade`
+    if (heldUpgradeLocks.has(`${this.options.namespace}/${lockName}`)) throw new Error('This controller holds the runtime upgrade lock')
+    const lock = await this.readAllocationResource('secret', lockName)
+    if (!lock) return false
+    if (lock.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId || !lock.metadata.uid) throw new Error('Runtime upgrade lock belongs to another owner or lacks an identity')
+    // Kubernetes records creation in whole seconds.
+    const created = Date.parse(lock.metadata.creationTimestamp ?? '')
+    if (!Number.isFinite(created) || created > createdBefore.getTime() - 1000) throw new Error('Runtime upgrade lock is not older than this controller')
+    await this.resources.remove('secrets', lockName, lock.metadata.uid)
+    return true
   }
 
   private isReleaseImage(pod: K8sResource): boolean {
@@ -317,13 +373,7 @@ export class UserPodService {
     if (this.lifecycle.signal.aborted) throw new Error('User Pod service is closed')
     if (!this.resources.remove) throw new Error('Runtime replacement is unavailable')
     const name = userPodName(ownerId, this.options.allocationId)
-    const lockName = `${name}-upgrade`
-    const operation = randomUUID()
-    await this.resources.write({ apiVersion: 'v1', kind: 'Secret', type: 'Opaque',
-      metadata: { name: lockName, namespace: this.options.namespace,
-        annotations: { [OWNER_ANNOTATION]: ownerId, [ALLOCATION_ANNOTATION]: this.options.allocationId ?? PRIMARY_ALLOCATION, 'moss.sudo.dev/upgrade-operation': operation } }, stringData: {} }, 'create')
-    const lock = await this.readAllocationResource('secret', lockName)
-    if (!lock?.metadata.uid || lock.metadata.annotations?.['moss.sudo.dev/upgrade-operation'] !== operation) throw new Error('Runtime upgrade lock was not acquired')
+    const lock = await this.lockOwner(ownerId, name)
     try {
       await this.pendingResolutions.get(ownerId)
       const pending = this.connections.get(ownerId)
@@ -395,7 +445,7 @@ export class UserPodService {
         throw error
       }
     } finally {
-      await this.resources.remove('secrets', lockName, lock.metadata.uid)
+      await this.unlockOwner(lock)
     }
   }
 
@@ -412,13 +462,7 @@ export class UserPodService {
     if (this.lifecycle.signal.aborted) throw new Error('User Pod service is closed')
     if (!this.resources.remove) throw new Error('Runtime retirement is unavailable')
     const name = userPodName(ownerId, this.options.allocationId)
-    const lockName = `${name}-upgrade`
-    const operation = randomUUID()
-    await this.resources.write({ apiVersion: 'v1', kind: 'Secret', type: 'Opaque',
-      metadata: { name: lockName, namespace: this.options.namespace,
-        annotations: { [OWNER_ANNOTATION]: ownerId, [ALLOCATION_ANNOTATION]: this.options.allocationId ?? PRIMARY_ALLOCATION, 'moss.sudo.dev/upgrade-operation': operation } }, stringData: {} }, 'create')
-    const lock = await this.readAllocationResource('secret', lockName)
-    if (!lock?.metadata.uid || lock.metadata.annotations?.['moss.sudo.dev/upgrade-operation'] !== operation) throw new Error('Runtime upgrade lock was not acquired')
+    const lock = await this.lockOwner(ownerId, name)
     try {
       await this.pendingResolutions.get(ownerId)
       const connection = this.connections.get(ownerId)
@@ -431,8 +475,26 @@ export class UserPodService {
       await this.waitForPodRemoval(name)
       return true
     } finally {
-      await this.resources.remove('secrets', lockName, lock.metadata.uid)
+      await this.unlockOwner(lock)
     }
+  }
+
+  /** Create the owner's lock; Kubernetes refuses a second one while any controller holds it. */
+  private async lockOwner(ownerId: string, name: string): Promise<K8sResource> {
+    const lockName = `${name}-upgrade`
+    const operation = randomUUID()
+    await this.resources.write({ apiVersion: 'v1', kind: 'Secret', type: 'Opaque',
+      metadata: { name: lockName, namespace: this.options.namespace,
+        annotations: { [OWNER_ANNOTATION]: ownerId, [ALLOCATION_ANNOTATION]: this.options.allocationId ?? PRIMARY_ALLOCATION, 'moss.sudo.dev/upgrade-operation': operation } }, stringData: {} }, 'create')
+    const lock = await this.readAllocationResource('secret', lockName)
+    if (!lock?.metadata.uid || lock.metadata.annotations?.['moss.sudo.dev/upgrade-operation'] !== operation) throw new Error('Runtime upgrade lock was not acquired')
+    heldUpgradeLocks.add(`${this.options.namespace}/${lockName}`)
+    return lock
+  }
+
+  private async unlockOwner(lock: K8sResource): Promise<void> {
+    try { await this.resources.remove!('secrets', lock.metadata.name, lock.metadata.uid!) }
+    finally { heldUpgradeLocks.delete(`${this.options.namespace}/${lock.metadata.name}`) }
   }
 
   private async waitForPodRemoval(name: string): Promise<void> {

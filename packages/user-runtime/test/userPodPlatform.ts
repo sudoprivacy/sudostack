@@ -26,6 +26,11 @@ export function userPodPlatform(isScopedByName = false) {
           ports: [{ name: 'nexus', port: 8443, targetPort: 8443, nodePort: isScopedByName ? ports.get(metadata.name)! : 31443 }] } } : {}),
         ...(kind === 'pod' ? { status: { phase: 'Running', conditions: [{ type: 'Ready', status: 'True' }] } } : {}) })
     },
+    async list(kind, selector) {
+      const [label, value] = selector.split('=')
+      return [...objects.entries()].filter(([resourceKey, object]) => resourceKey.split(':')[0] === kind.slice(0, -1) &&
+        object.metadata.labels?.[label!] === value).map(([, object]) => object)
+    },
     async remove(kind, name, uid) {
       const resourceKey = key(kind === 'pods' ? 'pod' : 'secret', name)
       assert.equal(objects.get(resourceKey)?.metadata.uid, uid, 'replacement must target the observed resource identity')
