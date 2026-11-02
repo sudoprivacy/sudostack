@@ -648,3 +648,66 @@ void test('placement waits for authenticated readiness and controller closure ca
   await rejected
   assert.ok(kube.objects.has('pvc'))
 })
+
+void test('retiring an owner removes only the Pod; discovery leaves it stopped and resolve restores it on the retained volume', async t => {
+  const kube = platform()
+  t.mock.method(NexusZoneApiClient, 'withMtls', () => ({ mintUserRuntime: async () => runtimeCredential('alice'), close() {} }))
+  const configuration = { 'sudocode.json': '{"model":"retained"}', 'backend-config.json': '{"mounts":[]}' }
+  const runtime = new UserPodService(options, kube.resources, async () => {})
+  t.after(() => runtime.close())
+  await runtime.resolve('alice', configuration)
+  const pvc = kube.objects.get('pvc')!
+  const secretId = kube.objects.get('secret')!.metadata.uid
+  const service = kube.objects.get('service')!
+  const podId = kube.objects.get('pod')!.metadata.uid
+  assert.equal(await runtime.retire('alice'), true)
+  assert.equal(kube.objects.has('pod'), false)
+  assert.equal(kube.objects.get('pvc'), pvc, 'retirement retains the owner volume')
+  assert.equal(kube.objects.get('secret')!.metadata.uid, secretId, 'retirement retains the owner Secret')
+  assert.equal(kube.objects.get('service'), service)
+  assert.equal(kube.objects.has('upgrade-secret'), false, 'the shared lock is released')
+  assert.deepEqual({ isPresent: (await runtime.inspect('alice')).isPresent }, { isPresent: false })
+  assert.equal(await runtime.find('alice'), undefined, 'discovery never recreates a retired runtime')
+  assert.equal(kube.objects.has('pod'), false)
+  await runtime.resolve('alice', configuration)
+  assert.notEqual(kube.objects.get('pod')!.metadata.uid, podId)
+  assert.equal(kube.objects.get('pvc'), pvc, 'a later start reuses exactly the retained volume')
+})
+
+void test('retiring an owner without a Pod reports nothing to stop and releases the lock', async t => {
+  const kube = platform()
+  const runtime = new UserPodService(options, kube.resources, async () => {})
+  t.after(() => runtime.close())
+  assert.equal(await runtime.retire('alice'), false)
+  assert.equal(kube.objects.has('upgrade-secret'), false)
+})
+
+void test('retirement refuses a Pod owned by someone else and a runtime held by an upgrade lock', async t => {
+  const kube = platform()
+  t.mock.method(NexusZoneApiClient, 'withMtls', () => ({ mintUserRuntime: async () => runtimeCredential('alice'), close() {} }))
+  const old = new UserPodService(options, kube.resources, async () => {})
+  await old.resolve('alice')
+  await old.close()
+  const pod = kube.objects.get('pod')!
+  kube.objects.set('pod', { ...pod, metadata: { ...pod.metadata, annotations: { ...pod.metadata.annotations, 'moss.sudo.dev/runtime-owner': 'bob' } } })
+  const runtime = new UserPodService(options, kube.resources, async () => {})
+  t.after(() => runtime.close())
+  await assert.rejects(runtime.retire('alice'), /another owner/)
+  assert.equal(kube.objects.get('pod')!.metadata.uid, pod.metadata.uid, 'a foreign Pod remains intact')
+  assert.equal(kube.objects.has('upgrade-secret'), false)
+  kube.objects.set('pod', pod)
+  // Kubernetes refuses to create an existing lock; an owner mid-upgrade keeps its runtime.
+  const write = kube.resources.write.bind(kube.resources)
+  kube.resources.write = async (manifest, mode) => {
+    const name = (manifest.metadata as { name: string }).name
+    if (mode === 'create' && name.endsWith('-upgrade') && kube.objects.has('upgrade-secret')) {
+      throw new Error('kubectl create failed (code 1): Kubernetes API AlreadyExists')
+    }
+    return write(manifest, mode)
+  }
+  kube.objects.set('upgrade-secret', { metadata: { name: `${userPodName('alice')}-upgrade`, uid: randomUUID(),
+    annotations: { 'moss.sudo.dev/runtime-owner': 'alice', 'moss.sudo.dev/upgrade-operation': 'another-controller' } } })
+  await assert.rejects(runtime.retire('alice'), /AlreadyExists/)
+  assert.equal(kube.objects.get('pod')!.metadata.uid, pod.metadata.uid, 'an upgrading owner keeps its Pod')
+  assert.equal(kube.objects.get('upgrade-secret')!.metadata.annotations!['moss.sudo.dev/upgrade-operation'], 'another-controller')
+})
