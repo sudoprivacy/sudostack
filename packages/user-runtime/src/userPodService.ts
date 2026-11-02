@@ -399,6 +399,42 @@ export class UserPodService {
     }
   }
 
+  /**
+   * Stop an owner's runtime without replacing it, e.g. after the owner is
+   * disabled. Under the upgrade lock this closes the controller connection and
+   * removes only the owner's Pod by its observed UID; the volume, Service and
+   * Secret remain. A later `resolve` recreates the Pod on the retained volume,
+   * while discovery never does. Returns false when the owner has no Pod.
+   */
+  async retire(ownerId: string): Promise<boolean> {
+    const selected = this.runtimeForOwner(ownerId)
+    if (selected) return selected.retire(ownerId)
+    if (this.lifecycle.signal.aborted) throw new Error('User Pod service is closed')
+    if (!this.resources.remove) throw new Error('Runtime retirement is unavailable')
+    const name = userPodName(ownerId, this.options.allocationId)
+    const lockName = `${name}-upgrade`
+    const operation = randomUUID()
+    await this.resources.write({ apiVersion: 'v1', kind: 'Secret', type: 'Opaque',
+      metadata: { name: lockName, namespace: this.options.namespace,
+        annotations: { [OWNER_ANNOTATION]: ownerId, [ALLOCATION_ANNOTATION]: this.options.allocationId ?? PRIMARY_ALLOCATION, 'moss.sudo.dev/upgrade-operation': operation } }, stringData: {} }, 'create')
+    const lock = await this.readAllocationResource('secret', lockName)
+    if (!lock?.metadata.uid || lock.metadata.annotations?.['moss.sudo.dev/upgrade-operation'] !== operation) throw new Error('Runtime upgrade lock was not acquired')
+    try {
+      await this.pendingResolutions.get(ownerId)
+      const connection = this.connections.get(ownerId)
+      this.connections.delete(ownerId)
+      if (connection) await connection.then(open => open.close(), () => undefined)
+      const pod = await this.readAllocationResource('pod', name)
+      if (!pod) return false
+      if (pod.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId || !pod.metadata.uid) throw new Error('User Pod belongs to another owner or lacks an identity')
+      await this.resources.remove('pods', name, pod.metadata.uid)
+      await this.waitForPodRemoval(name)
+      return true
+    } finally {
+      await this.resources.remove('secrets', lockName, lock.metadata.uid)
+    }
+  }
+
   private async waitForPodRemoval(name: string): Promise<void> {
     const deadline = Date.now() + 90_000
     while (await this.readAllocationResource('pod', name)) {
