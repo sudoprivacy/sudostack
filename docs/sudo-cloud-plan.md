@@ -469,7 +469,7 @@ allocation 的 PVC；Pod 非 root、无 host home/云管理凭据，网络策略
 重建身份。provider KV cache 在服务方，PVC 不保证命中；保持账号、模型、前缀与
 官方 session 稳定，并用真实 cache read/create 用量观察。
 
-**本次准备：** `tools/deploy/claude-runtime/` 固定 upstream ACP adapter 0.100.0 /
+**本次准备：** `runtimes/claude-agent/` 固定 upstream ACP adapter 0.100.0 /
 官方 SDK 0.3.316，保留原 cohost 镜像入口。账号私有状态、固定 HTTP 代理、最小
 环境及必需隐私验证有启动检查，真实 ACP initialize/EOF 和官方 CLI 2.1.316 启动
 已验，未发送模型请求。CLI 关闭可选流量和 marketplace 自动安装；网页授权使用

@@ -31,7 +31,7 @@ ACP 传送任务、工具事件、审批、取消与续接。官方 CC 拥有自
 必须核验所选发行版真实支持的隧道，并在 Moss 做独立适配，不能伪造 mailbox endpoint
 或 durable_session_id。跨仓 Task variant 变化仍从 Moss 语义来源产生并精确生成。
 
-准备制品在 `tools/deploy/claude-runtime/`：固定 upstream adapter 0.100.0、官方
+准备制品在 `runtimes/claude-agent/`：固定 upstream adapter 0.100.0、官方
 SDK 0.3.316，lockfile 固定完整依赖与平台二进制完整性。镜像层保留既有 cohost
 入口；启动器不改官方 prompt、header 或模型请求。真实 ACP initialize/EOF 与
 官方 CLI `--version` 是启动证据，不能当作生产任务验收。

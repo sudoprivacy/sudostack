@@ -9,13 +9,13 @@ The launch policy and real adapter `initialize`/EOF smoke pass without an
 account or model call. **Production A2A integration, gVisor image qualification,
 account login, session recovery and a real coding task remain unqualified.**
 Do not advertise this preparation artifact as an available production backend.
-See [the architecture and integration gates](../../../docs/design/claude-agent-runtime.md).
+See [the architecture and integration gates](../../docs/design/claude-agent-runtime.md).
 
 Build from the repository root with a previously qualified digest-pinned
 `USER_RUNTIME_IMAGE` that contains Node 22.21+ and npm:
 
 ```sh
-docker build -f tools/deploy/claude-runtime/Dockerfile \
+docker build -f runtimes/claude-agent/Dockerfile \
   --build-arg USER_RUNTIME_IMAGE=REGISTRY/QUALIFIED_RUNTIME@sha256:FULL_DIGEST \
   -t PRIVATE_REGISTRY/claude-runtime:CANDIDATE .
 ```
