@@ -141,7 +141,7 @@ function diagramClasses(isDark) {
     : { client: ['#eaf2ff', '#4f7cac'], control: ['#fff4df', '#c58a22'], runtime: ['#e9f7ef', '#3b8c5a'], model: ['#f1eafd', '#7b55b3'], store: ['#f1f5f9', '#64748b'], network: ['#fcebea', '#b4534b'] };
   const text = isDark ? '#e5e7eb' : '#17212b';
   const definitions = Object.entries(palette).map(([name, colors]) => 'classDef ' + name + ' fill:' + colors[0] + ',stroke:' + colors[1] + ',color:' + text + ',stroke-width:1.5px;').join('\n');
-  return '\n' + definitions + '\nclass DESK,BROWSER,EWEB,FEISHU client;\nclass WEBUI,CADDY,MOSS,NEXUSD,EMOSS,HUMAN,MAGENT,MSESSION control;\nclass CNEXUS,SCODE,ENEXUS,ETOOLS runtime;\nclass ROUTER,LLM,EROUTER,GPUSTACK,QWEN model;\nclass DB,EPG,EDB,UPVC store;\nclass NETPOL network;';
+  return '\n' + definitions + '\nclass DESK,BROWSER,EWEB,FEISHU client;\nclass WEBUI,CADDY,MOSS,NEXUSD,EMOSS,HUMAN,MAGENT,MSESSION control;\nclass CNEXUS,SCODE,CC,ENEXUS,ETOOLS runtime;\nclass ROUTER,LLM,EROUTER,GPUSTACK,QWEN model;\nclass DB,EPG,EDB,UPVC store;\nclass NETPOL,CCEXIT network;';
 }
 async function renderMermaid(theme) {
   const isDark = theme === 'dark';

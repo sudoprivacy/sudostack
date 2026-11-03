@@ -2,6 +2,9 @@
 
 每位有 Moss 权限的企业成员拥有一个专属 Moss Agent；个人 Agent 可有多个。它们共用 compute VM → gVisor Pod → cohost/scode，以实际 owner 的权限、独立 Key 与账本执行。
 
+**2026-11-04 增量：** 新增官方 Claude Code / ACP 运行时的准备制品与接入设计，见 §3.5。
+现有 scode 生产证据保留；CC 的生产 A2A 注册、gVisor 镜像与真实任务尚待验收。
+
 **阅读顺序：** 先看总图，再按主题查正文。当前验收只在「交付与验收」集中说明；带日期的旧状态和完整技术记录保留在折叠附录。设计已确认、代码合入、正式发布、生产部署和真实验收分别记录。
 
 <nav class="topic-nav" aria-label="文档目录">
@@ -46,6 +49,7 @@ flowchart TB
         subgraph SBX["gVisor runsc · 系统调用沙箱"]
           CNEXUS["nexusd-cohost 0.2.37 · QA / Ethan 企业 Pod 已验<br/>生效清单 server-v0.1.85<br/>Nexus 0.8.24 · ABI 7 · binary digest 已读回<br/>每 Pod 一个 daemon / 本地 Kernel<br/>真实文件工具 / 续接 / owner Key 扣费通过"]
           SCODE["进程内 scode 0.2.37 · commit 4b9b5f8<br/>gVisor QA / Ethan 企业 Pod 实测版本与 digest 一致<br/>各 owner 独立 Key 指纹匹配<br/>真实回复 / 写读工具 / 历史续接通过<br/>已有其他 owner 不由清单推断升级<br/>多 Agent / Session 执行"]
+          CC["官方 Claude Code · 新增候选运行时<br/>固定 ACP adapter + 官方 SDK / CLI<br/>启动策略 / 真实 ACP 握手已验<br/>按 owner / org / micro-pool / 账号隔离<br/>生产注册 / gVisor / 真实任务待验收 · §3.5"]
         end
       end
       UPVC["每个 allocation 的独立 PVC<br/>Agent 记忆 · 会话历史 · 项目文件"]
@@ -70,6 +74,7 @@ flowchart TB
 
   ROUTER["云端 SudoRouter · new-api<br/>sudorouter.ai / api / hk"]
   LLM["云模型 provider · LLM"]
+  CCEXIT["CC 账号绑定的 HTTP CONNECT 出口<br/>managed home IP / 不回退直连"]
 
   DESK -->|wss| CADDY
   BROWSER -->|HTTPS| WEBUI
@@ -80,6 +85,10 @@ flowchart TB
   MOSS -->|服务账户 · Secret / Service / PVC / Pod / NetworkPolicy| COMPUTEVM
   MOSS ==>|可信用户路由 · 委派身份 · mTLS<br/>会话控制 · 流式 · 审批 · 取消| CNEXUS
   SCODE <-->|进程内 KernelSyscall| CNEXUS
+  CNEXUS -.->|候选：现有外部 spawn / ACP 隧道<br/>需独立适配与生产验收| CC
+  CC -.->|固定账号 / 官方 session 持久状态| UPVC
+  CC -.->|官方客户端构造模型请求| CCEXIT
+  CCEXIT -.->|Anthropic 官方服务 · 按本人授权| LLM
   CNEXUS -->|Nexus 状态与文件接口| UPVC
   SCODE -->|Bash · Pod 本地项目 I/O| UPVC
   CNEXUS -->|模型请求与回复 · Nexus driver-ai<br/>实际 owner 的独立 SudoRouter Key| ROUTER
@@ -128,7 +137,7 @@ flowchart TB
 
 **计算与控制分离。** 会话运行在独立计算节点的 k3s 上。每个用户可有一个或多个 allocation；每个 allocation 使用独立 Pod、PVC、Service 和凭据交付，每个 Pod 内由一个 daemon 承载多个 Agent／Session 执行上下文。Moss 与公共 AgentRuntimeHomes 策略选择并保存 Agent 的唯一存储归属，K3s 把已创建的 Pod 放到计算节点上；同一 Agent 的所有会话使用同一归属。真实用户 C 的 17 个 Agent、两个 Pod／PVC 及两侧物理路径隔离已验收；按 CPU 自动扩缩容与 Agent Move 另行设计。`runtimeClassName: gvisor` 用 runsc 做应用内核隔离。完整 cohost/scode 运行时随镜像交付；镜像版本和 daemon 启动方式由部署清单明确，节点不通过 hostPath 注入另一份运行时。
 
-**模型出口统一走 SudoRouter**，按模型和 provider 使用 Anthropic 或 OpenAI 兼容协议；盒子的 Qwen 本地通道使用 OpenAI 兼容协议。当前原生 scode 与 Router 之间已通过 Pod 本地 Nexus 模型驱动接通，协议由引擎按所选模型决定。
+**现有 scode 模型出口走 SudoRouter**，按模型和 provider 使用 Anthropic 或 OpenAI 兼容协议；盒子的 Qwen 本地通道使用 OpenAI 兼容协议。当前原生 scode 与 Router 之间已通过 Pod 本地 Nexus 模型驱动接通，协议由引擎按所选模型决定。新增 CC 候选走官方客户端和该账号固定出口；任务控制与 raw LLM API 兼容是不同能力，见 §3.5。
 
 **公网入口是 Caddy**，`publicBaseUrl = https://agent.sudoprivacy.com`，moss 据此吐出 `wss://` 的 ws_url。两个入口都是公网 HTTPS，客户端接入不需要任何 overlay 网络。
 
@@ -446,6 +455,38 @@ IM 的持久定位键为 `(企业 ID, Moss Agent ID, 机器人连接 ID, 群/私
 
 **跨入口身份展示复用同一实现。** Moss 创建受保护的工作台身份信息，保留真实来源（如 `lark`）、实际 owner 和发起人；Web 与桌面导入/恢复共用投影函数。身份展示不授予访问权；已有 WebSocket 地址的恢复也同步身份，避免把 Moss 引用当模板或丢失 owner。启用按成员 IM 前须分别核对控制器、Web 与桌面兼容产物，实际交付见 [§9](#delivery)。
 
+
+### 3.5 官方 CC、ACP 与按账号持久的 Pod
+
+CC 作为另一种执行运行时加入同一 owner / 组织 / micro-pool 的任务网络：
+`用户或获授权 Agent → Moss / sudoapi 任务入口 → Nexus / ACP → 官方 CC → 固定 HTTP CONNECT 出口 → Anthropic`。
+ACP 承载任务和工具交互，CC 自己管理系统 prompt、工具循环和上下文；这不是
+`/v1/messages` 的透明转发，不能承诺任意调用方的 system/tools/cache 语义不变。
+
+gVisor 适合执行沙箱。配置、本人授权、官方 session 与项目目录保留在该账号专用
+allocation 的 PVC；Pod 非 root、无 host home/云管理凭据，网络策略只放行绑定出口
+和授权控制服务，不能回退 Azure 直连。可在空闲时退休 Pod；不要为了每一轮请求
+重建身份。provider KV cache 在服务方，PVC 不保证命中；保持账号、模型、前缀与
+官方 session 稳定，并用真实 cache read/create 用量观察。
+
+**本次准备：** `tools/deploy/claude-runtime/` 固定 upstream ACP adapter 0.100.0 /
+官方 SDK 0.3.316，保留原 cohost 镜像入口。账号私有状态、固定 HTTP 代理、最小
+环境及必需隐私验证有启动检查，真实 ACP initialize/EOF 和官方 CLI 2.1.316 启动
+已验，未发送模型请求。CLI 关闭可选流量和 marketplace 自动安装；网页授权使用
+Ladder 共用隐私基线，核对本人后关闭位置元数据与模型改进，刷新确认才继续。
+可选位置关闭不等于关闭服务方必要的 IP 安全处理。
+
+**尚未生产启用：** 当前 cohost 进程内引擎和 Moss 的 mailbox/hostContext 仍是
+scode 专用，不能靠镜像多装一个 CC 就算接通。需完成实际外部 ACP 传输、持久
+官方会话绑定、权限与 MCP 目录约束、取消/unknown 不重放、owner 撤权和真实任务
+验收。首个 worker 的本人账号与 owner/组织须确定；旧 native API 号池不会因
+CC 任务通过而自动启用。完整设计、官方依据和验收边界见
+[CC 运行时接入说明](https://github.com/sudoprivacy/sudostack/blob/main/docs/design/claude-agent-runtime.md)。
+
+可选一个确实需要完成的公开 repo / issue，由已授权 Agent 分配；CC 读代码、
+修改、跑检查并交付 diff/PR。保留官方 session、工具事件与用量，不记录 bearer
+凭据，不刷 token，不自动重复 accepted 任务。官方支持程序化 CC 与 agent teams；
+A2A 概念本身不被全面禁止，但本人订阅支持不能推导账号池转售或跨人共享授权。
 
 <a id="deployment"></a>
 ## 4 · 部署与升级
@@ -944,8 +985,12 @@ flowchart LR
 
 **2026-10-30 23:54 检查点。** 本节是当前交付的统一入口，第一图使用同一检查点。下方历史保留全部旧状态与失败证据。源码合并、正式包、生产程序和真实会话分别核对。
 
+**2026-11-04 CC 增量：** 上述检查点继续描述既有生产；本次只增加 CC 准备制品与
+独立验收项，未重新验证或升级其他工作线的生产程序。
+
 | 工作 | 当前结果 | 剩余事项 / 详细记录 |
 |---|---|---|
+| 官方 CC 候选运行时 | 准备制品、隐私/绑定启动策略与真实 ACP initialize/EOF 已验；官方 CLI 2.1.316 可启动，无账号或模型请求 | 尚未注册生产 A2A worker；owner/组织与本人授权、gVisor 镜像、真实任务及取消/恢复仍待验收，见 §3.5 |
 | 每人专属 Moss 与使用权 | Ethan 与白桂东已本人绑定数牍科技各自的 Moss；同群独立 Agent、会话、历史、实际 Pod、Key 与账单通过；Ethan OPC 保留 | 同企业跨 owner 续接拒绝、实际撤权不进模型且不扣费、恢复原会话共 8 项边界通过；白桂东原授权已恢复；§2.5 / §2.6 |
 | 同账号多个企业 | 普通成员开户恢复；同一人类账号同时保留 OPC 与公司普通 user，不重复建人 | 正式 WebUI 本人短信登录、取消切换、切公司、刷新、非成员企业 403、返回 OPC 共 5 项通过；原 12 个 OPC 会话 ID 保留 |
 | 当前生产 Moss | 正式 0.1.92 / #479 已由原工作线部署；owner relay、同会话冷恢复及 runtime SDK0.2.3 见 §6.1；public browser SDK0.58.14、原 profile 和历史保留 | 复用 #124 文档和原工作线现场回执；本线089按成员 IM、允许/拒绝/超时与精确 owner 计费基线保留；生效计算清单仍为085 |
@@ -956,7 +1001,7 @@ flowchart LR
 | 运行环境与计费 | 实际 gVisor Pod 的 scode/cohost037、Nexus024、digest与清单085保持原核验；089 IM仅 Ethan公司 Router9987 / Key432 产生归因用量 | 041原生云/本地及真实038升级仅QA owner9932扣费、对照9930不变；原会话升级工具轮次4请求/45512quota，全部发生于刷新之前；空闲历史恢复和刷新无新增模型用量 |
 | 容量与其他工作线 | #109/#451 已合并；复用既有VM、Nexus026、共享浏览器与编译器；Moss092与DLP状态原样保留在§6.1 | public SDK0.58.16及SudoWork #1338原生消费、#1339 WebUI输入竞争修复、真实图交互和手机输入由原工作线维护；不重复开发、上线或把源码验收推断为正式客户端交付 |
 | 支付、回调与退款 | 原 ¥7.30→$1 唯一入账与7quota消费基线保留；22:18只读核对原订单仍paid/credited，跟进以来无Router管理员核销审计；未新建支付或修改余额 | 用户选择线下退款；尹收到21:37 QA跟进，23:48读完协调群仍无新回复。现金退付和退款记账/核销规则仍待经办人确认；订单状态本身不能证明线下现金是否已退 |
-| 原分享与图布局 | 沿用原分享ID、评论和设置；#125正式041发布/真实038升级、#126默认生产WebUI验收均已发布并公开核验；本轮补扩展恢复与46条飞书历史事件的实际覆盖边界 | 首图27节点/33连线、全部17图、原27份折叠历史保留，另加替换前检查点；原32评论及锚点、公开字节、桌面/手机布局随本次发布再核验 |
+| 原分享与图布局 | 沿用原分享ID、评论和设置；#125正式041发布/真实038升级、#126默认生产WebUI验收均已发布并公开核验；CC 增量保留原节点/边并增加虚线候选路径 | 原17图与折叠历史保留；本次 CC 增量的公开字节与图渲染另行核验，不重复声称既有生产程序已经升级 |
 
 ### 9.0 本轮现场证据与剩余工作
 

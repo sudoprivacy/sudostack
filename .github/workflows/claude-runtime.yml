@@ -1,0 +1,26 @@
+name: Claude runtime preparation
+on:
+  pull_request:
+    paths: ['tools/deploy/claude-runtime/**', '.github/workflows/claude-runtime.yml']
+  push:
+    branches: [main]
+    paths: ['tools/deploy/claude-runtime/**', '.github/workflows/claude-runtime.yml']
+permissions:
+  contents: read
+jobs:
+  launch-and-acp:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/deploy/claude-runtime
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.21.0'
+          cache: npm
+          cache-dependency-path: tools/deploy/claude-runtime/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - name: Official producer executable starts without a model request
+        run: node node_modules/@agentclientprotocol/claude-agent-acp/dist/index.js --cli --version
