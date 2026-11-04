@@ -21,6 +21,22 @@ jobs:
           cache: npm
           cache-dependency-path: runtimes/claude-agent/package-lock.json
       - run: npm ci --ignore-scripts
+      - run: npm run prepare:adapter
       - run: npm test
       - name: Official producer executable starts without a model request
         run: node node_modules/@agentclientprotocol/claude-agent-acp/dist/index.js --cli --version
+  image-layout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.21.0'
+      - name: Build the real Dockerfile on a pinned Node layout fixture
+        # This base is deliberately not a qualified Sudo owner/gVisor image.
+        run: >-
+          docker build -f runtimes/claude-agent/Dockerfile
+          --build-arg USER_RUNTIME_IMAGE=node:22.21.0-bookworm-slim@sha256:f9f7f95dcf1f007b007c4dcd44ea8f7773f931b71dc79d57c216e731c87a090b
+          -t sudo-claude-layout:${{ github.sha }} .
+      - name: Non-root complete launcher and ACP with networking disabled
+        run: node runtimes/claude-agent/container-smoke.mjs sudo-claude-layout:${{ github.sha }}

@@ -1,0 +1,14 @@
+--- a/dist/session-titles.js
++++ b/dist/session-titles.js
+@@ -357,9 +357,8 @@
+         let title = null;
+         try {
+             title =
+-                (await session.query.generateSessionTitle?.(description, {
+-                    persist: true,
+-                })) ?? null;
++                // Sudo downstream policy: session titles never request inference.
++                sanitizeTitle(description) || fallback?.title || null;
+         }
+         catch (error) {
+             this.agent.logger.error(`Session ${this.sessionId}: failed to generate a session title: ${error}`);

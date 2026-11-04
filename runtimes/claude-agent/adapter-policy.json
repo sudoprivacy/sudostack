@@ -1,0 +1,9 @@
+{
+  "policy": "local-session-title-v1",
+  "adapter_version": "0.100.0",
+  "sdk_version": "0.3.316",
+  "upstream_commit": "8bbdea6cc62a7ae080cb73ff476ed28ad7574018",
+  "file": "dist/session-titles.js",
+  "upstream_sha256": "11894b60a0d2b6b1e3a6c0bc8e651b752a8039295a7c9cf120c9e592d4d25dc0",
+  "prepared_sha256": "2742a18f86ef794354a1c86913d127108dc88e6a350261388cd4cba38214f2ee"
+}
