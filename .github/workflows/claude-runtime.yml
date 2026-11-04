@@ -21,6 +21,7 @@ jobs:
           cache: npm
           cache-dependency-path: runtimes/claude-agent/package-lock.json
       - run: npm ci --ignore-scripts
+      - run: npm run prepare:adapter
       - run: npm test
       - name: Official producer executable starts without a model request
         run: node node_modules/@agentclientprotocol/claude-agent-acp/dist/index.js --cli --version

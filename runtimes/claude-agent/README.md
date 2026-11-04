@@ -1,7 +1,7 @@
 # Claude runtime preparation
 
-This opt-in image layer installs the unmodified upstream ACP adapter and its
-exact-pinned official Agent SDK/native CLI in an existing qualified owner Pod
+This opt-in image layer installs the reviewed third-party ACP adapter and its
+unmodified, exact-pinned official Agent SDK/native CLI in a qualified owner Pod
 image. It preserves that image's cohost entrypoint and working directory. It
 does not select a new runtime for an existing Agent or deploy a replacement Pod.
 
@@ -92,6 +92,22 @@ security collection, or WebFetch security checks. Provider UI privacy must be
 verified separately using Ladder's shared `claude_privacy.py` after identity
 verification; a missing or stale assertion leaves admission pending.
 
+Session titles are local metadata. The pinned third-party adapter normally calls
+the SDK's `generateSessionTitle`, which can request inference even with optional
+CLI traffic disabled. Our explicit downstream patch replaces that one call with
+the adapter's existing bounded text sanitizer. Existing stored titles and user
+renames still win. Local titles are sent as ACP UI metadata; they are not written
+into the official transcript by a synthetic model call. The product can use its
+own task name for display. No JetBrains/AIR client identity is impersonated.
+
+`npm run prepare:adapter` applies only the checked-in single-file patch. Exact
+upstream/output SHA-256 and package version are required; unknown bytes fail
+before writing. Reapplying is idempotent. Both image build and CI prepare it
+explicitly, and the launcher rejects an unprepared adapter. The npm lock and
+official SDK/CLI bytes are unchanged. This proves the covered adapter title path
+does not request a model; real tasks must still account for necessary main calls,
+tools, compaction, retries and any other auxiliary behavior separately.
+
 Before exposing this adapter to an ordinary client, the product adapter must
 validate standard ACP and reject client overrides that can select environment,
 executable, provider credentials, working root, bypass mode or a replacement
@@ -106,6 +122,6 @@ Never replay that task automatically. Persist the official ACP session ID and
 transcript and resolve existing effects before recovery. Retain the PVC and exit
 assignment when retiring a Pod; do not retire a busy allocation.
 
-Run `npm ci --ignore-scripts && npm test`. Startup checks never send
+Run `npm ci --ignore-scripts && npm run prepare:adapter && npm test`. Startup checks never send
 `authenticate`, `session/new` or `session/prompt` and do not represent acceptance
 of a subscribed account, a useful task, A2A delivery or gVisor compatibility.

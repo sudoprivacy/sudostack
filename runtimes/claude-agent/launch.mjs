@@ -1,4 +1,4 @@
-/** Launch the unmodified producer ACP adapter; never construct model requests.
+/** Launch the reviewed third-party ACP adapter; never construct model requests.
  * The authenticated product controller supplies this private deployment binding.
  * This is not a scheduler, credential importer, or additional A2A transport.
  */
@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import managedSettings from './managed-settings.json' with { type: 'json' };
+import { checkPreparedAdapter } from './prepare-adapter.mjs';
 
 export const PRIVACY_ENV = Object.freeze(managedSettings.env);
 
@@ -66,6 +67,7 @@ export function requirePrivateState(path) {
 }
 
 export function adapterEntry() {
+  checkPreparedAdapter();
   const req = createRequire(import.meta.url);
   return join(dirname(req.resolve('@agentclientprotocol/claude-agent-acp/package.json')), 'dist/index.js');
 }
@@ -99,7 +101,7 @@ export function main(args) {
   if (process.getuid?.() === 0) throw new Error('Claude must run as a non-root user');
   const { configDir, env } = launchConfiguration(readPrivateBinding(args[1]), args[3], process.env);
   requirePrivateState(configDir);
-  // ACP stdin/stdout pass unchanged to the upstream adapter. Its SDK resolves
+  // ACP stdin/stdout pass unchanged to the prepared adapter. Its SDK resolves
   // its own pinned official native CLI; no binary/prompt/header rewrite occurs.
   const child = spawn(process.execPath, [adapterEntry()], { env, stdio: 'inherit' });
   supervise(child);

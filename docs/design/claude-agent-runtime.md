@@ -36,6 +36,12 @@ SDK 0.3.316，lockfile 固定完整依赖与平台二进制完整性。镜像层
 入口；启动器不改官方 prompt、header 或模型请求。真实 ACP initialize/EOF 与
 官方 CLI `--version` 是启动证据，不能当作生产任务验收。
 
+2026-11-05：第三方 ACP adapter 的自动标题已改为本地截取/清理文本，不再调用
+`generateSessionTitle`。这是 Stack 内显式、按原文和输出 SHA-256 检查的下游补丁，
+不是修改官方 SDK/CLI，也不冒充 AIR 客户端来解锁私有扩展。镜像构建与 CI 必须
+执行 `prepare:adapter`；启动器拒绝未经准备的依赖。真实原版模块的对照测试会调用
+记录器一次，准备后的同一路径为零；这不代替真实任务的主/辅助调用计量。
+
 ## 身份、Pod 与出口
 
 绑定为 `owner + org + micro-pool + provider account → allocation/PVC + assigned exit`。
