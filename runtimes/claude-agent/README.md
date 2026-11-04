@@ -125,3 +125,10 @@ assignment when retiring a Pod; do not retire a busy allocation.
 Run `npm ci --ignore-scripts && npm run prepare:adapter && npm test`. Startup checks never send
 `authenticate`, `session/new` or `session/prompt` and do not represent acceptance
 of a subscribed account, a useful task, A2A delivery or gVisor compatibility.
+
+CI also builds this exact Dockerfile on a digest-pinned public Node fixture base
+and runs `node container-smoke.mjs LOCAL_IMAGE`. It starts the complete launcher
+as uid 1000 with a read-only root, no capabilities and `--network none`, creates
+only an empty fixture account, and sends ACP initialize/EOF. This catches missing
+launcher modules/configuration; it does not qualify that fixture base as an owner
+runtime or claim to run gVisor. No production image is published by this check.
