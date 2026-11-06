@@ -135,6 +135,19 @@ for (const code of document.querySelectorAll('#after pre code.language-mermaid')
 const mermaidNodes = Array.from(document.querySelectorAll('.mermaid'));
 const mermaidSources = new Map(mermaidNodes.map((node) => [node, node.textContent]));
 let mermaidRender = Promise.resolve();
+let isMermaidRendering = false;
+async function waitForDiagramLayout() {
+  await document.fonts.ready;
+  await new Promise((resolve) => {
+    const observer = new ResizeObserver(() => {
+      const bounds = viewport.getBoundingClientRect();
+      if (!bounds.width || !bounds.height) return;
+      observer.disconnect();
+      requestAnimationFrame(resolve);
+    });
+    observer.observe(viewport);
+  });
+}
 function diagramClasses(isDark) {
   const palette = isDark
     ? { client: ['#173451', '#7fb0e7'], control: ['#44341c', '#e7b960'], runtime: ['#133d32', '#73cbb0'], model: ['#322544', '#bda0e9'], store: ['#2b3544', '#a2b3ca'], network: ['#432a2f', '#e6a1a9'] }
@@ -146,6 +159,7 @@ function diagramClasses(isDark) {
 async function renderMermaid(theme) {
   const isDark = theme === 'dark';
   mermaidRender = mermaidRender.catch(() => {}).then(async () => {
+    await waitForDiagramLayout();
     mermaid.initialize({
       startOnLoad: false,
       securityLevel: 'strict',
@@ -171,9 +185,14 @@ async function renderMermaid(theme) {
       node.removeAttribute('data-processed');
       node.textContent = mermaidSources.get(node) + (node.closest('#diagram') ? diagramClasses(isDark) : '');
     }
+    isMermaidRendering = true;
     diagram.style.transform = 'none';
-    await mermaid.run({ nodes: mermaidNodes });
-    sizeDiagram();
+    try {
+      await mermaid.run({ nodes: mermaidNodes });
+    } finally {
+      isMermaidRendering = false;
+      sizeDiagram();
+    }
   });
   await mermaidRender;
 }
@@ -204,6 +223,8 @@ let diagramHeight = 0;
 let isFitted = true;
 let previousFocus = null;
 function renderTransform() {
+  // Camera changes must not alter the geometry Mermaid is measuring.
+  if (isMermaidRendering) return;
   diagram.style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + scale + ')';
   zoomLevel.textContent = Math.round(scale * 100) + '%';
 }
@@ -242,6 +263,10 @@ function setScale(nextScale, anchorX = viewport.clientWidth / 2, anchorY = viewp
   renderTransform();
 }
 function focusGroup(id) {
+  if (isMermaidRendering) {
+    void mermaidRender.then(() => focusGroup(id));
+    return;
+  }
   const group = diagram.querySelector('[id="' + id + '"]');
   if (!group) return;
   isFitted = false;
