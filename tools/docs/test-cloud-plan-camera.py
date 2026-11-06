@@ -139,6 +139,7 @@ try:
     asyncio.run(run())
 except Exception as error:
     proof["error"] = type(error).__name__ + ": " + str(error)
+    raise
 finally:
     if port:
         proof["browserStop"] = browser_stop(port=port)
