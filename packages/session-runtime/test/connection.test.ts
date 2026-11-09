@@ -1,87 +1,18 @@
 import assert from 'node:assert/strict'
-import { generateKeyPairSync, randomUUID, X509Certificate } from 'node:crypto'
-import { dirname, join } from 'node:path'
+import { spawn } from 'node:child_process'
+import { randomUUID, X509Certificate } from 'node:crypto'
+import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { basename, dirname, join } from 'node:path'
+import { createInterface } from 'node:readline'
 import { setTimeout } from 'node:timers/promises'
 import { fileURLToPath } from 'node:url'
-import { test, type TestContext } from 'node:test'
+import { test } from 'node:test'
 import grpc from '@grpc/grpc-js'
-import protoLoader from '@grpc/proto-loader'
-import forge from 'node-forge'
 import { NexusVfsClient, userRuntimeServerName } from '@nexus-ai-fs/vfs-client'
 
 import { connectSessionRuntime } from '../src/index.js'
-
-interface TlsMaterial {
-  cert: Buffer
-  key: Buffer
-}
-
-function keyPair() {
-  const keys = generateKeyPairSync('rsa', { modulusLength: 2048 })
-  return {
-    publicKey: forge.pki.publicKeyFromPem(keys.publicKey.export({ type: 'spki', format: 'pem' }).toString()),
-    privateKey: forge.pki.privateKeyFromPem(keys.privateKey.export({ type: 'pkcs1', format: 'pem' }).toString()),
-  }
-}
-
-function testAuthority() {
-  const keys = keyPair()
-  const certificate = forge.pki.createCertificate()
-  certificate.publicKey = keys.publicKey
-  certificate.serialNumber = '01'
-  certificate.validity.notBefore = new Date(Date.now() - 1000)
-  certificate.validity.notAfter = new Date(Date.now() + 3600_000)
-  certificate.setSubject([{ name: 'commonName', value: 'session-connection-test-ca' }])
-  certificate.setIssuer(certificate.subject.attributes)
-  certificate.setExtensions([{ name: 'basicConstraints', cA: true },
-    { name: 'keyUsage', keyCertSign: true, cRLSign: true }])
-  certificate.sign(keys.privateKey, forge.md.sha256.create())
-  const ca = Buffer.from(forge.pki.certificateToPem(certificate))
-  let serial = 1
-  const issue = (name: string, altNames: Array<{ type: number; value: string }>, validitySecs = 300): TlsMaterial => {
-    const leafKeys = keyPair()
-    const leaf = forge.pki.createCertificate()
-    leaf.publicKey = leafKeys.publicKey
-    leaf.serialNumber = (++serial).toString(16).padStart(2, '0')
-    leaf.validity.notBefore = new Date(Date.now() - 1000)
-    leaf.validity.notAfter = new Date(Date.now() + validitySecs * 1000)
-    leaf.setSubject([{ name: 'commonName', value: name }])
-    leaf.setIssuer(certificate.subject.attributes)
-    leaf.setExtensions([{ name: 'basicConstraints', cA: false },
-      { name: 'keyUsage', digitalSignature: true, keyEncipherment: true },
-      { name: 'extKeyUsage', clientAuth: true, serverAuth: true },
-      { name: 'subjectAltName', altNames }])
-    leaf.sign(keys.privateKey, forge.md.sha256.create())
-    return { cert: Buffer.from(forge.pki.certificateToPem(leaf)),
-      key: Buffer.from(forge.pki.privateKeyToPem(leafKeys.privateKey)) }
-  }
-  return { ca, issue }
-}
-
-// Load the installed official client's own proto files; do not copy its wire contract.
-const protoRoot = join(dirname(fileURLToPath(import.meta.resolve('@nexus-ai-fs/vfs-client'))), '../proto')
-const definitions = protoLoader.loadSync([
-  join(protoRoot, 'nexus/grpc/vfs/vfs.proto'),
-  join(protoRoot, 'nexus/raft/transport.proto'),
-], { includeDirs: [protoRoot], keepCase: true, longs: String, defaults: true })
-
-async function serve(
-  t: TestContext,
-  ca: Buffer,
-  material: TlsMaterial,
-  service: string,
-  handlers: grpc.UntypedServiceImplementation,
-): Promise<string> {
-  const server = new grpc.Server()
-  server.addService(definitions[service] as grpc.ServiceDefinition, handlers)
-  t.after(() => server.forceShutdown())
-  const port = await new Promise<number>((resolve, reject) => {
-    server.bindAsync('127.0.0.1:0', grpc.ServerCredentials.createSsl(ca,
-      [{ private_key: material.key, cert_chain: material.cert }], true),
-    (error, bound) => error ? reject(error) : resolve(bound))
-  })
-  return `https://127.0.0.1:${port}`
-}
+import { serve, testAuthority } from './helpers/tls.js'
 
 void test('real mTLS separates issuer authority from owner runtime and preserves the target on automatic renewal', { timeout: 30_000 }, async t => {
   const { ca, issue } = testAuthority()
@@ -175,4 +106,82 @@ void test('a runtime with another owner server name fails the real TLS handshake
   t.after(() => connection.client.close())
   await assert.rejects(connection.client.read('/agents/a/file', connection.authToken), /DEADLINE_EXCEEDED|UNAVAILABLE/)
   assert.equal(runtimeRequests, 1, 'The Alice-target connection must not reach the Bob runtime')
+})
+
+void test('private controller process uses the actual SDK and delegated mTLS for native Call', { timeout: 30_000 }, async t => {
+  const { ca, issue } = testAuthority()
+  const operator = issue('operator', [{ type: 6, value: 'nexus://agent/moss' }])
+  const issuer = issue('issuer', [{ type: 2, value: 'issuer.test' }])
+  const runtime = issue('runtime', [{ type: 2, value: userRuntimeServerName('alice') }])
+  const subjectId = `session-${randomUUID()}`
+  const delegated = issue(subjectId, [{ type: 6, value: `nexus://agent/${subjectId}` }, { type: 6, value: 'nexus://owner/alice' }])
+  const issuerEndpoint = await serve(t, ca, issuer, 'nexus.raft.ZoneApiService', {
+    MintSessionAgent(call: grpc.ServerUnaryCall<{ owner_id: string }, unknown>, callback: grpc.sendUnaryData<unknown>) {
+      assert.equal(call.getAuthContext().sslPeerCertificate?.subject.CN, 'operator')
+      assert.equal(call.request.owner_id, 'alice')
+      callback(null, { success: true, subject_id: subjectId, ca_pem: ca,
+        agent_cert_pem: delegated.cert, agent_key_pem: delegated.key })
+    },
+  })
+  let calls = 0
+  const snapshot = { session_id: '19.3', owner_id: 'alice', agent_id: 'moss-alice',
+    durable_session_id: 'history-original', workspace_path: '/proc/19.3/workspace/', state: 'ready',
+    session_endpoint: { protocol: 'acp-mailbox/1', channel_id: 'channel-original',
+      agent: 'moss-alice', controller: subjectId, transcript: `/conversations/${'a'.repeat(32)}/transcript` },
+    fixture_text: '客户 📝' }
+  const runtimeEndpoint = await serve(t, ca, runtime, 'nexus.grpc.vfs.NexusVFSService', {
+    Call(call: grpc.ServerUnaryCall<{ method: string; payload: Buffer; auth_token: string }, unknown>, callback: grpc.sendUnaryData<unknown>) {
+      calls++
+      assert.equal(call.request.auth_token, '')
+      assert.deepEqual(call.getAuthContext().sslPeerCertificate?.raw, new X509Certificate(delegated.cert).raw)
+      assert.equal(call.request.method, 'managed_agent.get_session_v1')
+      const params = JSON.parse(call.request.payload.toString('utf8')) as { session_id: string; owner_id?: string }
+      assert.equal(params.session_id, '19.3')
+      if (params.owner_id && params.owner_id !== 'alice') {
+        callback(null, { is_error: true, payload: Buffer.from(JSON.stringify({ code: -32603, message: 'fixture owner mismatch' })) })
+      } else callback(null, { payload: Buffer.from(JSON.stringify(snapshot)) })
+    },
+  })
+  const temporaryRoot = await realpath(tmpdir())
+  const directory = await mkdtemp(join(temporaryRoot, 'sudo-controller-rpc-'))
+  t.after(async () => {
+    const target = await realpath(directory)
+    assert.equal(dirname(target), temporaryRoot)
+    assert.ok(basename(target).startsWith('sudo-controller-rpc-'))
+    await rm(target, { recursive: true, force: true })
+  })
+  const tls = { ca: join(directory, 'ca.pem'), cert: join(directory, 'operator.pem'),
+    key: join(directory, 'operator-key.pem'), serverName: 'issuer.test' }
+  await Promise.all([[tls.ca, ca], [tls.cert, operator.cert], [tls.key, operator.key]].map(
+    async ([path, bytes]) => writeFile(path as string, bytes as Buffer, { mode: 0o600 })))
+  const safeEnvironment = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
+    ['PATH', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'TEMP', 'TMP'].includes(key.toUpperCase())))
+  const child = spawn(process.execPath, [fileURLToPath(new URL('../bin/controller-rpc.mjs', import.meta.url))],
+    { env: safeEnvironment })
+  t.after(() => { if (child.exitCode === null) child.kill() })
+  child.stderr.resume()
+  const lines = createInterface({ input: child.stdout })
+  const iterator = lines[Symbol.asyncIterator]()
+  const next = async () => {
+    const frame = await iterator.next()
+    assert.equal(frame.done, false)
+    return JSON.parse(frame.value!) as Record<string, unknown>
+  }
+  child.stdin.write(JSON.stringify({ type: 'connect', version: 1, ownerId: 'alice',
+    config: { endpoint: issuerEndpoint, runtimeEndpoint, tls } }) + '\n')
+  assert.deepEqual(await next(), { type: 'ready', version: 1 })
+  child.stdin.write(JSON.stringify({ type: 'call', id: 1, method: 'managed_agent.get_session_v1',
+    payload: JSON.stringify({ session_id: '19.3' }) }) + '\n')
+  const response = await next()
+  assert.equal(response.type, 'result')
+  assert.deepEqual(JSON.parse(response.payload as string), snapshot)
+  child.stdin.write(JSON.stringify({ type: 'call', id: 2, method: 'managed_agent.get_session_v1',
+    payload: JSON.stringify({ session_id: '19.3', owner_id: 'bob' }) }) + '\n')
+  assert.deepEqual(await next(), { type: 'error', id: 2, code: 'SDK_CALL_FAILED', isOutcomeUncertain: true,
+    nativeFailure: { code: -32603, message: 'fixture owner mismatch' } })
+  assert.equal(calls, 2)
+  const exited = new Promise<number | null>(resolve => child.once('exit', resolve))
+  child.stdin.end()
+  assert.equal(await exited, 0)
+  lines.close()
 })
