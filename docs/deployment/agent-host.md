@@ -261,6 +261,14 @@ The process tests substitute systemd dispatch while exercising actual file,
 child-process, checkpoint and producer boundaries. Real systemd/controller
 handoff and real DGX product execution require their own device acceptance.
 
+### Policy path isolation
+
+Read-only binds must have no overlapping writable bind source or destination.
+Place policy beneath the immutable container root rather than a writable agent
+home. The shared placement gate rejects writable ancestors and alternate host
+paths that would let the agent replace the policy lookup path or its contents.
+Give the agent a separate private writable home for normal runtime state.
+
 ### Controller credential restoration
 
 `tools/deploy/moss_control.py` is included in the device action bundle. Host
