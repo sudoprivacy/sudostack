@@ -88,6 +88,17 @@ class SelectionTests(test_checkpoint.CheckpointTests):
         self.assertTrue(all(child.poll() is None for child in self.children.values()))
         self.assertNotIn(('daemon-reload',),self.calls)
 
+    def test_group_writable_configuration_parent_refuses_before_any_service_stop(self):
+        parent = Path(self.prepared[0]['path']).parent
+        parent.chmod(0o775)
+        output = self.home/'unsafe-parent'
+        with self.assertRaisesRegex(ValueError, 'cannot be writable by other users'):
+            selection.select(self.selection_plan, output, True)
+        self.assertEqual(self.calls, [])
+        self.assertFalse(output.exists())
+        self.assertEqual(parent.stat().st_mode & 0o777, 0o775)
+        self.assertTrue(all(child.poll() is None for child in self.children.values()))
+
     def test_wrong_app_entry_stops_candidates_without_automatic_old_code_restart(self):
         alternate = self.home/'another-app.py'
         alternate.write_text(self.entry.read_text())

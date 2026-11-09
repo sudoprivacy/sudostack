@@ -27,6 +27,9 @@ def replace_configuration(path, expected, prepared, candidate_hash, evidence, ex
         raise ValueError('Existing and producer-prepared regular files are required')
     if digest(path) != expected or digest(prepared) != candidate_hash:
         raise ValueError('Configuration pin changed; inspect again')
+    # The file exists, so this validates its existing parent without creating
+    # directories. Discover an unsafe destination before entering maintenance.
+    private_directory(path.parent)
     report = {'schemaVersion':1, 'action':'deploy.configuration', 'status':'inspected',
               'oldSha256':expected, 'preparedSha256':candidate_hash,
               'serviceRestarted':False, 'authenticatedReady':False,

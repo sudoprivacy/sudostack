@@ -54,6 +54,15 @@ class ConfigurationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Symlink'):
             replace_configuration(link,digest(self.old),self.new,digest(self.new),self.evidence,True)
 
+    def test_inspection_refuses_group_writable_parent_without_repair_or_evidence(self):
+        self.root.chmod(0o775)
+        original = self.old.read_bytes()
+        with self.assertRaisesRegex(ValueError, 'cannot be writable by other users'):
+            self.run_action(False)
+        self.assertFalse(self.evidence.exists())
+        self.assertEqual(self.old.read_bytes(), original)
+        self.assertEqual(self.root.stat().st_mode & 0o777, 0o775)
+
 
 if __name__ == '__main__':
     unittest.main()
