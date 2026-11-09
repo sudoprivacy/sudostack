@@ -12,6 +12,38 @@ or successful multi-party chat does not establish tolerance of a host failure.
 
 ## Linux user-service placement
 
+### Container execution under an existing service
+
+Existing-product checkpoint and selection plans may bind a user service to a
+pre-created execution container. `cohost.container_unit` prepares the attaching
+command and a bounded native Docker stop command while preserving the service's
+startup/readiness hooks. The system Docker service supplies the privileged
+runtime host; the execution profile selects its verified gVisor runtime.
+
+The optional `container` pin on a checkpoint unit or selection candidate has
+`id`, `imageSha256`, `runtime`, `user`, `networkMode`, `binarySha256`,
+`deploymentId` and `mounts`. Each bind mount declares its literal `source`,
+`target` and `readOnly` mode. Sources are device-owned home descendants without
+host symlink traversal. The inspected container must use those exact bindings,
+a non-root user, a read-only image, dropped capabilities and a lifetime owned
+by the service. Its deployment label identifies the OS placement; native
+owner/session authority remains with Moss and Nexus.
+
+Admission verifies the immutable container ID, image/runtime, deployment label
+and the running init executable through `/proc/1/exe`. The attaching service
+must address that same ID. A checkpoint additionally requires the container to
+be stopped before and after state copying. Candidate containers remain stopped
+until selection; a surviving or independently restarting container refuses the
+cold-copy boundary. Failed selection keeps its evidence and reports operator
+attention under the existing recovery rules.
+
+The product adapter prepares the image, runtime registration, exact mounts and
+native readiness/maintenance procedure. These shared actions preserve the
+declared state and select the prepared service; product/session and DLP
+acceptance remain required after activation.
+
+### Native executable placement
+
 Python 3.11+, user systemd and a source-bound native `nexusd-cohost` executable
 are required. Obtain its full commit and SHA256 from the authenticated producer
 artifact receipt; a filename or `--version` alone is insufficient.

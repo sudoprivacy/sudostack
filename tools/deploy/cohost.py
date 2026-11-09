@@ -26,6 +26,110 @@ def systemctl(*args, check=True):
                           capture_output=True, text=True, timeout=30)
 
 
+def container_state(pin, running):
+    """Inspect one pinned, non-root container without returning its environment."""
+    if (not isinstance(pin, dict) or set(pin) != {'id','imageSha256','runtime','user','networkMode','binarySha256','deploymentId','mounts'} or
+            not re.fullmatch('[a-f0-9]{64}', pin['id']) or
+            not re.fullmatch('sha256:[a-f0-9]{64}', pin['imageSha256']) or
+            not re.fullmatch('[a-f0-9]{64}', pin['binarySha256']) or
+            not re.fullmatch('[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}', pin['runtime']) or
+            not re.fullmatch('[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}', pin['networkMode']) or
+            not re.fullmatch('[1-9][0-9]*:[1-9][0-9]*', pin['user']) or
+            not re.fullmatch('[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}', pin['deploymentId'])):
+        raise ValueError('An exact non-root container placement pin is required')
+    if not isinstance(pin['mounts'], list) or not pin['mounts']:
+        raise ValueError('Pin every container bind mount')
+    expected = []
+    for mount in pin['mounts']:
+        if set(mount) != {'source','target','readOnly'} or type(mount['readOnly']) is not bool:
+            raise ValueError('Pin literal container source, destination and read-only mode')
+        for key in ['source','target']:
+            value = mount[key]
+            if not isinstance(value, str) or not Path(value).is_absolute() or str(Path(value)) != value or '..' in Path(value).parts:
+                raise ValueError('Container mounts require canonical absolute paths')
+        source = Path(mount['source'])
+        if source == Path.home() or not source.is_relative_to(Path.home()):
+            raise ValueError('Container bind sources must be explicit device-owned home descendants')
+        for parent in [source, *source.parents]:
+            if parent.is_symlink():
+                raise ValueError('Container bind sources must not traverse host symlinks')
+            if parent == Path.home():
+                break
+        if not source.is_file() and not source.is_dir():
+            raise ValueError('Container bind sources must be existing files or directories')
+        expected.append((mount['source'], mount['target'], not mount['readOnly']))
+    if len({item[1] for item in expected}) != len(expected):
+        raise ValueError('Duplicate container mount destination')
+    result = subprocess.run(['docker','inspect','--type','container',pin['id']],
+                            capture_output=True, text=True, check=True, timeout=30)
+    rows = json.loads(result.stdout)
+    if len(rows) != 1:
+        raise ValueError('The pinned container is ambiguous')
+    value = rows[0]
+    host, config, state = value['HostConfig'], value['Config'], value['State']
+    if (value['Id'] != pin['id'] or value['Image'] != pin['imageSha256'] or
+            host['Runtime'] != pin['runtime'] or host['NetworkMode'] != pin['networkMode'] or config['User'] != pin['user'] or
+            (config.get('Labels') or {}).get('sudo.dev/deployment-id') != pin['deploymentId']):
+        raise ValueError('Container identity, image, runtime or deployment owner differs')
+    if (host.get('Privileged') or not host.get('ReadonlyRootfs') or
+            host.get('CapAdd') or host.get('CapDrop') != ['ALL'] or
+            host.get('PidMode') or host.get('Devices') or host.get('DeviceRequests') or
+            host.get('RestartPolicy', {}).get('Name') not in ('', 'no') or
+            'no-new-privileges' not in (host.get('SecurityOpt') or [])):
+        raise ValueError('Container must retain a read-only root, dropped capabilities and explicit service lifetime')
+    if any(item['Type'] != 'bind' for item in value['Mounts']):
+        raise ValueError('Undeclared container volumes are not allowed')
+    observed = sorted((item['Source'], item['Destination'], item['RW']) for item in value['Mounts'])
+    if observed != sorted(expected):
+        raise ValueError('Container bind mounts differ from the product plan')
+    if state.get('Running') is not running or state.get('Restarting') or (not running and state.get('Pid')):
+        raise ValueError('Container did not enter the requested running/stopped boundary')
+    report = {'id':pin['id'],'imageSha256':value['Image'],'runtime':host['Runtime'],'running':running}
+    if running:
+        result = subprocess.run(['docker','exec',pin['id'],'/usr/bin/sha256sum','/proc/1/exe'],
+                                capture_output=True, text=True, check=True, timeout=30)
+        if result.stdout.split() != [pin['binarySha256'], '/proc/1/exe']:
+            raise ValueError('The live container init executable differs from the pinned runtime')
+        report['binarySha256'] = pin['binarySha256']
+    return report
+
+
+def attached_container(pid, pin):
+    """A user unit must attach to the immutable container it actually owns."""
+    report = container_state(pin, True)
+    arguments = (Path('/proc')/str(pid)/'cmdline').read_bytes().decode().rstrip('\0').split('\0')
+    if arguments[1:] != ['start','--attach',pin['id']]:
+        raise ValueError('The service is not attached to its pinned container')
+    return report
+
+
+def container_unit(text, binary, pin):
+    """Prepare an existing service to attach to one separately inspected container."""
+    container_state(pin, False)
+    lines = text.splitlines(keepends=True)
+    section, starts, insertion = None, [], None
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith('[') and stripped.endswith(']'):
+            if section == '[Service]':
+                insertion = index
+            section = stripped
+        elif section == '[Service]':
+            if stripped.startswith('ExecStart='):
+                starts.append(index)
+            if stripped.startswith(('ExecStop=', 'ExecStopPost=')):
+                raise ValueError('Existing stop hooks need explicit native adaptation before container placement')
+    if len(starts) != 1:
+        raise ValueError('Expected exactly one existing service ExecStart')
+    if section == '[Service]':
+        insertion = len(lines)
+    if insertion is None:
+        raise ValueError('Existing service section is missing')
+    lines[starts[0]] = 'ExecStart=' + ' '.join(quoted(value) for value in [str(binary),'start','--attach',pin['id']]) + '\n'
+    lines.insert(insertion, 'ExecStop=' + ' '.join(quoted(value) for value in [str(binary),'stop','--time','60',pin['id']]) + '\n')
+    return ''.join(lines).encode()
+
+
 def private_directory(path):
     if path.is_symlink():
         raise ValueError('A managed directory cannot be a symlink: ' + str(path))

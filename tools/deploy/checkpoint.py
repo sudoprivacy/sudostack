@@ -17,7 +17,7 @@ import stat
 import subprocess
 import sys
 
-from cohost import digest, private_directory, publish
+from cohost import attached_container, container_state, digest, private_directory, publish
 
 
 def control(*args):
@@ -73,7 +73,8 @@ def inspect(plan, output):
         raise ValueError('Explicit services, state paths and configuration pins are required')
     units = []
     for item in plan['units']:
-        if set(item) != {'name', 'binarySha256'} or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]*\.service', item['name']):
+        if (set(item) - {'name','binarySha256','container'} or not {'name','binarySha256'} <= set(item) or
+                not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]*\.service', item['name'])):
             raise ValueError('Expected a pinned user-service name')
         if not re.fullmatch('[0-9a-f]{64}', item['binarySha256']):
             raise ValueError('Expected full executable SHA256')
@@ -85,6 +86,8 @@ def inspect(plan, output):
             raise ValueError('Socket/trigger activation needs an explicit product maintenance procedure')
         if digest(Path('/proc')/str(pid)/'exe') != item['binarySha256']:
             raise ValueError('Running executable differs from the product plan: '+item['name'])
+        if 'container' in item:
+            current['container'] = attached_container(pid, item['container'])
         units.append(dict(item, before=current))
     if len({u['name'] for u in units}) != len(units):
         raise ValueError('Duplicate service in stop order')
@@ -108,7 +111,7 @@ def inspect(plan, output):
     return units, roots, output
 
 
-def stopped(unit):
+def stopped(unit, container=None):
     current = state(unit)
     if int(current.get('MainPID', '0')) or current.get('ActiveState') != 'inactive':
         raise ValueError('Service did not enter the stopped maintenance boundary: '+unit)
@@ -117,13 +120,15 @@ def stopped(unit):
         path = Path('/sys/fs/cgroup')/group.lstrip('/')/'cgroup.procs'
         if path.exists() and path.read_text().strip():
             raise ValueError('Service still has workers: '+unit)
+    if container is not None:
+        current['container'] = container_state(container, False)
     return current
 
 
 def copy_stopped(plan, units, roots, output):
     """The shared cold-copy boundary, used by maintenance and version selection."""
     for unit in units:
-        stopped(unit['name'])
+        stopped(unit['name'], unit.get('container'))
     for pin in plan['pins']:
         if digest(owned_path(pin['path'])) != pin['sha256']:
             raise ValueError('Pinned configuration changed during maintenance')
@@ -140,7 +145,7 @@ def copy_stopped(plan, units, roots, output):
     if copied != before or inventory(roots) != before:
         raise ValueError('Checkpoint/source bytes changed while services were stopped')
     for unit in units:
-        stopped(unit['name'])
+        stopped(unit['name'], unit.get('container'))
     return copied
 
 
@@ -156,6 +161,8 @@ def restore_original(units):
             pid = int(current.get('MainPID', '0'))
             if not pid or current.get('ActiveState') != 'active' or digest(Path('/proc')/str(pid)/'exe') != unit['binarySha256']:
                 raise ValueError('Original executable is not active after restoration')
+            if 'container' in unit:
+                attached_container(pid, unit['container'])
             restoration.append({'unit':unit['name'], 'status':'original-process-started', 'pid':pid})
         except (ValueError, OSError, subprocess.SubprocessError) as error:
             restoration.append({'unit':unit['name'], 'status':'restore-failed', 'error':str(error)})
@@ -183,7 +190,7 @@ def checkpoint(plan, output, execute):
             for unit in units:
                 restore.append(unit)  # A failed stop may still have stopped it.
                 control('stop', unit['name'])
-                stopped(unit['name'])
+                stopped(unit['name'], unit.get('container'))
             copied = copy_stopped(plan, units, roots, output)
             report.update(status='cold-checkpoint-created', inventory=copied,
                           planSha256=hashlib.sha256(json.dumps(plan, sort_keys=True, separators=(',', ':')).encode()).hexdigest())
