@@ -7,6 +7,8 @@
 
 **2026-11-07 DLP 交付：** 腾讯云已上线正式 Moss `0.1.103`，保留计算清单 `0.1.100` 与 cohost `0.2.40`／Nexus `0.8.26`。11 项真实模型出口验收通过，15 个 owner 的 relay 和原生关闭策略均已就绪，工作卷保留；平台默认 OFF，可由 Moss API/UI 开启。Private 代码复验通过，尚无客户生产环境。详见 §6.1。
 
+**2026-11-09 盒子部署进展：** DGX 正式 cohost `0.2.40`／Nexus `0.8.26` 已迁入已发布的 ARM64 gVisor，控制器策略目录以只读挂载交付；原会话在新沙箱中的三轮本地 GPU 推理通过。实际 new-api 从空内存配置恢复了本地／云端独立路由、Moss 凭据和 Nexus 模型挂载，历史与 cohost 进程保留。真实云模型引导已返回；完整 DLP 验收发现本地旧运行时新建准入缺口，[Moss #525](https://github.com/sudoprivacy/moss/pull/525) 在 PR CI 全绿后合入，但后续打包遇到下载失败，修复尚未交付；Moss 仓库随后归档，用户已确认前端和后端均迁往 Mosswork，继续复用 SudoCode／Nexus 与 sudostack；盒子保留现有服务。整机实际重启后，服务、Vault 密钥、独立模型路由、原会话绑定与历史恢复，本地模型实际返回 `42`；原会话三轮复验在首轮因模型把 `subtotal=540` 回成 `total=553` 而失败，未降低断言。Mosswork 集成、完整盒子 DLP、断电冷启动及重启后三轮验收仍待完成。
+
 **阅读顺序：** 先看总图，再按主题查正文。当前验收只在「交付与验收」集中说明；带日期的旧状态和完整技术记录保留在折叠附录。设计已确认、代码合入、正式发布、生产部署和真实验收分别记录。
 
 <nav class="topic-nav" aria-label="文档目录">
@@ -35,11 +37,11 @@ flowchart TB
 
   subgraph CLOUD["☁️ sudocloud · 多租户 · 信任域 CA_A"]
     subgraph FRONTENDVM["前端 VM · 独立部署"]
-      WEBUI["Sudowork WebUI server<br/>浏览器入口 · HTTPS<br/>桌面 / 浏览器共享 renderer · 对话工作台<br/>现生产 6bea303b · #1339 正常合并 / 官方镜像75bde687<br/>数据库备份 / 原配置 / 旧静态资源保留<br/>实际登录 / Agent × 模板 / 回复重载 / owner 扣费已验<br/>未验手机号禁止企业切换已验<br/>本人短信企业切换 5 项基线 / 原 OPC 12 会话保留<br/>默认入口浏览器 profile / 登录重启 / 真实模型已验<br/>默认入口两轮回复 / 重载上下文已验 · 自有灰度已清理"]
+      WEBUI["现生产 Sudowork WebUI server<br/>产品目标 Mosswork · 保留其 UX · 待集成<br/>浏览器入口 · HTTPS<br/>桌面 / 浏览器共享 renderer · 对话工作台<br/>现生产 6bea303b · #1339 正常合并 / 官方镜像75bde687<br/>数据库备份 / 原配置 / 旧静态资源保留<br/>实际登录 / Agent × 模板 / 回复重载 / owner 扣费已验<br/>未验手机号禁止企业切换已验<br/>本人短信企业切换 5 项基线 / 原 OPC 12 会话保留<br/>默认入口浏览器 profile / 登录重启 / 真实模型已验<br/>默认入口两轮回复 / 重载上下文已验 · 自有灰度已清理"]
     end
     subgraph MOSSVM["控制平面 VM"]
       CADDY["Caddy 443"]
-      MOSS["moss-server 43127 · 现生产正式 0.1.103<br/>#479 / runtime SDK 0.2.3 · 同会话恢复 / 15 owner relay 已验<br/>cohost040 / Nexus026 · Moss 开关及原生生效已验<br/>平台 OFF · 11 项真实模型 DLP 已验 / Moss 可开启<br/>#470 / server-v0.1.91 已发布 · 由原工作线部署验收<br/>089 浏览器验收基线 SDK 0.58.14 / 原 profile 保留<br/>#465 / 089 基线：正式发布 9 项 CI 全绿<br/>113 项包检查 / 外置 Nexus026 兼容 114 项通过<br/>089 验收：保护切换 / 身份历史 / 当时计算清单085<br/>公司普通成员 / Moss 显式授权 / 原失败开户已恢复<br/>认证 / 组织 / 会话 / 当前权限可见 Agents<br/>实际 owner 权限、Key 与计费<br/>Secret / Service / PVC / Pod / NetworkPolicy 编排<br/>原生 IM 工具私聊允许 / 拒绝 / 两分钟超时已验<br/>群确认 / 重复确认拒绝 / 原历史与会话保留<br/>生产 ¥7.30 → $1 入账 / 成员消费已验<br/>11/09 尹确认无经办人 / 建议测试单暂不退款<br/>原单未退款未核销 / 规则未定 / 已按用户确认暂缓"]
+      MOSS["moss-server 43127 · 现生产正式 0.1.103<br/>后端目标 Mosswork · 复用 SudoCode/Nexus · 待集成<br/>#479 / runtime SDK 0.2.3 · 同会话恢复 / 15 owner relay 已验<br/>cohost040 / Nexus026 · Moss 开关及原生生效已验<br/>平台 OFF · 11 项真实模型 DLP 已验 / Moss 可开启<br/>#470 / server-v0.1.91 已发布 · 由原工作线部署验收<br/>089 浏览器验收基线 SDK 0.58.14 / 原 profile 保留<br/>#465 / 089 基线：正式发布 9 项 CI 全绿<br/>113 项包检查 / 外置 Nexus026 兼容 114 项通过<br/>089 验收：保护切换 / 身份历史 / 当时计算清单085<br/>公司普通成员 / Moss 显式授权 / 原失败开户已恢复<br/>认证 / 组织 / 会话 / 当前权限可见 Agents<br/>实际 owner 权限、Key 与计费<br/>Secret / Service / PVC / Pod / NetworkPolicy 编排<br/>原生 IM 工具私聊允许 / 拒绝 / 两分钟超时已验<br/>群确认 / 重复确认拒绝 / 原历史与会话保留<br/>生产 ¥7.30 → $1 入账 / 成员消费已验<br/>11/09 尹确认无经办人 / 建议测试单暂不退款<br/>原单未退款未核销 / 规则未定 / 已按用户确认暂缓"]
       HUMAN["已验证的飞书发送人 ↔ 企业成员<br/>一个人类账号可加入多个企业<br/>角色 / Moss 使用权 / Key / 账单按成员独立<br/>本人登录 + 私聊一次性码 · 不借连接 owner Key<br/>公司新成员默认普通角色 · Moss 单独授权<br/>撤销 / 接收实例租约复核"]
       MAGENT["每企业 × 获授权人：唯一 Moss Agent<br/>独立身份 / home / memory · 多个持久 Session<br/>与个人 Agent 共用引擎 / 工作台<br/>管理员 + 指定成员 · Web/API 授权<br/>QA 授予 / 撤销 / 跨 owner 8 项已验<br/>Ethan OPC 保留 / 数牍科技普通成员与独立 Moss 已验<br/>公司模型账户 9987 / 实际 Pod Key 匹配 / 独立扣费已验<br/>白桂东公司 Moss 已本人绑定 / 独立 Key 与实际 Pod 已验<br/>同群双人 Agent / 会话 / 历史隔离已验<br/>跨 owner 续接 / 实际撤销拒绝 / 恢复原会话已验"]
       MSESSION["持久 Session 映射 · #443 已部署<br/>企业 + Moss Agent + 连接 + 群/私聊<br/>同群按人隔离 · Web / 桌面续接<br/>#1302 共用工作台 · IM 历史已验<br/>OPC /new / resume / 跨 owner 拒绝已验<br/>公司 /resume / 跨企业拒绝 / 拒绝后原会话回复已验<br/>空闲凭据过期后回复 / OPC 原历史保留<br/>同群双人隔离 / 跨 owner 拒绝 / 撤销与恢复已验<br/>拒绝不进模型、不扣费 / 原会话指针保留<br/>当前092按成员路由 / 持久去重12项本地通过<br/>10/25–30日志46条成功 / 未观察到平台重投<br/>11/09 独立 QA 实际同事件重投两次已验<br/>生产本人 Moss：一次输入 / 群回复 / owner 扣费<br/>重复无追加 / QA 会话正常结束 · §9"]
@@ -60,12 +62,12 @@ flowchart TB
   end
 
   subgraph EDGE["📦 sudoedge · 单组织设备 · 信任域 CA_B · 默认联网"]
-    EWEB["Sudowork WebUI server<br/>盒子 26808 · 无需 Electron"]
+    EWEB["盒子现有 Sudowork WebUI server<br/>26808 · 无需 Electron<br/>产品目标 Mosswork · 集成待验收"]
     EPG[("WebUI PostgreSQL")]
-    EMOSS["本地 Moss 43127<br/>登录 · 会话 API · 历史 · 工作区<br/>直接调用本地 ManagedAgentService"]
+    EMOSS["现生产本地 Moss 43127<br/>后端目标 Mosswork · 待集成<br/>登录 · 会话 API · 历史 · 工作区<br/>直接调用本地 ManagedAgentService"]
     EDB[("本地 moss.db")]
-    subgraph EBOX["本地 cohost daemon · 按组织部署"]
-      ENEXUS["nexusd-cohost<br/>ManagedAgentService · Kernel<br/>身份 · VFS · /model 与 /cloud-model<br/>内置内容出口闸 · 云调用与跨域信箱"]
+    subgraph EBOX["本地 ARM64 gVisor 沙箱 · cohost daemon · 按组织部署"]
+      ENEXUS["nexusd-cohost 0.2.40 · Nexus 0.8.26<br/>控制器策略目录只读挂载<br/>ManagedAgentService · Kernel<br/>身份 · VFS · /model 与 /cloud-model<br/>内置内容出口闸 · 云调用与跨域信箱"]
       ETOOLS["进程内 scode 执行引擎<br/>由 cohost 承载 · tools · send"]
     end
     EPRESIDIO["本地 Presidio 中文分析器<br/>loopback 59080 · 为出口闸识别实体"]
@@ -625,9 +627,9 @@ flowchart LR
 | 层面 | 当前机制与证据 | 下一验收 |
 |---|---|---|
 | 身份与跨域信任（L1） | Nexus 节点/客户端使用 mTLS；foreign CA 与反向服务端信任锚、认证身份盖章和外域仅可访问信箱的围栏已有历史真实 broker 验证。Moss 到盒子执行 Nexus 使用独立身份。浏览器通过本机 HTTP 与 SSH 隧道接入。 | cohost 云端迁移后重复逐跳身份、过期、吊销和越界回归；不得将浏览器 HTTP 记成 mTLS。 |
-| 工作区与隔离（L2） | Moss 校验会话 owner、原生 session、managed PID 与 agent；文件操作使用 owner 凭据，拒绝跨会话仓库定位和子路径逃逸。云端历史记录使用 gVisor；盒子未安装 gVisor。ReBAC 与插件身份透传代码按实际部署启用。 | 最新真实文件读写和重启恢复；云 pod NetworkPolicy（G1）及业务数据读治理（G4）。 |
+| 工作区与隔离（L2） | Moss 校验会话 owner、原生 session、managed PID 与 agent；文件操作使用 owner 凭据，拒绝跨会话仓库定位和子路径逃逸。云端和盒子执行面均使用 gVisor；盒子已实际验证只读策略目录及原会话三轮本地推理。ReBAC 与插件身份透传代码按实际部署启用。 | 最新真实文件读写和重启恢复；云 pod NetworkPolicy（G1）及业务数据读治理（G4）。 |
 | 模型与内容出口（L3） | 复用 Nexus `egress_gate` 服务，只检查经过本机 kernel 且被部署策略列为出口的挂载。Moss API/UI 管理平台默认、组织覆盖、允许/拒绝/脱敏及实际应用状态，策略动态送达运行时。挂载是否外发按部署选择：盒子本地 `/model` 可排除，Cloud 的 `/model` 可受闸。本地会话保留原文；外发 JSON 保持结构，检测服务故障或结果非法时拒绝此次调用。历史真实模型 40 项与受控 deny/outage 证据保留。 | 腾讯云模型路径与恢复证据见下文；客户业务语料的识别质量、真实跨域信箱和制品出口另验。跨域信箱须先经本地 kernel 中转。 |
-| Router 与凭据 | 默认 online；已配置的云渠道默认 enabled/external，本地固定 local。独立 Router token，关闭跨组重试。本地失败不会改走云端。primary Nexus vault 保存系统机密；盒子 Router 状态使用内存盘。 | 云密钥加密引导、运行时只交给受闸挂载，重启后解密重注入；当前未配置云 key，不能记为完成。 |
+| Router 与凭据 | 默认 online；已配置的云渠道默认 enabled/external，本地固定 local。独立 Router token，关闭跨组重试。本地失败不会改走云端。primary Nexus vault 保存系统机密；盒子 Router 状态使用内存盘。 | 盒子实际验证 Router 清空内存后的凭据和挂载恢复；整机重启后的服务、Vault 密钥、模型目录与原会话绑定也已复查，本地推理返回 42。三轮模型复验未通过，断电冷启动另验。 |
 | 审计与制品 | 闸日志只记路径、身份、类别和数量，40 项验收检查日志不含命中原文；信箱 `from` 盖章随 raft 持久化。 | ShareOne 制品出口、业务数据返回脱敏与审计各自验收。 |
 | 形态差异 | Cloud 为托管多租户控制面；Private 在客户网络自营同一套服务；Edge 提供本地 GPU、独立信任域和一键纯本地。出口是否跨域由部署策略决定。 | 盒上 ShareOne 随盒部署、A2A 下发运维任务与 artifact 治理仍属后续工作。 |
 
@@ -652,7 +654,7 @@ flowchart LR
 | 盒子＋笔记本 | 笔记本提供交互入口，任务在盒子执行；笔记本 agent 与盒子 agent 的 A2A 协作作为另一项能力分别验收。 |
 | 盒子＋Sudo Cloud | 先提供可用的云端会话与模型能力，并显示实际执行位置；本地 agent 与云端 agent 的 A2A 分工在基础会话验收后推进。 |
 
-**盒子提供浏览器入口。** 已部署盒子上的 SudoWork WebUI，笔记本通过局域网 SSH 隧道打开浏览器；盒子无需运行 Electron。本地 Moss 已通过 cohost 内的 ManagedAgentService 承载真实会话；是否为盒子增加 gVisor 依据实际多用户隔离需求和 ARM64 验证决定。WebUI 是交互面，cohost 是执行面，两者同时部署。盒子按组织运行 cohost，CLI scode 用于调试和独立终端入口。选择 cohost 的主要依据是与云端统一生命周期、Nexus 文件/信箱/模型调用和治理接缝；多会话节省进程开销是附加收益，实际内存收益需要测量。单个用户也可能同时运行多个任务，无需为了采用 cohost 先引入多智能体产品功能。
+**盒子提供浏览器入口。** 已部署盒子上的 SudoWork WebUI，笔记本通过局域网 SSH 隧道打开浏览器；盒子无需运行 Electron。本地 Moss 已通过 cohost 内的 ManagedAgentService 承载真实会话；盒子已采用发布并验收的 ARM64 gVisor，正式 cohost 位于该沙箱，模型服务和可信控制面留在宿主机。WebUI 是交互面，cohost 是执行面，两者同时部署。盒子按组织运行 cohost，CLI scode 用于调试和独立终端入口。选择 cohost 的主要依据是与云端统一生命周期、Nexus 文件/信箱/模型调用和治理接缝；多会话节省进程开销是附加收益，实际内存收益需要测量。单个用户也可能同时运行多个任务，无需为了采用 cohost 先引入多智能体产品功能。
 
 **盒子上的 Moss 负责本地应用服务。** 保留轻量本地 Moss，复用现有 WebUI 的人类登录、会话/历史、工作区、模型目录和 HTTP/WS API，使离线时这些功能仍可用。采用它的依据是应用服务与 Cloud/Private 同构，而非盒子 agent 数量。cohost 可独立运行；若移除 Moss，需要先实现覆盖上述契约的 WebUI 适配层。Sudo Private 指客户内网自营的同一套 Atlas，Sudo Cloud 由我们托管，SudoEdge 是盒子部署形态；纯桌面 Sudo Local 另用本地宿主。共享说明归 `sudostack/docs/deployment-profiles.md`，设备配置与现场验收归 `sudoedge/docs/SETUP.md`。
 
