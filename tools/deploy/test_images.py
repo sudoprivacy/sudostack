@@ -282,6 +282,36 @@ class ImageRetentionTests(unittest.TestCase):
 
 
 
+class NativeImageStorageTests(unittest.TestCase):
+    def test_unpack_check_filters_the_exact_manifest_and_requires_native_ready_output(self):
+        reference = 'registry.example:5000/runtime:1'
+        digest = 'sha256:' + 'a' * 64
+        with patch.object(images.subprocess, 'run', return_value=SimpleNamespace(stdout=reference + '\n')) as run:
+            self.assertTrue(images.image_unpacked(reference, digest))
+        command = run.call_args.args[0]
+        self.assertEqual(command[:7], ['k3s', 'ctr', '--namespace', 'k8s.io', 'images', 'check', '--quiet'])
+        self.assertEqual(command[7], 'name==' + json.dumps(reference) + ',target.digest==' + json.dumps(digest))
+        self.assertTrue(run.call_args.kwargs['check'])
+
+    def test_missing_or_incomplete_snapshot_cannot_claim_local_storage(self):
+        with patch.object(images.subprocess, 'run', return_value=SimpleNamespace(stdout='')):
+            self.assertFalse(images.image_unpacked('runtime:1', 'sha256:' + 'a' * 64))
+
+    def test_unrelated_or_duplicate_ready_names_are_rejected(self):
+        for output in ['other:1\n', 'runtime:1\nruntime:1\n']:
+            with self.subTest(output=output), patch.object(images.subprocess, 'run', return_value=SimpleNamespace(stdout=output)):
+                with self.assertRaisesRegex(ValueError, 'Unexpected containerd unpack lookup'):
+                    images.image_unpacked('runtime:1', 'sha256:' + 'a' * 64)
+
+    def test_unpack_permission_failure_is_preserved_without_a_fallback_or_retry(self):
+        failure = subprocess.CalledProcessError(23, ['k3s', 'ctr'], stderr='permission denied')
+        with patch.object(images.subprocess, 'run', side_effect=failure) as run:
+            with self.assertRaises(subprocess.CalledProcessError) as observed:
+                images.image_unpacked('runtime:1', 'sha256:' + 'a' * 64)
+        self.assertIs(observed.exception, failure)
+        run.assert_called_once()
+
+
 class OCIArchiveIdentityTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
@@ -292,6 +322,9 @@ class OCIArchiveIdentityTests(unittest.TestCase):
             total=100 * 1024**3, free=80 * 1024**3))
         disk_patch.start()
         self.addCleanup(disk_patch.stop)
+        local_patch = patch.object(images, 'image_unpacked', return_value=False)
+        self.local_image = local_patch.start()
+        self.addCleanup(local_patch.stop)
         self.config = b'{"architecture":"amd64","os":"linux"}'
         self.config_id = 'sha256:' + hashlib.sha256(self.config).hexdigest()
         self.tag = 'docker.io/library/runtime:1'
@@ -334,6 +367,66 @@ class OCIArchiveIdentityTests(unittest.TestCase):
         self.assertNotEqual(self.config_id, self.manifest_id)
         self.assertEqual(self.identity(), {'id': self.config_id, 'architecture': 'amd64',
                                            'os': 'linux', 'manifestDigest': self.manifest_id})
+
+    def test_existing_unpinned_unpacked_image_keeps_the_reserve_without_double_counting(self):
+        self.write()
+        directory = self.root / 'retained'
+        self.local_image.return_value = True
+        disk = SimpleNamespace(total=100 * 1024**3, free=21 * 1024**3)
+        storage = {'contentBytes': 1024**3, 'unpackBytes': 1024**3}
+        reference = 'docker.io/library/runtime@' + self.manifest_id
+
+        def status(_tag):
+            return {'id': self.config_id, 'pinned': directory.exists() and bool(list(directory.glob('*.tar.gz'))),
+                    'repoDigests': [reference]}
+
+        with patch.object(images.shutil, 'disk_usage', return_value=disk), \
+             patch.object(images, 'archive_storage', return_value=storage) as validate_layers, \
+             patch.object(images, 'inspect_image', side_effect=status), \
+             patch.object(images, 'verify_manifest_reference', return_value=True), \
+             patch.object(images, 'image_exists', return_value=True), \
+             patch.object(images, 'materialize_digest_reference'):
+            result = images.retain_archive(self.archive, checksum(self.archive), directory=directory)
+        self.assertEqual(Path(result['archive']).read_bytes(), self.archive.read_bytes())
+        self.assertTrue(result['images'][self.tag]['pinned'])
+        validate_layers.assert_called_once_with(self.archive)
+        self.local_image.assert_called_with(self.tag, self.manifest_id)
+
+    def test_incomplete_local_content_still_needs_the_full_expansion_budget(self):
+        self.write()
+        directory = self.root / 'retained'
+        disk = SimpleNamespace(total=100 * 1024**3, free=21 * 1024**3)
+        with patch.object(images.shutil, 'disk_usage', return_value=disk), \
+             patch.object(images, 'archive_storage', return_value={'contentBytes': 1024**3, 'unpackBytes': 1024**3}), \
+             patch.object(images, 'inspect_image', return_value={'id': self.config_id, 'pinned': False}), \
+             patch.object(images, 'verify_manifest_reference', return_value=True):
+            with self.assertRaisesRegex(ValueError, 'Insufficient space'):
+                images.retain_archive(self.archive, checksum(self.archive), directory=directory)
+        self.assertFalse(directory.exists())
+
+    def test_pruning_during_archive_copy_rechecks_the_full_budget_before_publication(self):
+        self.write()
+        directory = self.root / 'retained'
+        self.local_image.side_effect = [True, False]
+        disk = SimpleNamespace(total=100 * 1024**3, free=21 * 1024**3)
+        with patch.object(images.shutil, 'disk_usage', return_value=disk), \
+             patch.object(images, 'archive_storage', return_value={'contentBytes': 1024**3, 'unpackBytes': 1024**3}), \
+             patch.object(images, 'inspect_image', return_value={'id': self.config_id, 'pinned': False}), \
+             patch.object(images, 'verify_manifest_reference', return_value=True):
+            with self.assertRaisesRegex(ValueError, 'Insufficient space'):
+                images.retain_archive(self.archive, checksum(self.archive), directory=directory)
+        self.assertEqual(list(directory.iterdir()), [])
+
+    def test_fully_local_image_does_not_skip_archive_layer_validation(self):
+        self.write()
+        directory = self.root / 'retained'
+        self.local_image.return_value = True
+        with patch.object(images, 'archive_storage', side_effect=ValueError('Cannot estimate expanded image layer')), \
+             patch.object(images, 'inspect_image', return_value={'id': self.config_id, 'pinned': False}), \
+             patch.object(images, 'verify_manifest_reference', return_value=True):
+            with self.assertRaisesRegex(ValueError, 'expanded image layer'):
+                images.retain_archive(self.archive, checksum(self.archive), directory=directory)
+        self.assertFalse(directory.exists())
 
     def test_nested_image_index_keeps_the_root_digest_reported_by_cri(self):
         root = self.descriptor(self.index)
