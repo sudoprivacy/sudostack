@@ -20,4 +20,15 @@ void test('an image config digest is labeled honestly and mutable latest referen
   assert.equal(RuntimeReleaseSchema.parse(manifest).image.digestKind, 'oci-config')
   assert.equal(RuntimeReleaseSchema.safeParse({ ...manifest, image: { ...manifest.image, reference: 'runtime:latest' } }).success, false)
   assert.equal(RuntimeReleaseSchema.safeParse({ ...manifest, archive: { ...manifest.archive, name: '../image.tar.gz' } }).success, false)
+  for (const nexusVersion of ['0.8.29-rc.5', '0.8.29-rc.5+build.1']) {
+    const actual = `nexusd-cohost v0.2.41 (sudocode ebdc4ef, nexus-vfs v${nexusVersion}) (nexus-cluster 0.1.1, plugin-abi 7)`
+    const paired = requirePairedEngine('Version 0.2.41\nGit SHA ebdc4ef\n', actual)
+    assert.equal(paired.cohost.nexusVersion, nexusVersion)
+    assert.equal(RuntimeReleaseSchema.parse({ ...manifest, cohost: { ...manifest.cohost, nexusVersion } }).cohost.nexusVersion, nexusVersion)
+    assert.throws(() => requirePairedEngine('Version 0.2.41\nGit SHA bbbbbbb\n', actual), /same verified engine/)
+  }
+  for (const nexusVersion of ['0.8.29-', '0.8.29-rc..5', '0.8.29-rc.05', '0.8.29+']) {
+    assert.throws(() => parseCohostBuild(`nexusd-cohost v0.2.41 (sudocode ebdc4ef, nexus-vfs v${nexusVersion}) (nexus-cluster 0.1.1, plugin-abi 7)`))
+    assert.equal(RuntimeReleaseSchema.safeParse({ ...manifest, cohost: { ...manifest.cohost, nexusVersion } }).success, false)
+  }
 })
