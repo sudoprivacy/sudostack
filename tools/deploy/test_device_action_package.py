@@ -47,7 +47,9 @@ class DeviceActionPackageTests(unittest.TestCase):
         manifest = cos_bundle.validate_assets(target, self.data)
         self.assertEqual(manifest['sourceCommit'], self.commit)
         self.assertEqual(manifest['deviceActions']['entry'], 'tools/deploy/device_operation.py')
-        self.assertEqual(len(manifest['archives']), 6)
+        self.assertEqual(set(manifest['archives']), {'tools/deploy/' + name for name in (
+            'device_operation.py', 'cohost.py', 'checkpoint.py', 'configuration.py',
+            'selection.py', 'product_qualification.py', 'moss_control.py')})
         self.assertFalse((target / '.git').exists())
         self.assertFalse((target / 'install-atlas.sh').exists())
         for name in manifest['archives']:
@@ -62,6 +64,20 @@ class DeviceActionPackageTests(unittest.TestCase):
         environment = {name: value for name, value in os.environ.items() if name != 'PYTHONPATH'}
         manifest = cos_bundle.validate_assets(target, self.data)
         for name in manifest['archives']:
+            if name == 'tools/deploy/moss_control.py':
+                # A library has no command entry; import it from the standalone
+                # installation and call its authentication boundary instead.
+                code = ('import sys; sys.path.insert(0, sys.argv[1]); '
+                        'from moss_control import MossControl; '
+                        'client=MossControl("http://127.0.0.1:1"); '
+                        'client.secret("system:router", "upstream")')
+                result = subprocess.run([sys.executable, '-I', '-c', code,
+                    str((target / name).parent)], cwd=self.root, env=environment,
+                    capture_output=True, text=True, timeout=15)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('Authenticate before reading Moss secrets', result.stderr)
+                self.assertNotIn('ModuleNotFoundError', result.stderr)
+                continue
             result = subprocess.run([sys.executable, str(target / name), '--help'], cwd=self.root,
                 env=environment, capture_output=True, text=True, timeout=15)
             self.assertEqual(result.returncode, 0, name + ': ' + result.stderr)

@@ -260,3 +260,18 @@ journey, not collaboration enrollment: `domainJoinAccepted` remains false.
 The process tests substitute systemd dispatch while exercising actual file,
 child-process, checkpoint and producer boundaries. Real systemd/controller
 handoff and real DGX product execution require their own device acceptance.
+
+### Controller credential restoration
+
+`tools/deploy/moss_control.py` is included in the device action bundle. Host
+adapters can use it to read an organization-scoped system secret through Moss's
+existing authenticated, audited secret API and Nexus Vault. Login must select
+the configured organization. Redirects, disabled or missing values and malformed
+responses fail closed. Only connection failures and HTTP 502/503/504 are marked
+retryable during startup; mutating calls are never automatically repeated.
+Response bodies and credential values are excluded from error messages.
+
+The adapter supplies deployment-specific secret references and boot ordering.
+Retrieved values stay in controller memory before configuring the existing
+consumer. Keep the controller's login file and Vault identity outside agent
+mounts; this helper does not grant an agent access to the control plane.

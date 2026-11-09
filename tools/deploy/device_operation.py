@@ -26,7 +26,7 @@ from cohost import digest, private_directory, publish
 IDENTIFIER = re.compile(r'[A-Za-z0-9_-]{1,128}')
 SHA256 = re.compile(r'[a-f0-9]{64}')
 IMPLEMENTATION = ('device_operation.py', 'cohost.py', 'checkpoint.py', 'configuration.py',
-                  'selection.py', 'product_qualification.py')
+                  'selection.py', 'product_qualification.py', 'moss_control.py')
 
 
 def identifier(value):
