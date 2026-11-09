@@ -78,6 +78,82 @@ class ReleaseTests(unittest.TestCase):
             download.assert_not_called()
         self.assertFalse((self.root / 'assets').exists())
 
+    def resolve_retained_base(self, base, *, source_digest=None):
+        content = json.dumps(base).encode()
+        expected = hashlib.sha256(content).hexdigest()
+        self.lock['baseRelease']['manifestSha256'] = expected
+        calls = []
+
+        def assets(repository, tag, names):
+            calls.append((repository, tag, names))
+            if repository == self.lock['baseRelease']['repository']:
+                return {'atlas-release.json': {'url': 'https://example.invalid/base.json',
+                                              'sha256': source_digest or expected}}
+            self.assertEqual(repository, self.lock['components']['router']['repository'])
+            return {name: {'sha256': '1' * 64} for name in names}
+
+        def download(_url, destination, digest):
+            self.assertEqual(digest, expected)
+            destination.write_bytes(content)
+
+        with patch.object(release, 'release_assets', side_effect=assets), \
+             patch.object(release, 'download', side_effect=download):
+            return release.resolve(self.lock), calls
+
+    def retained_base(self):
+        return {'release': self.lock['baseRelease']['tag'], 'architecture': self.lock['architecture'],
+                'components': {key: copy.deepcopy(value) for key, value in self.lock['components'].items() if key != 'router'}}
+
+    def test_retained_base_does_not_query_retired_upstream_releases(self):
+        resolved, calls = self.resolve_retained_base(self.retained_base())
+        self.assertEqual(set(resolved), {'baseRelease', 'router'})
+        self.assertEqual([call[0] for call in calls], ['sudoprivacy/sudostack', 'sudoprivacy/new-api'])
+        self.assertEqual(resolved['baseRelease']['manifest']['components']['sudocode']['sha256'],
+                         self.lock['components']['sudocode']['sha256'])
+
+    def test_retained_base_still_requires_the_exact_manifest_digest(self):
+        with self.assertRaisesRegex(ValueError, 'Base release manifest checksum'):
+            self.resolve_retained_base(self.retained_base(), source_digest='0' * 64)
+
+    def test_retained_base_cannot_change_the_release_components_or_architecture(self):
+        for field in ['release', 'components', 'architecture']:
+            with self.subTest(field=field):
+                base = self.retained_base()
+                if field == 'release':
+                    base[field] = 'sudostack-v9.0.0'
+                elif field == 'architecture':
+                    base[field] = 'arm64'
+                else:
+                    base[field]['sudocode']['sha256'] = '0' * 64
+                with self.assertRaisesRegex(ValueError, 'preserve every base component|Base release architecture'):
+                    self.resolve_retained_base(base)
+
+    def test_stable_webui_mirror_keeps_the_locked_owner_identity_and_checksum(self):
+        name = 'sudowork-webui-0.2.28-linux-amd64.tar.gz'
+        source = {'repository': 'sudoprivacy/sudowork', 'tag': 'v0.2.28',
+                  'url': 'https://github.com/sudoprivacy/sudowork/releases/download/v0.2.28/' + name,
+                  'sha256': 'a' * 64, 'assetId': 123}
+        original = copy.deepcopy(source)
+        actual = release.retained_base_source(self.lock, name, source)
+        self.assertEqual(actual['url'], 'https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/sudowork/webui/releases/v0.2.28/' + name)
+        self.assertEqual(actual['upstreamUrl'], original['url'])
+        self.assertEqual({key: actual[key] for key in ['repository', 'tag', 'sha256', 'assetId']},
+                         {key: original[key] for key in ['repository', 'tag', 'sha256', 'assetId']})
+        self.assertEqual(source, original)
+
+    def test_mirror_does_not_rewrite_other_sources_architectures_or_versions(self):
+        name = 'sudowork-webui-0.2.28-linux-amd64.tar.gz'
+        source = {'repository': 'sudoprivacy/sudowork', 'tag': 'v0.2.28',
+                  'url': 'https://github.com/sudoprivacy/sudowork/releases/download/v0.2.28/' + name, 'sha256': 'a' * 64}
+        variants = [(self.lock, 'other.tar.gz', source), (self.lock, name, {**source, 'url': 'https://example.invalid/' + name}),
+                    (self.lock, name, {**source, 'repository': 'other/owner'})]
+        arm = copy.deepcopy(self.lock)
+        arm['architecture'] = 'arm64'
+        variants.append((arm, name, source))
+        for lock, asset, value in variants:
+            with self.subTest(asset=asset, source=value, architecture=lock['architecture']):
+                self.assertEqual(release.retained_base_source(lock, asset, value), value)
+
     def test_arm64_assembly_packages_native_binaries_images_and_installer(self):
         self.lock['architecture'] = 'arm64'
         self.lock.pop('baseRelease')

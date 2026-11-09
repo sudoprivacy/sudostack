@@ -103,17 +103,6 @@ def resolve(lock):
     c = lock['components']
     requests = required_assets(lock)
     resolved, errors = {}, []
-    for name, names in requests.items():
-        repository = c[name].get('repository', {'k3s': 'k3s-io/k3s', 'gvisor': 'google/gvisor'}.get(name))
-        tag = c[name].get('tag', c[name]['version'])
-        try:
-            resolved[name] = release_assets(repository, tag, names)
-        except (ValueError, subprocess.CalledProcessError) as error:
-            errors.append(str(error))
-    if errors:
-        raise ValueError('Upstream release preflight failed:\n' + '\n'.join(errors))
-    if resolved['sudocode'][requests['sudocode'][0]]['sha256'] != c['sudocode']['sha256']:
-        raise ValueError('Sudocode release checksum differs from the deployment lock')
     if 'baseRelease' in lock:
         base = lock['baseRelease']
         source = release_assets(base['repository'], base['tag'], ['atlas-release.json'])['atlas-release.json']
@@ -128,6 +117,20 @@ def resolve(lock):
         if manifest['architecture'] != lock['architecture']:
             raise ValueError('Base release architecture differs from the deployment lock; assemble a native release without baseRelease')
         resolved['baseRelease'] = {'source': source, 'manifest': manifest}
+        # The checksummed base pins every reused owner byte, including the
+        # SudoCode checksum. Only the added component needs a fresh release.
+        requests = {'router': requests['router']}
+    for name, names in requests.items():
+        repository = c[name].get('repository', {'k3s': 'k3s-io/k3s', 'gvisor': 'google/gvisor'}.get(name))
+        tag = c[name].get('tag', c[name]['version'])
+        try:
+            resolved[name] = release_assets(repository, tag, names)
+        except (ValueError, subprocess.CalledProcessError) as error:
+            errors.append(str(error))
+    if errors:
+        raise ValueError('Upstream release preflight failed:\n' + '\n'.join(errors))
+    if 'sudocode' in resolved and resolved['sudocode'][requests['sudocode'][0]]['sha256'] != c['sudocode']['sha256']:
+        raise ValueError('Sudocode release checksum differs from the deployment lock')
     return resolved
 
 
@@ -196,6 +199,24 @@ def add_router_archive(metadata, resolved, assets):
     metadata['routerArchive'] = name
 
 
+def retained_base_source(lock, name, source):
+    """Use the owner's immutable stable WebUI mirror with the base's original SHA256."""
+    from artifacts import release_url
+    result = dict(source)
+    component = lock['components']['webui']
+    expected = f'sudowork-webui-{component["version"]}-linux-amd64.tar.gz'
+    if (lock['architecture'] == 'amd64' and name == expected and
+            re.fullmatch(r'v\d+\.\d+\.\d+', component['tag']) and
+            source.get('repository') == component['repository'] and source.get('tag') == component['tag'] and
+            source.get('url') == release_url(component['repository'], component['tag'], name)):
+        # The original publisher retains stable bytes in COS after its GitHub
+        # release cleanup. Keep the upstream URL and unchanged pinned digest.
+        result['upstreamUrl'] = source['url']
+        result['url'] = ('https://sudowork-release-1309794936.cos.accelerate.myqcloud.com/'
+                         f'sudowork/webui/releases/{quote(component["tag"], safe="")}/{quote(name, safe="")}')
+    return result
+
+
 def assemble_from_base(lock, resolved, assets):
     base = resolved['baseRelease']['manifest']
     if base['architecture'] != lock['architecture']:
@@ -204,7 +225,7 @@ def assemble_from_base(lock, resolved, assets):
     names = set(base['imageArchives']) | {base['mossBootstrap'], base['mossDeploymentBundle'],
         'install.sh', 'SHA256SUMS', base['helm']['archive']}
     names.update(name for name in base['sources'] if name.startswith('offline/'))
-    metadata['sources'] = {name: base['sources'][name] for name in sorted(names)}
+    metadata['sources'] = {name: retained_base_source(lock, name, base['sources'][name]) for name in sorted(names)}
     assets.mkdir(parents=True, exist_ok=True)
     from artifacts import asset_path
     for name, source in metadata['sources'].items():
