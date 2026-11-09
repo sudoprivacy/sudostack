@@ -60,6 +60,16 @@ def container_state(pin, running):
         expected.append((mount['source'], mount['target'], not mount['readOnly']))
     if len({item[1] for item in expected}) != len(expected):
         raise ValueError('Duplicate container mount destination')
+    for protected in pin['mounts']:
+        if not protected['readOnly']:
+            continue
+        for writable in pin['mounts']:
+            if writable['readOnly']:
+                continue
+            for key in ['source', 'target']:
+                first, second = Path(protected[key]), Path(writable[key])
+                if first.is_relative_to(second) or second.is_relative_to(first):
+                    raise ValueError('Read-only container mounts must not overlap writable sources or destinations')
     result = subprocess.run(['docker','inspect','--type','container',pin['id']],
                             capture_output=True, text=True, check=True, timeout=30)
     rows = json.loads(result.stdout)

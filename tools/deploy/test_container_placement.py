@@ -104,6 +104,19 @@ class ContainerPlacementTests(unittest.TestCase):
                     cohost.container_state(pin, True)
         self.assertEqual(self.calls, [])
 
+    def test_readonly_policy_cannot_be_replaced_through_a_writable_parent_or_alias(self):
+        for key in ['source', 'target']:
+            pin = copy.deepcopy(self.pin)
+            if key == 'source':
+                # A second writable bind exposes the same host policy inode.
+                pin['mounts'][1]['source'] = pin['mounts'][0]['source']
+            else:
+                # Renaming the writable ancestor could replace the lookup path.
+                pin['mounts'][0]['target'] = '/data/config/policy'
+            with self.subTest(key=key), patch.object(cohost.subprocess, 'run', self.docker), self.assertRaisesRegex(ValueError, 'must not overlap'):
+                cohost.container_state(pin, True)
+        self.assertEqual(self.calls, [])
+
 
 @unittest.skipUnless(platform.system() == 'Linux', 'Linux procfs required')
 class ContainerColdCopyTests(test_checkpoint.CheckpointTests):
