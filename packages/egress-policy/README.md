@@ -2,7 +2,7 @@
 
 The policy document and its validation belong here. Cloud, Private, Edge and
 Nexus-connected CLI installations consume the same format. Nexus owns the
-kernel hook; Moss owns authenticated administration, persistence and delivery.
+kernel hook; the product backend owns authenticated administration and runtime delivery.
 
 `createEgressPolicy()` defaults to disabled. Enabling requires explicitly named
 outbound mounts. `redact` is the default mode. Business lists require a local
@@ -20,7 +20,24 @@ Runtime status contains the applied revision, mode, switch and outbound mounts;
 it does not contain protected business values. Agent credentials have no policy
 mutation RPC. `policyApplicationStatus` distinguishes delivery from enforcement.
 
-Moss administration supports platform defaults and organization overrides.
+`EgressPolicyService` coordinates shared persistence and runtime observation.
+Applications supply their existing database driver and owner/allocation adapters;
+authenticated handlers must choose the organization/platform scope before calling
+the service. A read does not deliver policy. Platform updates preserve each
+organization's override and report pending/error state until native receipts agree.
+
+`assertEgressRuntimeAdmission` checks managed model sessions before execution.
+An enabled policy requires cohost model transport and a matching native receipt;
+a legacy/direct engine cannot qualify by presenting that receipt. Disabled policy
+preserves existing runtime selection. Standalone CLI without Nexus is outside
+this managed-session check. The application must bind the receipt to the selected
+owner/allocation using its authenticated Nexus connection, then call the guard.
+
+These shared operations were extracted from the existing Moss control plane for
+reuse by the Mosswork backend. They do not establish Mosswork identity mapping,
+native session integration, a production rollout or an accepted end-to-end journey.
+
+Administration supports platform defaults and organization overrides.
 Production Cloud starts disabled; turning it on is an explicit administrator
 action. Node-local GPU routes are excluded from outbound model mounts.
 

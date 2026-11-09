@@ -56,3 +56,36 @@ export class EgressPolicyRepository {
   put(organizationId: string | undefined, input: EgressPolicy, expectedRevision: number, actorId: string): Promise<EgressPolicy>
   inherit(organizationId: string, expectedRevision: number): Promise<EgressPolicy>
 }
+export interface EgressRuntimeTarget {
+  ownerId: string
+  organizationId: string
+}
+export interface EgressRuntimeReceipt {
+  ownerId: string
+  allocationId: string
+  status?: EgressPolicyStatus
+  error?: string
+  isPresent: boolean
+}
+export interface EgressRuntimeOperations {
+  targets(organizationId?: string): Promise<EgressRuntimeTarget[]>
+  observe(target: EgressRuntimeTarget, policy?: EgressPolicy): Promise<EgressRuntimeReceipt[]>
+}
+export interface EgressPolicyView {
+  scopeType: 'organization' | 'platform'
+  organizationId?: string
+  policy: EgressPolicy
+  isInherited: boolean
+  runtimes: Array<EgressRuntimeReceipt & ReturnType<typeof policyApplicationStatus>>
+}
+export class EgressPolicyService {
+  constructor(repository: EgressPolicyRepository, runtimes: EgressRuntimeOperations)
+  policy(organizationId?: string): Promise<EgressPolicy>
+  view(organizationId?: string, isApply?: boolean): Promise<EgressPolicyView>
+  save(organizationId: string | undefined, input: unknown, expectedRevision: number, actorId: string): Promise<EgressPolicyView>
+  inherit(organizationId: string, expectedRevision: number): Promise<EgressPolicyView>
+}
+export class EgressPolicyNotAppliedError extends Error {
+  readonly code: 'EGRESS_POLICY_NOT_APPLIED'
+}
+export function assertEgressRuntimeAdmission(policy: EgressPolicy, runtime: string, actual?: EgressPolicyStatus): void
