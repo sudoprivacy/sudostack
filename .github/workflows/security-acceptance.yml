@@ -51,6 +51,7 @@ jobs:
         run: |
           python3 -m unittest discover -s security/egress-gate/acceptance -p 'test_managed_session*.py' -v
           node --check security/egress-gate/acceptance/managed-session.mjs
+          node --test security/egress-gate/acceptance/session-output.test.mjs
 
   chinese-analyzer-quality:
     runs-on: ubuntu-latest

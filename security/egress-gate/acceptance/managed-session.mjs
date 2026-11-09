@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
+import { visibleAssistantText } from './session-output.mjs';
 
 const require = createRequire(process.env.NODE_MODULES ? path.join(process.env.NODE_MODULES, '..', 'package.json') : import.meta.url);
 const grpc = require('@grpc/grpc-js');
@@ -170,7 +171,7 @@ try {
   const rejected = Boolean(result.error);
   const expectedReject = ['deny', 'outage', 'malformed'].includes(scenario);
   if (rejected !== expectedReject) throw new Error('Unexpected terminal gate verdict: ' + JSON.stringify(result));
-  const visible = JSON.stringify(messages).includes('MANAGED_GATE_OK');
+  const visible = visibleAssistantText(messages).includes('MANAGED_GATE_OK');
   if (!expectedReject && !visible) throw new Error('No visible model answer');
   if (expectedReject && !/egress|classif|redact|denied|hook/i.test(JSON.stringify(result.error))) {
     throw new Error('Failure did not identify the content gate: ' + JSON.stringify(result.error));
