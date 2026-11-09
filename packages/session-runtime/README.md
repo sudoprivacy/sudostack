@@ -76,9 +76,51 @@ native task nor proves joined writer cleanup.
 The authenticated host checks current authority before opening the controller
 and after waits immediately before dispatch. Native services retain their
 atomic ownership/effect fences. The process never receives a browser-supplied
-principal and must not expose its RPC as an end-user API. It provides native
-`Call` only; it does not implement ACP, `NexusSessionTransport`, a mailbox codec,
-runtime provisioning or a new credential authority.
+principal and must not expose its RPC as an end-user API. The component uses
+the official SDK for native `Call` and `NexusSessionTransport`; it implements no
+ACP engine, mailbox codec, runtime provisioning or credential authority.
+
+### Original session mailbox
+
+The same private connection accepts `session` frames. Local correlation IDs
+share the strictly increasing sequence with ordinary calls:
+
+```json
+{"type":"session","id":1,"operation":"open","payload":"{\"protocol\":\"acp-mailbox/1\",\"channel_id\":\"original-channel\",\"agent\":\"original-agent\",\"controller\":\"original-controller-subject\",\"transcript\":\"/conversations/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/transcript\"}"}
+```
+
+The endpoint comes from the selected original managed allocation. Its controller
+must equal this connection's delegated subject; another controller's endpoint
+cannot be adopted by minting a new credential. Open is attempted once for the
+connection lifetime, without reattach or replacement. Current owner, host
+incarnation, allocation, durable binding, exact grants and admission remain the
+trusted host/native service's checks. An endpoint or successful open grants none
+of them.
+
+`send` takes one JSON-encoded ACP message in `payload`; success confirms only
+the official SDK append. `receive` takes `payload:""` and returns one unchanged
+JSON-encoded message, including any structured ACP error/data. An empty payload
+means the one-second private poll had no message, not a terminal/native input
+receipt. One pending receive owns message order. Its unread backlog is bounded
+at 64 messages and 8 MiB; exhaustion withdraws the channel rather than silently
+dropping a frame. `close` takes an empty payload and closes this transport only.
+
+Results retain the existing `result`/`id`/`payload` shape. A failed session
+operation returns `SDK_SESSION_FAILED` with an uncertain outcome. The fixed
+capacity refusal `LIMIT_REACHED` happens before dispatch. No typed operation
+accepts credential, owner, bearer, endpoint or issuer overrides.
+
+The official SDK retains channel sequences, transcript cursors, participant
+validation, echo filtering and read retry semantics. Ambiguous writes are never
+resent. Serialize outbound sends in the host and recheck current authority
+after its local write-lock wait, before dispatch; private transport readiness
+does not replace the native effect fence. Stream close/EOF is not a managed
+Agent cancel, joined writer/receiver completion or permission to replay input.
+
+For a Node host the same adapter is available from
+`@sudo/session-runtime/mailbox` as `ControllerSessionMailbox(connection)`.
+It borrows the original controller connection; its caller retains credential,
+grant, native allocation and cleanup ownership.
 
 Run `npm run build && npm test` for source and actual private-process mTLS
 regressions. The TLS helper also supports bounded Python/SDK fixture acceptance;

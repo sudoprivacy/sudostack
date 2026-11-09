@@ -9,7 +9,7 @@ import { setTimeout } from 'node:timers/promises'
 import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
 import grpc from '@grpc/grpc-js'
-import { NexusVfsClient, userRuntimeServerName } from '@nexus-ai-fs/vfs-client'
+import { NexusVfsClient, SessionCodec, userRuntimeServerName, type NexusSessionEndpoint } from '@nexus-ai-fs/vfs-client'
 
 import { connectSessionRuntime } from '../src/index.js'
 import { serve, testAuthority } from './helpers/tls.js'
@@ -108,7 +108,7 @@ void test('a runtime with another owner server name fails the real TLS handshake
   assert.equal(runtimeRequests, 1, 'The Alice-target connection must not reach the Bob runtime')
 })
 
-void test('private controller process uses the actual SDK and delegated mTLS for native Call', { timeout: 30_000 }, async t => {
+void test('private controller uses actual delegated mTLS for Call and typed mailbox I/O', { timeout: 30_000 }, async t => {
   const { ca, issue } = testAuthority()
   const operator = issue('operator', [{ type: 6, value: 'nexus://agent/moss' }])
   const issuer = issue('issuer', [{ type: 2, value: 'issuer.test' }])
@@ -129,7 +129,41 @@ void test('private controller process uses the actual SDK and delegated mTLS for
     session_endpoint: { protocol: 'acp-mailbox/1', channel_id: 'channel-original',
       agent: 'moss-alice', controller: subjectId, transcript: `/conversations/${'a'.repeat(32)}/transcript` },
     fixture_text: '客户 📝' }
+  const agentCodec = new SessionCodec(snapshot.session_endpoint as NexusSessionEndpoint, 'agent')
+  const records: Buffer[] = []
+  let mailboxWrites = 0
+  let mailboxReads = 0
+  let replyLost = false
+  const assertPeer = (call: grpc.ServerUnaryCall<{ auth_token: string; path: string }, unknown>) => {
+    assert.equal(call.request.auth_token, '')
+    assert.equal(call.request.path, snapshot.session_endpoint.transcript)
+    assert.deepEqual(call.getAuthContext().sslPeerCertificate?.raw, new X509Certificate(delegated.cert).raw)
+  }
   const runtimeEndpoint = await serve(t, ca, runtime, 'nexus.grpc.vfs.NexusVFSService', {
+    StreamReadAt(call: grpc.ServerUnaryCall<{ path: string; offset: string; auth_token: string }, unknown>, callback: grpc.sendUnaryData<unknown>) {
+      assertPeer(call)
+      mailboxReads++
+      const data = records[Number(call.request.offset)]
+      callback(null, { data: data ?? Buffer.alloc(0),
+        next_offset: data ? String(Number(call.request.offset) + 1) : call.request.offset,
+        timed_out: !data })
+    },
+    StreamWriteNowait(call: grpc.ServerUnaryCall<{ path: string; data: Buffer; auth_token: string }, unknown>, callback: grpc.sendUnaryData<unknown>) {
+      assertPeer(call)
+      mailboxWrites++
+      records.push(call.request.data)
+      const payload = agentCodec.decode(call.request.data)
+      if (replyLost) {
+        callback({ code: grpc.status.UNAVAILABLE, details: 'fixture committed; reply lost' }, null)
+        return
+      }
+      if (payload?.type === 'rpc') records.push(agentCodec.encode({ type: 'rpc', message: {
+        jsonrpc: '2.0', id: payload.message.id,
+        error: { code: -32002, message: 'Original history is unavailable',
+          data: { sessionId: 'history-original', preserved: '原始 🧩' } },
+      } }))
+      callback(null, {})
+    },
     Call(call: grpc.ServerUnaryCall<{ method: string; payload: Buffer; auth_token: string }, unknown>, callback: grpc.sendUnaryData<unknown>) {
       calls++
       assert.equal(call.request.auth_token, '')
@@ -180,6 +214,26 @@ void test('private controller process uses the actual SDK and delegated mTLS for
   assert.deepEqual(await next(), { type: 'error', id: 2, code: 'SDK_CALL_FAILED', isOutcomeUncertain: true,
     nativeFailure: { code: -32603, message: 'fixture owner mismatch' } })
   assert.equal(calls, 2)
+  const session = (id: number, operation: string, payload = '') => child.stdin.write(
+    JSON.stringify({ type: 'session', id, operation, payload }) + '\n')
+  session(3, 'open', JSON.stringify(snapshot.session_endpoint))
+  assert.deepEqual(await next(), { type: 'result', id: 3, payload: '' })
+  session(4, 'send', JSON.stringify({ jsonrpc: '2.0', id: 'load-original', method: 'session/load',
+    params: { sessionId: 'history-original' } }))
+  assert.deepEqual(await next(), { type: 'result', id: 4, payload: '' })
+  session(5, 'receive')
+  const received = await next()
+  assert.equal(received.type, 'result')
+  assert.deepEqual(JSON.parse(received.payload as string), { jsonrpc: '2.0', id: 'load-original',
+    error: { code: -32002, message: 'Original history is unavailable',
+      data: { sessionId: 'history-original', preserved: '原始 🧩' } } })
+  assert.ok(mailboxReads > 0)
+  assert.equal(mailboxWrites, 1)
+  replyLost = true
+  session(6, 'send', JSON.stringify({ jsonrpc: '2.0', id: 'original-input', method: 'session/prompt',
+    params: { sessionId: 'history-original' } }))
+  assert.deepEqual(await next(), { type: 'error', id: 6, code: 'SDK_SESSION_FAILED', isOutcomeUncertain: true })
+  assert.equal(mailboxWrites, 2, 'An ambiguous typed append is never retried')
   const exited = new Promise<number | null>(resolve => child.once('exit', resolve))
   child.stdin.end()
   assert.equal(await exited, 0)
