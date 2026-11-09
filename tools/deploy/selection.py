@@ -35,6 +35,7 @@ def inspect(plan, output):
         prepared = checkpoint.owned_path(item['prepared'])
         if str(original) in selected or pins.get(str(original)) != item['expectedSha256']:
             raise ValueError('Selected original must be a unique pinned checkpoint file')
+        private_directory(original.parent)
         selected.add(str(original))
         if original == prepared or not prepared.is_file() or output == prepared or output in prepared.parents:
             raise ValueError('Keep prepared files distinct from originals and evidence')
