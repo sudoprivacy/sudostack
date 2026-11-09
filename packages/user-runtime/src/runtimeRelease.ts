@@ -2,12 +2,13 @@ import { readFileSync } from 'node:fs'
 import { z } from 'zod'
 
 const version = z.string().regex(/^\d+\.\d+\.\d+$/)
+const nexusVersion = z.string().regex(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/)
 const digest = z.string().regex(/^sha256:[a-f0-9]{64}$/)
 export const RuntimeReleaseSchema = z.object({
   schemaVersion: z.literal(1),
   releaseId: z.string().min(1),
   engine: z.object({ version, commit: z.string().regex(/^[a-f0-9]{7,40}$/) }).strict(),
-  cohost: z.object({ version, nexusVersion: version, pluginAbi: z.number().int().positive(), binaryDigest: digest }).strict(),
+  cohost: z.object({ version, nexusVersion, pluginAbi: z.number().int().positive(), binaryDigest: digest }).strict(),
   issuerVersion: version,
   image: z.object({ reference: z.string().min(1).refine(value => !/(^|:)latest$/.test(value)),
     digest, digestKind: z.enum(['oci-config', 'oci-manifest']) }).strict(),
@@ -22,9 +23,9 @@ export function readRuntimeRelease(path: string): RuntimeRelease {
 
 /** Read the binary's own provenance rather than infer the engine revision from a tag. */
 export function parseCohostBuild(output: string) {
-  const match = /nexusd-cohost v(\d+\.\d+\.\d+) \(sudocode ([a-f0-9]{7,40}), nexus-vfs v(\d+\.\d+\.\d+)\).*plugin-abi (\d+)/.exec(output)
+  const match = /nexusd-cohost v(\d+\.\d+\.\d+) \(sudocode ([a-f0-9]{7,40}), nexus-vfs v([^\s)]+)\).*plugin-abi (\d+)/.exec(output)
   if (!match) throw new Error('Cohost build provenance is missing')
-  return { version: match[1]!, commit: match[2]!, nexusVersion: match[3]!, pluginAbi: Number(match[4]) }
+  return { version: match[1]!, commit: match[2]!, nexusVersion: nexusVersion.parse(match[3]), pluginAbi: Number(match[4]) }
 }
 
 /** A matching CLI and embedded engine come from the same commit, even when their tag namespaces differ. */
