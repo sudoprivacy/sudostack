@@ -13,6 +13,16 @@ const connection = await runtime.resolve(authenticatedOwnerId, ownerModelConfigu
 
 The readiness callback must establish an authenticated owner connection. A TCP probe alone cannot publish a usable runtime. Resource names and annotations remain stable so adopting the common package retains existing user volumes.
 
+## Storage observations
+
+`runtime.forAllocation(allocationId).inspectStorage(ownerId)` reads the existing PVC and Pod through the controller's Kubernetes identity. It checks owner, allocation, namespace, resource name and the Pod's data-volume claim. Each present object supplies its actual UID, resourceVersion and deletion timestamp; an absent object is returned as `null`. The call reads only those two resources.
+
+The PVC UID identifies the retained storage incarnation. Pod replacement has its own UID, and a replacement PVC with the same name has a new storage identity. Consumers use these observations with the native issuer's enrolled storage authority and original operation. The issuer checks the current binding at credential publication; the two Kubernetes reads are independent observations. Missing or terminating resources require lifecycle reconciliation before readiness.
+
+Use `inspect` for release drift and `inspectStorage` for resource identity. `find` obtains an authenticated connection to an existing runtime and can renew credentials in its Secret. `resolve` also performs the existing provisioning lifecycle.
+
+`MOSS_RUNTIME_LIVE=1 node --import tsx test/live/runtimeStorageInspection.ts` accepts `{ ownerId, options }` on standard input and checks an existing allocation through the actual Kubernetes reader. Its receipt contains the observed PVC and Pod identities and the two resource reads. Package CI covers resource replacement, missing identity fields, owner/allocation boundaries, claim validation and refusal of mutation or credential calls.
+
 Resolving a live Pod with a different runtime or model backend throws `UserRuntimeUpdateRequiredError`, with reason `runtime` or `model-backend`. Consumers can offer an explicit owner update using `upgrade`; retrying ordinary startup does not apply the change. The existing Pod and configuration remain intact when resolution reports this error. Cached connections and controller restarts use the same error contract.
 
 An explicit upgrade can replace a Pod in Kubernetes phase `Succeeded` or `Failed`. Its stopped process cannot answer an authenticated readiness probe, so the control plane receives `drain(undefined)` and must still settle its own work. The operation verifies retained resource ownership, preserves the owner volume and requires authenticated readiness and release verification for the replacement.

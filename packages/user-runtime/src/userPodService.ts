@@ -94,6 +94,28 @@ export interface UserPodInspection {
   upgradeLock: { createdAt: string | null } | null
 }
 
+/** The API server's observed object identity and version. */
+export interface UserRuntimeResourceObservation {
+  name: string
+  uid: string
+  resourceVersion: string
+  deletionTimestamp: string | null
+}
+
+/** Independently read resource observations for one durable allocation. */
+export interface UserPodStorageInspection {
+  ownerId: string
+  allocationId: string
+  namespace: string
+  pvc: UserRuntimeResourceObservation | null
+  pod: UserRuntimeResourceObservation | null
+}
+
+const StorageObservationMetadata = z.object({
+  name: z.string().min(1), namespace: z.string().min(1), uid: z.string().min(1),
+  resourceVersion: z.string().min(1), deletionTimestamp: z.string().min(1).nullish(),
+})
+
 /** One owner allocation that currently has a Pod. */
 export interface UserRuntimePlacement {
   ownerId: string
@@ -314,6 +336,31 @@ export class UserPodService {
       observedImageDigest: pod?.status?.containerStatuses?.find(container => container.name === 'runtime')?.imageID ?? null,
       releaseId: this.options.release?.releaseId ?? null,
       upgradeLock: lock ? { createdAt: lock.metadata.creationTimestamp ?? null } : null }
+  }
+
+  /** Read owner PVC/Pod identities without connecting, minting credentials or provisioning. */
+  async inspectStorage(ownerId: string): Promise<UserPodStorageInspection> {
+    if (this.lifecycle.signal.aborted) throw new Error('User Pod service is closed')
+    const selected = this.runtimeForOwner(ownerId)
+    if (selected) return selected.inspectStorage(ownerId)
+    const name = userPodName(ownerId, this.options.allocationId)
+    const observe = async (kind: 'pvc' | 'pod'): Promise<UserRuntimeResourceObservation | null> => {
+      const resource = await this.readAllocationResource(kind, name)
+      if (!resource) return null
+      if (resource.metadata.annotations?.[OWNER_ANNOTATION] !== ownerId) {
+        throw new Error('User runtime storage resource belongs to another owner')
+      }
+      const metadata = StorageObservationMetadata.parse(resource.metadata)
+      if (metadata.name !== name || metadata.namespace !== this.options.namespace) {
+        throw new Error('User runtime storage resource differs from the requested location')
+      }
+      if (kind === 'pod' && !resource.spec) throw new Error('User Pod data volume is unavailable')
+      return { name: metadata.name, uid: metadata.uid, resourceVersion: metadata.resourceVersion,
+        deletionTimestamp: metadata.deletionTimestamp ?? null }
+    }
+    const [pvc, pod] = await Promise.all([observe('pvc'), observe('pod')])
+    return { ownerId, allocationId: this.options.allocationId ?? PRIMARY_ALLOCATION,
+      namespace: this.options.namespace, pvc, pod }
   }
 
   /** Every owner allocation with a Pod in this namespace, for fleet views. It provisions nothing. */
