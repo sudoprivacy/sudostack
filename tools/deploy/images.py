@@ -246,6 +246,28 @@ def verify_manifest_reference(reference, digest):
     return False
 
 
+def image_unpacked(reference, digest):
+    """Require the exact manifest's content and default snapshotter to be local."""
+    selector = 'name==' + json.dumps(reference) + ',target.digest==' + json.dumps(digest)
+    result = subprocess.run(['k3s', 'ctr', '--namespace', 'k8s.io', 'images', 'check', '--quiet', selector],
+                            capture_output=True, text=True, encoding='utf-8', timeout=20, check=True)
+    names = result.stdout.splitlines()
+    if names not in ([], [reference]):
+        raise ValueError('Unexpected containerd unpack lookup: ' + reference)
+    return bool(names)
+
+
+def remaining_storage(images, storage):
+    """Do not reserve already allocated content and unpacked snapshots a second time."""
+    if not images:
+        return storage
+    for tag, image in images.items():
+        digest = image.get('manifestDigest')
+        if digest is None or not image_unpacked(tag, digest):
+            return storage
+    return {'contentBytes': 0, 'unpackBytes': 0}
+
+
 def materialize_digest_reference(tag, image):
     """Expose the exact imported manifest to CRI while preserving K3s' labels."""
     reference = digest_reference(tag, image)
@@ -329,7 +351,8 @@ def retain_archive(path, expected, *, directory=IMAGES_DIRECTORY, timeout=300):
     if target.exists() and len(present) == len(images):
         return {'archive': str(target), 'sha256': expected, 'images': present}
     storage = archive_storage(path)
-    require_retention_space(directory, 0 if target.exists() else path.stat().st_size, storage)
+    require_retention_space(directory, 0 if target.exists() else path.stat().st_size,
+                            remaining_storage(images, storage))
     directory.mkdir(parents=True, exist_ok=True)
     if not target.exists():
         with tempfile.NamedTemporaryFile(dir=directory, prefix='.', suffix='.part', delete=False) as stream:
@@ -344,7 +367,7 @@ def retain_archive(path, expected, *, directory=IMAGES_DIRECTORY, timeout=300):
                 raise ValueError('Image archive changed during retention')
             # Another process may have used space while the hidden copy was
             # written. Refuse before exposing it to K3s' automatic importer.
-            require_retention_space(directory, 0, storage)
+            require_retention_space(directory, 0, remaining_storage(images, storage))
             temporary.replace(target)
         finally:
             temporary.unlink(missing_ok=True)
