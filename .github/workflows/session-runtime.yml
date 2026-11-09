@@ -1,0 +1,38 @@
+name: session-runtime
+
+on:
+  pull_request:
+    paths: ['packages/session-runtime/**', '.github/workflows/session-runtime.yml']
+  push:
+    branches: [main]
+    tags: ['session-runtime-v*']
+    paths: ['packages/session-runtime/**', '.github/workflows/session-runtime.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  package-checks:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: packages/session-runtime
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.21.0'
+          cache: npm
+          cache-dependency-path: packages/session-runtime/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+      - run: npm pack --ignore-scripts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: session-runtime-${{ matrix.os }}
+          path: packages/session-runtime/sudo-session-runtime-*.tgz
