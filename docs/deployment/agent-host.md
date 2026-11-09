@@ -42,6 +42,12 @@ native readiness/maintenance procedure. These shared actions preserve the
 declared state and select the prepared service; product/session and DLP
 acceptance remain required after activation.
 
+The Shared host deploy workflow qualifies device actions on AMD64 and ARM64,
+including their installed offline package. Atlas assembly separately rebuilds
+when a component lock, chart, installed suite script or assembly tool changes.
+Device-only changes do not reassemble an unrelated historical suite. A release
+tag or explicit release dispatch still requires the complete suite build.
+
 ### Native executable placement
 
 Python 3.11+, user systemd and a source-bound native `nexusd-cohost` executable
