@@ -2,6 +2,8 @@
 export const POLICY_FILENAME = 'egress-policy.json'
 export const POLICY_ENVIRONMENT = 'NEXUS_EGRESS_GATE_CONFIG'
 export { EgressPolicyRepository, EgressPolicyConflict } from './repository.js'
+export { EgressPolicyService } from './service.js'
+export { assertEgressRuntimeAdmission, EgressPolicyNotAppliedError } from './admission.js'
 function freezeDefaults(value) {
   for (const child of Object.values(value)) if (child && typeof child === 'object') freezeDefaults(child)
   return Object.freeze(value)
