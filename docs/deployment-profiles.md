@@ -39,10 +39,12 @@ process activation alone does not establish those properties.
   adapter creates scode session tasks in the daemon process. A cohost daemon
   is started by systemd or a container orchestrator; spawning an agent session
   does not start another cohost daemon.
-- **SudoWork WebUI** is the browser interface. Its current server consumes
-  Moss authentication, session, history and workspace APIs. A browser profile
-  without Moss requires an implementation of those application services and
-  their adapter; installing cohost alone does not provide them.
+- **Mosswork** is the selected frontend and UX for the production migration.
+  Its integration must reuse the existing Moss/SudoCode/Nexus management,
+  identity, session and A2A contracts. Adapter and product acceptance remain
+  required; current Sudowork deployment receipts describe their tested runtime.
+  A browser profile needs the authentication, session, history and workspace
+  application services in addition to cohost execution.
 - **Nexus model mounts** carry model requests through the session filesystem.
   Router selects the local GPUStack or cloud provider. This is separate from
   the API that creates and controls an agent session.

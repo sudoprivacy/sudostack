@@ -39,6 +39,7 @@ jobs:
       lock: ${{ steps.suite.outputs.lock }}
       build-runner: ${{ steps.suite.outputs.build-runner }}
       qualify-runner: ${{ steps.suite.outputs.qualify-runner }}
+      assemble: ${{ steps.suite.outputs.assemble }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -78,6 +79,13 @@ jobs:
           test -f "$LOCK"
           test "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$LOCK")" = "$VERSION"
           python3 tools/deploy/release.py --lock "$LOCK" --validate
+          ASSEMBLE=true
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            mapfile -t CHANGED_FILES < <(git diff --name-only "$PR_BASE_SHA" "$PR_HEAD_SHA")
+            ASSEMBLE="$(python3 tools/deploy/release_scope.py "${CHANGED_FILES[@]}")"
+          fi
+          echo "assemble=$ASSEMBLE" >> "$GITHUB_OUTPUT"
+          echo "Atlas assembly required: $ASSEMBLE; device actions are qualified by Shared host deploy."
           ARCH="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["architecture"])' "$LOCK")"
           echo "lock=$LOCK" >> "$GITHUB_OUTPUT"
           case "$ARCH" in
@@ -92,7 +100,7 @@ jobs:
             *) exit 1 ;;
           esac
   assemble:
-    if: inputs.publish_run == ''
+    if: inputs.publish_run == '' && needs.select.outputs.assemble == 'true'
     needs: select
     runs-on: ${{ needs.select.outputs.build-runner }}
     timeout-minutes: 90

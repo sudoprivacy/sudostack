@@ -16,7 +16,7 @@ import subprocess
 import sys
 
 import checkpoint
-from cohost import digest, private_directory, publish
+from cohost import attached_container, container_state, digest, private_directory, publish
 from configuration import replace_configuration
 
 
@@ -42,7 +42,8 @@ def inspect(plan, output):
             raise ValueError('Prepared selection checksum mismatch')
     names = set()
     for item in plan['candidates']:
-        if set(item) != {'name','binary','sha256','argumentFiles'} or item['name'] in names:
+        if (set(item) - {'name','binary','sha256','argumentFiles','container'} or
+                not {'name','binary','sha256','argumentFiles'} <= set(item) or item['name'] in names):
             raise ValueError('Each candidate service needs one executable and pinned argument file list')
         names.add(item['name'])
         binary = checkpoint.owned_path(item['binary'])
@@ -54,6 +55,8 @@ def inspect(plan, output):
             path = checkpoint.owned_path(argument['path'])
             if not path.is_file() or digest(path) != argument['sha256']:
                 raise ValueError('Candidate argument file checksum mismatch')
+        if 'container' in item:
+            container_state(item['container'], False)
     if names != {unit['name'] for unit in units}:
         raise ValueError('Candidate names differ from the checkpoint services')
     return units, roots, output
@@ -68,8 +71,11 @@ def verify_candidate(candidate):
     for argument in candidate['argumentFiles']:
         if argument['path'] not in arguments or digest(Path(argument['path'])) != argument['sha256']:
             raise ValueError('Selected application entry is not the running service: '+candidate['name'])
-    return {'unit':candidate['name'],'pid':pid,'binarySha256':candidate['sha256'],
-            'argumentFiles':candidate['argumentFiles']}
+    report = {'unit':candidate['name'],'pid':pid,'binarySha256':candidate['sha256'],
+              'argumentFiles':candidate['argumentFiles']}
+    if 'container' in candidate:
+        report['container'] = attached_container(pid, candidate['container'])
+    return report
 
 
 def select(plan, output, execute=False):
@@ -90,7 +96,7 @@ def select(plan, output, execute=False):
             for unit in units:
                 stopped.append(unit)
                 checkpoint.control('stop',unit['name'])
-                checkpoint.stopped(unit['name'])
+                checkpoint.stopped(unit['name'], unit.get('container'))
             snapshot = output/'checkpoint'
             snapshot.mkdir(mode=0o700)
             inventory = checkpoint.copy_stopped(plan['checkpoint'],units,roots,snapshot)
@@ -126,7 +132,8 @@ def select(plan, output, execute=False):
                     for unit in units:
                         try:
                             checkpoint.control('stop',unit['name'])
-                            checkpoint.stopped(unit['name'])
+                            candidate = next(item for item in plan['candidates'] if item['name'] == unit['name'])
+                            checkpoint.stopped(unit['name'], candidate.get('container'))
                             report['failureStops'].append({'unit':unit['name'],'stopped':True})
                         except (ValueError,OSError,subprocess.SubprocessError) as error:
                             report['failureStops'].append({'unit':unit['name'],'stopped':False,'error':str(error)})
