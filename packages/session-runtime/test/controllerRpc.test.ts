@@ -92,6 +92,18 @@ for (const field of ['authToken', 'ownerId', 'endpoint']) {
   })
 }
 
+for (const field of ['authToken', 'ownerId', 'endpoint']) {
+  void test(`typed session ${field} override refuses before any mailbox dispatch`, { timeout: 5000 }, async t => {
+    const h = harness(t)
+    h.send(bootstrap())
+    await h.next()
+    h.send({ type: 'session', id: 1, operation: 'open', payload: '{}', [field]: 'untrusted' })
+    assert.deepEqual(await h.next(), { type: 'failed', code: 'INVALID_PROTOCOL' })
+    assert.equal(await h.finished, false)
+    assert.equal(h.calls.length, 0)
+  })
+}
+
 for (const change of [
   (boot: ReturnType<typeof bootstrap>) => ({ ...boot, version: 2 }),
   (boot: ReturnType<typeof bootstrap>) => ({ ...boot, ownerId: '' }),

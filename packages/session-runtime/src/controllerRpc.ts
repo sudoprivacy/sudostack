@@ -1,6 +1,8 @@
 import { isAbsolute } from 'node:path'
 import type { Readable, Writable } from 'node:stream'
 import { connectSessionRuntime, type SessionConnectionConfig, type SessionRuntimeConnection } from './index.js'
+import { ControllerSessionMailbox, SessionReceiveBusy } from './mailbox.js'
+import type { SessionRpcMessage } from '@nexus-ai-fs/vfs-client'
 
 const MAX_FRAME_BYTES = 8 * 1024 * 1024
 const MAX_CALLS = 16
@@ -10,6 +12,13 @@ interface Call {
   type: 'call'
   id: number
   method: string
+  payload: string
+}
+
+interface SessionOperation {
+  type: 'session'
+  id: number
+  operation: 'open' | 'send' | 'receive' | 'close'
   payload: string
 }
 
@@ -85,13 +94,17 @@ function boot(value: unknown): { ownerId: string; config: SessionConnectionConfi
   }
 }
 
-function call(value: unknown): Call {
-  if (!object(value) || !keys(value, ['type', 'id', 'method', 'payload']) || value.type !== 'call' ||
-    !Number.isSafeInteger(value.id) || (value.id as number) < 1 || !text(value.method, 512) ||
+function call(value: unknown): Call | SessionOperation {
+  if (!object(value) || !['call', 'session'].includes(value.type as string) ||
+    !keys(value, ['type', 'id', value.type === 'call' ? 'method' : 'operation', 'payload']) ||
+    !Number.isSafeInteger(value.id) || (value.id as number) < 1 ||
+    (value.type === 'call' ? !text(value.method, 512)
+      : !['open', 'send', 'receive', 'close'].includes(value.operation as string)) ||
+    (value.type === 'session' && ['receive', 'close'].includes(value.operation as string) && value.payload !== '') ||
     typeof value.payload !== 'string' || Buffer.byteLength(value.payload) > 4 * 1024 * 1024) {
     throw new Error('Invalid controller call')
   }
-  return value as unknown as Call
+  return value as unknown as Call | SessionOperation
 }
 
 /** Retain only the native structured error needed for exact controller recovery.
@@ -111,11 +124,13 @@ function nativeFailure(error: unknown): { code: number | string; message: string
 /** Private IPC for one trusted controller's existing owner-authenticated SDK.
  *
  * No listener, new issuer, managed child, ACP framing or mailbox codec is created.
+ * The session surface reuses the existing official NexusSessionTransport.
  * The authenticated application must authorize connection and each operation.
  * Local correlation IDs are neither native operation IDs nor delivery receipts.
  */
 export async function runControllerRpc(input: Readable, output: Writable): Promise<void> {
   let connection: SessionRuntimeConnection | undefined
+  let mailbox: ControllerSessionMailbox | undefined
   let phase: 'bootstrap' | 'connect' | 'ready' = 'bootstrap'
   const active = new Map<number, Promise<void>>()
   let lastId = 0
@@ -126,6 +141,7 @@ export async function runControllerRpc(input: Readable, output: Writable): Promi
     phase = 'connect'
     connection = await connectSessionRuntime(selected.config, selected.ownerId,
       { connectTimeoutMs: selected.connectTimeoutMs })
+    mailbox = new ControllerSessionMailbox(connection)
     await send(output, { type: 'ready', version: 1 })
     phase = 'ready'
     for await (const frame of iterator) {
@@ -142,10 +158,36 @@ export async function runControllerRpc(input: Readable, output: Writable): Promi
         try {
           // Only the delegated runtime client is reachable from RPC; issuer
           // access and deployment bearer overrides have no IPC surface.
-          result = await client.call(request.method, request.payload, '')
+          if (request.type === 'call') {
+            result = await client.call(request.method, request.payload, '')
+          } else {
+            switch (request.operation) {
+              case 'open':
+                mailbox.open(JSON.parse(request.payload) as unknown)
+                result = ''
+                break
+              case 'send':
+                await mailbox.send(JSON.parse(request.payload) as SessionRpcMessage)
+                result = ''
+                break
+              case 'receive': {
+                const message = await mailbox.receive()
+                result = message === undefined ? '' : JSON.stringify(message)
+                break
+              }
+              case 'close':
+                await mailbox.close()
+                result = ''
+                break
+            }
+          }
         } catch (error) {
+          if (error instanceof SessionReceiveBusy) {
+            await send(output, { type: 'error', id: request.id, code: 'LIMIT_REACHED', isOutcomeUncertain: false })
+            return
+          }
           const failure = nativeFailure(error)
-          await send(output, { type: 'error', id: request.id, code: 'SDK_CALL_FAILED',
+          await send(output, { type: 'error', id: request.id, code: request.type === 'call' ? 'SDK_CALL_FAILED' : 'SDK_SESSION_FAILED',
             isOutcomeUncertain: true, ...(failure ? { nativeFailure: failure } : {}) })
           return
         }
@@ -173,6 +215,7 @@ export async function runControllerRpc(input: Readable, output: Writable): Promi
     throw new Error('Controller RPC unavailable')
   } finally {
     connection?.client.close()
+    await mailbox?.close().catch(() => {})
     await Promise.allSettled(active.values())
   }
 }
