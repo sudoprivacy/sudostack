@@ -108,7 +108,7 @@ void test('a runtime with another owner server name fails the real TLS handshake
   assert.equal(runtimeRequests, 1, 'The Alice-target connection must not reach the Bob runtime')
 })
 
-void test('private controller uses actual delegated mTLS for Call and typed mailbox I/O', { timeout: 30_000 }, async t => {
+void test('private controller uses actual delegated mTLS for Call, mailbox and file reads', { timeout: 30_000 }, async t => {
   const { ca, issue } = testAuthority()
   const operator = issue('operator', [{ type: 6, value: 'nexus://agent/moss' }])
   const issuer = issue('issuer', [{ type: 2, value: 'issuer.test' }])
@@ -133,6 +133,8 @@ void test('private controller uses actual delegated mTLS for Call and typed mail
   const records: Buffer[] = []
   let mailboxWrites = 0
   let mailboxReads = 0
+  let fileReads = 0
+  const originalFile = Buffer.from('original transcript 客户 📝\n')
   let replyLost = false
   const assertPeer = (call: grpc.ServerUnaryCall<{ auth_token: string; path: string }, unknown>) => {
     assert.equal(call.request.auth_token, '')
@@ -140,6 +142,17 @@ void test('private controller uses actual delegated mTLS for Call and typed mail
     assert.deepEqual(call.getAuthContext().sslPeerCertificate?.raw, new X509Certificate(delegated.cert).raw)
   }
   const runtimeEndpoint = await serve(t, ca, runtime, 'nexus.grpc.vfs.NexusVFSService', {
+    Read(call: grpc.ServerUnaryCall<{ path: string; auth_token: string }, unknown>, callback: grpc.sendUnaryData<unknown>) {
+      fileReads++
+      assert.equal(call.request.auth_token, '')
+      assert.deepEqual(call.getAuthContext().sslPeerCertificate?.raw, new X509Certificate(delegated.cert).raw)
+      if (call.request.path === '/original/unavailable') {
+        callback({ code: grpc.status.UNAVAILABLE, details: 'fixture read unavailable' }, null)
+        return
+      }
+      assert.ok(['/original/transcript', '/original/empty'].includes(call.request.path))
+      callback(null, { content: call.request.path === '/original/empty' ? Buffer.alloc(0) : originalFile })
+    },
     StreamReadAt(call: grpc.ServerUnaryCall<{ path: string; offset: string; auth_token: string }, unknown>, callback: grpc.sendUnaryData<unknown>) {
       assertPeer(call)
       mailboxReads++
@@ -201,6 +214,11 @@ void test('private controller uses actual delegated mTLS for Call and typed mail
     assert.equal(frame.done, false)
     return JSON.parse(frame.value!) as Record<string, unknown>
   }
+  child.stdin.write(JSON.stringify({ type: 'capabilities' }) + '\n')
+  assert.deepEqual(await next(), { type: 'capabilities', version: 1,
+    operations: ['call', 'session.open', 'session.send', 'session.receive', 'session.close', 'file.read'] })
+  assert.equal(calls, 0)
+  assert.equal(fileReads, 0)
   child.stdin.write(JSON.stringify({ type: 'connect', version: 1, ownerId: 'alice',
     config: { endpoint: issuerEndpoint, runtimeEndpoint, tls } }) + '\n')
   assert.deepEqual(await next(), { type: 'ready', version: 1 })
@@ -234,6 +252,15 @@ void test('private controller uses actual delegated mTLS for Call and typed mail
     params: { sessionId: 'history-original' } }))
   assert.deepEqual(await next(), { type: 'error', id: 6, code: 'SDK_SESSION_FAILED', isOutcomeUncertain: true })
   assert.equal(mailboxWrites, 2, 'An ambiguous typed append is never retried')
+  child.stdin.write(JSON.stringify({ type: 'read', id: 7, path: '/original/transcript' }) + '\n')
+  assert.deepEqual(await next(), { type: 'result', id: 7, payload: originalFile.toString('base64') })
+  child.stdin.write(JSON.stringify({ type: 'read', id: 8, path: '/original/unavailable' }) + '\n')
+  assert.deepEqual(await next(), { type: 'error', id: 8, code: 'SDK_READ_FAILED', isOutcomeUncertain: true })
+  child.stdin.write(JSON.stringify({ type: 'read', id: 9, path: '/original/empty' }) + '\n')
+  assert.deepEqual(await next(), { type: 'result', id: 9, payload: '' })
+  assert.equal(fileReads, 3, 'A failed read is not retried')
+  assert.equal(calls, 2, 'Typed reads do not use a generic Call alias')
+  assert.equal(mailboxWrites, 2, 'Read reconciliation submits no new native input')
   const exited = new Promise<number | null>(resolve => child.once('exit', resolve))
   child.stdin.end()
   assert.equal(await exited, 0)

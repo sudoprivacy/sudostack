@@ -125,3 +125,32 @@ grant, native allocation and cleanup ownership.
 Run `npm run build && npm test` for source and actual private-process mTLS
 regressions. The TLS helper also supports bounded Python/SDK fixture acceptance;
 its keys and native effects are synthetic.
+
+### Private file reads
+
+Before bootstrap, `{"type":"capabilities"}` returns the packaged private
+operation list and version. Inspection alone reads no credential and opens no
+issuer/runtime connection. The same process can then accept the original
+`connect` frame. This is transport metadata; native authority, ACP handshake
+and current grants still require their own checks. Select the component by its
+verified artifact digest because the package version alone does not identify
+this entry's operation set.
+
+After bootstrap, `{"type":"read","id":2,"path":"/original/transcript"}`
+invokes the official SDK's typed `Read` RPC with the existing delegated owner
+and empty bearer. The result's `payload` is base64 of the exact bytes. Empty
+content returns an empty string successfully. Reads share the existing local
+correlation sequence and bounded request capacity with calls/mailbox operations.
+
+The trusted host resolves the exact original managed file and revalidates its
+actor/resource/native permission after local waits and around I/O. A path or
+successful read grants no access to another session, model or owner. This
+private transport is not a browser file API or a secret authorization service.
+
+Raw content is limited to 4 MiB within the existing 8 MiB private frame limit.
+Larger replies return `RESULT_UNAVAILABLE`; nothing is truncated or read again.
+`SDK_READ_FAILED` retains uncertainty and does not establish native session
+absence. The host must refuse unsupported larger histories explicitly and keep
+the original data. Parsing/reconciling input receipts, durable context pointer
+association, current grants and native writer/receiver cleanup remain separate
+provider responsibilities.
