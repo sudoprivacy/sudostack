@@ -13,10 +13,13 @@ function bootstrap() {
   } }
 }
 
-function harness(t: TestContext, invoke: (method: string, payload: string) => Promise<string> = async (_method, payload) => payload) {
+function harness(t: TestContext,
+  invoke: (method: string, payload: string) => Promise<string> = async (_method, payload) => payload,
+  read: (path: string) => Promise<Buffer> = async () => { throw new Error('Test read not configured') }) {
   const input = new PassThrough()
   const output = new PassThrough()
   const calls: { method: string; payload: string; authToken: string }[] = []
+  const reads: { path: string; authToken: string }[] = []
   const frames: Record<string, unknown>[] = []
   const waiting: ((frame: Record<string, unknown>) => void)[] = []
   const seen: string[] = []
@@ -53,6 +56,10 @@ function harness(t: TestContext, invoke: (method: string, payload: string) => Pr
         calls.push({ method, payload, authToken })
         return invoke(method, payload)
       },
+      read: async (path: string, authToken: string) => {
+        reads.push({ path, authToken })
+        return read(path)
+      },
       close: () => { runtimeCloses++ },
     }
   })
@@ -61,9 +68,134 @@ function harness(t: TestContext, invoke: (method: string, payload: string) => Pr
   const next = () => frames.length
     ? Promise.resolve(frames.shift()!)
     : new Promise<Record<string, unknown>>(receive => { waiting.push(receive) })
-  return { input, calls, send, next, finished, outputText: () => seen.join(''),
+  return { input, calls, reads, send, next, finished, outputText: () => seen.join(''),
     issuerConnections: () => issuerConnections, runtimeCloses: () => runtimeCloses }
 }
+
+void test('private capability inspection uses no issuer or owner connection', { timeout: 5000 }, async t => {
+  const h = harness(t)
+  h.send({ type: 'capabilities' })
+  assert.deepEqual(await h.next(), { type: 'capabilities', version: 1,
+    operations: ['call', 'session.open', 'session.send', 'session.receive', 'session.close', 'file.read'] })
+  assert.equal(h.issuerConnections(), 0)
+  assert.equal(h.reads.length, 0)
+  h.input.end()
+  assert.equal(await h.finished, true)
+  assert.equal(h.runtimeCloses(), 0)
+})
+
+void test('inspection can precede the same original owner bootstrap', { timeout: 5000 }, async t => {
+  const h = harness(t)
+  h.send({ type: 'capabilities' })
+  assert.equal((await h.next()).type, 'capabilities')
+  assert.equal(h.issuerConnections(), 0)
+  h.send(bootstrap())
+  assert.deepEqual(await h.next(), { type: 'ready', version: 1 })
+  assert.equal(h.issuerConnections(), 1)
+  h.input.end()
+  assert.equal(await h.finished, true)
+})
+
+void test('capability inspection accepts no owner or credential channel', { timeout: 5000 }, async t => {
+  const h = harness(t)
+  h.send({ type: 'capabilities', ownerId: 'other-owner' })
+  assert.deepEqual(await h.next(), { type: 'failed', code: 'INVALID_PROTOCOL' })
+  assert.equal(await h.finished, false)
+  assert.equal(h.issuerConnections(), 0)
+})
+
+void test('file reads use official typed Read, original owner and empty bearer', { timeout: 5000 }, async t => {
+  const content = Buffer.concat([Buffer.from('原始输入 📝\n'), Buffer.from([0, 255])])
+  const h = harness(t, undefined, async () => content)
+  h.send(bootstrap())
+  await h.next()
+  const path = '/original/conversation/历史.jsonl'
+  h.send({ type: 'read', id: 1, path })
+  assert.deepEqual(await h.next(), { type: 'result', id: 1, payload: content.toString('base64') })
+  assert.deepEqual(h.reads, [{ path, authToken: '' }])
+  assert.equal(h.calls.length, 0)
+  assert.equal(h.issuerConnections(), 1)
+  h.input.end()
+  assert.equal(await h.finished, true)
+})
+
+void test('empty file content is a successful read result', { timeout: 5000 }, async t => {
+  const h = harness(t, undefined, async () => Buffer.alloc(0))
+  h.send(bootstrap())
+  await h.next()
+  h.send({ type: 'read', id: 1, path: '/original/empty' })
+  assert.deepEqual(await h.next(), { type: 'result', id: 1, payload: '' })
+  assert.equal(h.reads.length, 1)
+  h.input.end()
+  assert.equal(await h.finished, true)
+})
+
+void test('failed read is private and never retried or classified as session absence', { timeout: 5000 }, async t => {
+  const h = harness(t, undefined, async () => { throw new Error('private-key-value /private/path') })
+  h.send(bootstrap())
+  await h.next()
+  h.send({ type: 'read', id: 1, path: '/original/transcript' })
+  assert.deepEqual(await h.next(), { type: 'error', id: 1, code: 'SDK_READ_FAILED', isOutcomeUncertain: true })
+  assert.equal(h.outputText().includes('private-key-value'), false)
+  assert.equal(h.outputText().includes('/private/path'), false)
+  assert.equal(h.reads.length, 1)
+  assert.equal(h.calls.length, 0)
+  h.input.end()
+  assert.equal(await h.finished, true)
+})
+
+void test('oversized read result refuses without truncation or re-read', { timeout: 5000 }, async t => {
+  const h = harness(t, undefined, async () => Buffer.alloc(4 * 1024 * 1024 + 1, 97))
+  h.send(bootstrap())
+  await h.next()
+  h.send({ type: 'read', id: 1, path: '/original/large-transcript' })
+  assert.deepEqual(await h.next(), { type: 'error', id: 1, code: 'RESULT_UNAVAILABLE', isOutcomeUncertain: true })
+  assert.equal(h.reads.length, 1)
+  h.input.end()
+  assert.equal(await h.finished, true)
+})
+
+void test('maximum raw read fits the existing private frame after base64 encoding', { timeout: 5000 }, async t => {
+  const content = Buffer.alloc(4 * 1024 * 1024, 255)
+  const h = harness(t, undefined, async () => content)
+  h.send(bootstrap())
+  await h.next()
+  h.send({ type: 'read', id: 1, path: '/original/maximum' })
+  const result = await h.next()
+  assert.equal(result.type, 'result')
+  assert.equal(result.id, 1)
+  assert.deepEqual(Buffer.from(result.payload as string, 'base64'), content)
+  assert.ok(Buffer.byteLength(JSON.stringify(result) + '\n') <= 8 * 1024 * 1024)
+  assert.equal(h.reads.length, 1)
+  h.input.end()
+  assert.equal(await h.finished, true)
+})
+
+for (const field of ['authToken', 'ownerId', 'endpoint']) {
+  void test(`file read refuses a per-request ${field}`, { timeout: 5000 }, async t => {
+    const h = harness(t)
+    h.send(bootstrap())
+    await h.next()
+    h.send({ type: 'read', id: 1, path: '/original/transcript', [field]: 'other-authority' })
+    assert.deepEqual(await h.next(), { type: 'failed', code: 'INVALID_PROTOCOL' })
+    assert.equal(await h.finished, false)
+    assert.equal(h.reads.length, 0)
+  })
+}
+
+void test('read and native call replies retain their shared original correlation', { timeout: 5000 }, async t => {
+  let finish: ((text: string) => void) | undefined
+  const h = harness(t, async () => new Promise<string>(resolve => { finish = resolve }), async () => Buffer.from('original'))
+  h.send(bootstrap())
+  await h.next()
+  h.send({ type: 'call', id: 1, method: 'managed_agent.get_session_v1', payload: '{}' })
+  h.send({ type: 'read', id: 2, path: '/original/transcript' })
+  assert.deepEqual(await h.next(), { type: 'result', id: 2, payload: Buffer.from('original').toString('base64') })
+  finish!('native-original')
+  assert.deepEqual(await h.next(), { type: 'result', id: 1, payload: 'native-original' })
+  h.input.end()
+  assert.equal(await h.finished, true)
+})
 
 void test('controller calls preserve UTF-8, fixed owner connection and empty bearer', { timeout: 5000 }, async t => {
   const h = harness(t)

@@ -8,6 +8,11 @@ const MAX_FRAME_BYTES = 8 * 1024 * 1024
 const MAX_CALLS = 16
 const decoder = new TextDecoder('utf-8', { fatal: true })
 
+/** Private transport operations, not native capabilities or access grants. */
+export const CONTROLLER_OPERATIONS = [
+  'call', 'session.open', 'session.send', 'session.receive', 'session.close', 'file.read',
+] as const
+
 interface Call {
   type: 'call'
   id: number
@@ -21,6 +26,14 @@ interface SessionOperation {
   operation: 'open' | 'send' | 'receive' | 'close'
   payload: string
 }
+
+interface FileRead {
+  type: 'read'
+  id: number
+  path: string
+}
+
+class FileReadUnavailable extends Error {}
 
 function object(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -94,7 +107,12 @@ function boot(value: unknown): { ownerId: string; config: SessionConnectionConfi
   }
 }
 
-function call(value: unknown): Call | SessionOperation {
+function call(value: unknown): Call | SessionOperation | FileRead {
+  if (object(value) && value.type === 'read') {
+    if (!keys(value, ['type', 'id', 'path']) || !Number.isSafeInteger(value.id) ||
+      (value.id as number) < 1 || !text(value.path)) throw new Error('Invalid file read')
+    return value as unknown as FileRead
+  }
   if (!object(value) || !['call', 'session'].includes(value.type as string) ||
     !keys(value, ['type', 'id', value.type === 'call' ? 'method' : 'operation', 'payload']) ||
     !Number.isSafeInteger(value.id) || (value.id as number) < 1 ||
@@ -136,7 +154,13 @@ export async function runControllerRpc(input: Readable, output: Writable): Promi
   let lastId = 0
   try {
     const iterator = frames(input)
-    const first = await iterator.next()
+    let first = await iterator.next()
+    if (object(first.value) && keys(first.value, ['type']) && first.value.type === 'capabilities') {
+      await send(output, { type: 'capabilities', version: 1, operations: CONTROLLER_OPERATIONS })
+      first = await iterator.next()
+      // Inspecting the packaged transport need not read credentials or mint.
+      if (first.done) return
+    }
     const selected = boot(first.value)
     phase = 'connect'
     connection = await connectSessionRuntime(selected.config, selected.ownerId,
@@ -160,6 +184,12 @@ export async function runControllerRpc(input: Readable, output: Writable): Promi
           // access and deployment bearer overrides have no IPC surface.
           if (request.type === 'call') {
             result = await client.call(request.method, request.payload, '')
+          } else if (request.type === 'read') {
+            const content = await client.read(request.path, '')
+            if (!Buffer.isBuffer(content) || content.length > 4 * 1024 * 1024) {
+              throw new FileReadUnavailable('Original read result is unavailable')
+            }
+            result = content.toString('base64')
           } else {
             switch (request.operation) {
               case 'open':
@@ -182,12 +212,18 @@ export async function runControllerRpc(input: Readable, output: Writable): Promi
             }
           }
         } catch (error) {
+          if (error instanceof FileReadUnavailable) {
+            await send(output, { type: 'error', id: request.id, code: 'RESULT_UNAVAILABLE', isOutcomeUncertain: true })
+            return
+          }
           if (error instanceof SessionReceiveBusy) {
             await send(output, { type: 'error', id: request.id, code: 'LIMIT_REACHED', isOutcomeUncertain: false })
             return
           }
           const failure = nativeFailure(error)
-          await send(output, { type: 'error', id: request.id, code: request.type === 'call' ? 'SDK_CALL_FAILED' : 'SDK_SESSION_FAILED',
+          const code = request.type === 'call' ? 'SDK_CALL_FAILED'
+            : request.type === 'read' ? 'SDK_READ_FAILED' : 'SDK_SESSION_FAILED'
+          await send(output, { type: 'error', id: request.id, code,
             isOutcomeUncertain: true, ...(failure ? { nativeFailure: failure } : {}) })
           return
         }
