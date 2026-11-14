@@ -79,6 +79,11 @@ flowchart TB
   end
 
   ROUTER["云端 SudoRouter · new-api<br/>sudorouter.ai / api / hk"]
+  subgraph GPUFUTURE["共享 GPU / 推理能力 · planned · 未接入现有部署"]
+    SUDOCOMPUTE["sudocompute · Cloud / Private / Edge 按需复用<br/>GPU 验收 · 合格推理配方 · 计算运维集成<br/>静态规划 / 本机采集已实现 · 现场接入与 release pin 待验证"]
+    GPUPOOL["可选自管 GPU 推理池 · planned<br/>GPUStack 管理 · vLLM / SGLang 执行<br/>与 Agent CPU VM / gVisor Pod 分开"]
+    SUDOCOMPUTE -.->|合格配置与管理集成 · 待验证| GPUPOOL
+  end
   LLM["云模型 provider · LLM"]
   CCEXIT["CC 账号绑定的 HTTP CONNECT 出口<br/>managed home IP / 不回退直连"]
 
@@ -99,6 +104,8 @@ flowchart TB
   SCODE -->|Bash · Pod 本地项目 I/O| UPVC
   CNEXUS -->|模型请求与回复 · Nexus driver-ai<br/>实际 owner 的独立 SudoRouter Key| ROUTER
   ROUTER --> LLM
+  ROUTER -.->|可选自有 GPU 模型 endpoint · 待接入| GPUPOOL
+  SUDOCOMPUTE -.->|合格单机配置复用 · 未迁移现有链路| GPUSTACK
   NETPOL -.->|DNS · 控制平面 · 公网 443| POD
   CNEXUS <-->|mTLS · 身份与跨域服务| NEXUSD
 
@@ -123,6 +130,16 @@ flowchart TB
 ```
 
 <!-- /cloud-plan:first-diagram -->
+
+**共享 GPU / 推理组件（2026-11-14，计划集成）：**
+[`sudocompute`](https://github.com/sudoprivacy/sudocompute)（当前私有）计划经 `sudostack`
+装配，供 `sudocloud / sudoprivate / sudoedge` 按需复用 GPU 验收、合格模型配方与计算运维。
+GPUStack 保留 GPU 分配与模型生命周期，vLLM / SGLang 负责推理执行；SudoRouter 仍负责
+模型访问、Key、配额与用量。图中新虚线区分配置/管理关系及候选模型上游，均未声明已部署。
+仅调用外部模型的 profile 可不安装它。该层与 Agent 会话 CPU VM / gVisor Pod 分开；
+现有盒子 GPUStack 链路及其验收记录继续保留。
+完整依赖图与职责表见 [sudostack 产品概览](https://github.com/sudoprivacy/sudostack/blob/main/README.md#gpu-compute-and-inference)。
+本轮为架构补充，现场接入、版本限定及真实验收仍待完成（`enforced_by: none`）。
 
 <details>
 <summary>总图补充：客户端、计算与控制链路</summary>

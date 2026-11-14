@@ -5,7 +5,8 @@
 内容（产品分层 / 三个 ID / 六契约 / AgentSpec ≡ matrix）以下述 SSOT 为准，本文件只负责**指向**与**构建/更新**，不复述——产品分层概览见 [`../README.md`](../README.md)，Agent 存储金标准见 `sudocode/docs/design/agent-context-storage-matrix.html`。
 
 - **在线（ShareOne，可评论）**：https://s.shareone.vip/s/sudo-product-architecture
-- **源（source of record）**：`docs/architecture.html`（本 repo 私有，故内容托管在 ShareOne，非 remote-url）
-- **构建**：`docs/_build/build_arch.py`（读 `arch_deploy.svg` / `arch_consolidate.svg` → `architecture.html`）
+- **可编辑源（source of record）**：`docs/_build/build_arch.py` 与其 SVG 源；`docs/architecture.html` 为生成视图。
+- **构建**：`python docs/_build/build_arch.py`（读 `arch_deploy.svg` / `arch_compute.svg` / `arch_consolidate.svg` → `architecture.html`）；不要直接改生成 HTML。
 - **更新**：改源后重建，`publish.js <architecture.html> --share-id TXVzG3RUMCYk2gJO --filename sudo-product-architecture.html` 原地回推同一 URL。
 - **B0 客户演示基线清单**：[`inventory/b0-customer-demo-baseline.md`](inventory/b0-customer-demo-baseline.md)——装配前的版本、制品、配置、数据库、smoke 与回退证据模板；不是部署声明或第二套 Contract SSOT。
+- **GPU / 推理组件（2026-11-14）**：[`README.md` 的依赖图与职责表](../README.md#gpu-compute-and-inference)及生成视图中的 SudoCompute 图；Cloud / Private / Edge 按需复用，现场接入与 release pin 待验证。ShareOne 镜像是否更新以发布回执为准。

@@ -19,6 +19,7 @@ authentication protocol, mailbox implementation or credential issuer.
 | CA verification, current peer classification, revocation, authorization, durable A2A objects | nexus-vfs |
 | Resolved managed Agent, session execution, send/list/receiver, ACP | sudocode |
 | Shared release composition, deploy/join sequencing and evidence | sudostack |
+| Reusable GPU acceptance, qualified inference recipes and compute operations | sudocompute (planned optional integration) |
 | Appliance service/GPU/network selection and deployment record | sudoedge |
 | Cloud tenant/allocation/Kubernetes selection | sudocloud / existing Moss adapter |
 
@@ -87,8 +88,15 @@ in-process Kernel. Selecting persistent or network collaboration can prepare
 a compatible local service or attach to an existing one. For cohost, the
 selected executable already contains Nexus and the scode engine; starting an
 Agent creates a session task in that daemon. A browser profile additionally
-prepares the existing Moss/WebUI application services. GPU/model provisioning
-is an Edge placement concern, independent from obtaining an Agent identity.
+prepares the existing Moss/WebUI application services. Reusable GPU/inference
+qualification is planned in
+[SudoCompute](https://github.com/sudoprivacy/sudocompute), consumed through shared
+assembly by Cloud, Private and Edge profiles with managed GPUs. Edge retains
+device-specific GPU selection, bootstrap and acceptance; its deployed GPUStack
+path remains the baseline. SudoCompute live integration and release pins are
+pending (`enforced_by: none`). This layer is separate from Agent session CPU
+placement and from obtaining an Agent identity. The optional dependency graph
+and complete ownership map live in the [product overview](../../README.md#gpu-compute-and-inference).
 
 The lifecycle owner records the runtime and state roots it controls. An
 existing listener is inspected and authenticated before reuse. A conflicting

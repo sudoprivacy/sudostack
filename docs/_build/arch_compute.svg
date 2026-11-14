@@ -1,0 +1,42 @@
+<svg viewBox="0 0 1020 490" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="compute-title compute-description" font-family="-apple-system,Segoe UI,PingFang SC,Microsoft YaHei,sans-serif">
+  <title id="compute-title">Optional SudoCompute assembly for Cloud, Private and Edge</title>
+  <desc id="compute-description">The three deployment forms share SudoStack assembly. Managed GPU profiles are planned to reuse SudoCompute, which qualifies GPUStack and inference engines. Dashed edges are planned integration, not deployed model request paths.</desc>
+  <defs>
+    <marker id="compute-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#7aa7da"/></marker>
+  </defs>
+  <g fill="#dbe8fb" text-anchor="middle" font-size="14">
+    <rect x="20" y="16" width="300" height="60" rx="10" fill="#141d2b" stroke="#6ea8fe"/>
+    <text x="170" y="41" font-weight="700">Sudo Cloud</text>
+    <text x="170" y="61" font-size="12" fill="#a7bad0">Hosted placement and acceptance</text>
+    <rect x="360" y="16" width="300" height="60" rx="10" fill="#141d2b" stroke="#6ea8fe"/>
+    <text x="510" y="41" font-weight="700">Sudo Private</text>
+    <text x="510" y="61" font-size="12" fill="#a7bad0">Customer network and acceptance</text>
+    <rect x="700" y="16" width="300" height="60" rx="10" fill="#141d2b" stroke="#6ea8fe"/>
+    <text x="850" y="41" font-weight="700">SudoEdge</text>
+    <text x="850" y="61" font-size="12" fill="#a7bad0">Appliance bootstrap and acceptance</text>
+    <path d="M170,76 V100 H380 V124" fill="none" stroke="#7aa7da" stroke-width="1.6" marker-end="url(#compute-arrow)"/>
+    <path d="M510,76 V124" fill="none" stroke="#7aa7da" stroke-width="1.6" marker-end="url(#compute-arrow)"/>
+    <path d="M850,76 V100 H640 V124" fill="none" stroke="#7aa7da" stroke-width="1.6" marker-end="url(#compute-arrow)"/>
+    <rect x="275" y="124" width="470" height="64" rx="10" fill="#18251e" stroke="#4ade80"/>
+    <text x="510" y="150" font-weight="700">sudostack</text>
+    <text x="510" y="172" font-size="12" fill="#b2cebd">Shared assembly, compatible releases and delivery evidence</text>
+    <path d="M510,188 V230" fill="none" stroke="#7aa7da" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#compute-arrow)"/>
+    <text x="525" y="214" text-anchor="start" font-size="11" fill="#a7bad0">Optional managed-GPU profile · planned</text>
+    <a href="https://github.com/sudoprivacy/sudocompute">
+      <rect x="175" y="230" width="670" height="84" rx="12" fill="#252035" stroke="#b48ce0" stroke-width="1.6"/>
+      <text x="510" y="256" font-weight="700" fill="#e9ddf7">sudocompute · planned reusable component</text>
+      <text x="510" y="278" font-size="12" fill="#c9bada">GPU acceptance · qualified model recipes · compute operations</text>
+      <text x="510" y="298" font-size="11" fill="#a99bc0">Planning / local inspection implemented; live integration and release pins pending</text>
+    </a>
+    <path d="M340,314 V336 H260 V360" fill="none" stroke="#7aa7da" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#compute-arrow)"/>
+    <path d="M680,314 V336 H760 V360" fill="none" stroke="#7aa7da" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#compute-arrow)"/>
+    <rect x="40" y="360" width="440" height="70" rx="10" fill="#141d2b" stroke="#6ea8fe"/>
+    <text x="260" y="386" font-weight="700">GPUStack / selected fleet manager</text>
+    <text x="260" y="409" font-size="12" fill="#a7bad0">GPU allocation and model lifecycle · reuse candidate</text>
+    <rect x="540" y="360" width="440" height="70" rx="10" fill="#141d2b" stroke="#6ea8fe"/>
+    <text x="760" y="386" font-weight="700">vLLM / SGLang</text>
+    <text x="760" y="409" font-size="12" fill="#a7bad0">Inference execution · qualify exact versions and recipes</text>
+    <text x="510" y="458" font-size="12" fill="#a7bad0">Assembly relationships, not per-token request paths. SudoRouter consumes qualified model endpoints.</text>
+    <text x="510" y="479" font-size="11" fill="#8a9db5">External-model-only profiles can omit SudoCompute. Existing deployments retain their original acceptance scope.</text>
+  </g>
+</svg>

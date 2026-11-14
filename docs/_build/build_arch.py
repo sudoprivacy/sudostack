@@ -4,6 +4,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 def rd(p): return io.open(os.path.join(BASE, p), encoding='utf-8').read()
 
 deploy_svg  = rd('arch_deploy.svg')
+compute_svg = rd('arch_compute.svg')
 cons_svg    = rd('arch_consolidate.svg')
 
 GH = 'https://github.com/'
@@ -11,7 +12,7 @@ def repo(name, org='sudoprivacy', label=None):
     return f'<a href="{GH}{org}/{name}"><code>{label or name}</code></a>'
 
 BODY = '''
-<span class="badge">Sudo 系统架构说明书 · v2.2</span>
+<span class="badge">Sudo 系统架构说明书 · v2.3</span>
 <h1>Sudo 系统架构说明书</h1>
 <p class="meta">在武鹏 v1.4 基础上订正命名口径、合并 Atlas、把 <b>AgentSpec 与 agent-context-storage-matrix consolidate 成同一套模型</b>，并按三种部署位置画顶层架构。本文是跨全家族技术架构 SSOT，落 ''' + repo('sudostack') + '''。开发（PRD + 伪代码）以本文与 matrix 为准。</p>
 
@@ -22,6 +23,7 @@ BODY = '''
 <li><b>先跑通 Cloud</b>：云端任务默认<b>先在我们自己的腾讯云跑通 Sudo Cloud</b>（已有部分服务在上面，方便 demo、立即可运行），作为企业交付前的完整搭建演练；企业交付时<b>同源</b>到 <b>Sudo Private</b>（客户自建，同一个 Atlas 平台、换个托管方）。</li>
 <li><b>Agent 统一模型 consolidation（核心）</b>：<b>AgentSpec ≡ matrix 的 image 层 <code>/agents/{name}/</code></b>；且 <code>agent-name</code> 是一张 <b>CA 签发的不可伪造身份</b>（= governance.did）。实现者<b>必须</b>读懂 matrix。</li>
 <li><b>三个 ID</b>：<code>agent-name</code>（image/制品/身份）· <code>session-id</code>（持久 <code>--resume</code> key）· <code>pid</code>（一次运行句柄）。"Agent 发布"不是发布一次任务。</li>
+<li><b>2026-11-14 GPU / 推理组件补充</b>：新增 ''' + repo('sudocompute') + '''（当前私有）作为 Cloud / Private / Edge 按需复用的基础组件。静态规划和本机采集已实现；现场接入、部署配方、release pin 与真实验收待完成。以下新增虚线表示计划集成；旧部署图与验收记录保留其原有范围。</li>
 </ul>
 </div>
 
@@ -30,25 +32,32 @@ BODY = '''
 <div class="dia">__DEPLOY__</div>
 <p class="meta">按你指的部署拓扑分三块画（local / private / cloud）。跨块：Local→Private 走 IM/定时触发 + 制品单向发布；Private↔Cloud 同源代码 + 跨域信任边界（只走脱敏产物）。模块粒度与跨块关系可继续迭代。</p>
 
+<h3>共享 GPU / 推理能力（planned）</h3>
+<div class="dia">__COMPUTE__</div>
+<p>''' + repo('sudocompute') + ''' 负责可复用的 GPU 集群验收、合格推理配方与计算运维集成；GPUStack 保留 GPU 分配和模型生命周期，vLLM / SGLang 保留推理执行，SudoRouter 消费合格的模型 endpoint。''' + repo('sudostack') + ''' 负责共享装配，各托管形态保留放置、网络与自身验收。仅接外部模型 API 的 profile 不要求安装 SudoCompute；算力中心也可独立使用它，不依赖完整 Atlas。</p>
+<p class="meta">这是产品装配关系，不是逐 token 请求路径；GPU 推理层与 Agent 会话 CPU VM / gVisor Pod 分开。Edge 当前 GPUStack 链路继续作为已部署基线。计划集成 enforced_by: none；本次没有新增部署动作或 release pin。产品前后端仍遵循已确认的 Mosswork 方向，旧图中的产品实现名称不代表迁移已完成。</p>
+
 <h2>二、产品组合与 repo</h2>
 <p>Mega-product 由 Base product 装配复用（每个 mega 可含多个 base）。owner 与成功标准以下表为准，repo 链到 GitHub；权威「repo→责任人/编制」总表见组织文档 §0。</p>
 <table>
 <tr><th>Mega / 层</th><th>Base-product（repo）</th><th>owner</th><th>成功标准</th></tr>
-<tr><td rowspan="5"><b>Sudo Private</b><br>客户自建（Atlas 平台）<br>（原 Server+MOSS）<br>owner 铁锋<br>repo ''' + repo('sudoprivate') + '''</td>
+<tr><td rowspan="6"><b>Sudo Private</b><br>客户自建（Atlas 平台）<br>（原 Server+MOSS）<br>owner 铁锋<br>repo ''' + repo('sudoprivate') + '''</td>
     <td>''' + repo('sudocode') + ''' · Agent 引擎</td><td>Ethan</td><td>独立 CLI 引擎稳定；对齐 AgentSpec/ACP/matrix；PTY 门禁</td></tr>
 <tr><td>''' + repo('nexus','nexi-lab') + ''' + nexus-vfs · 基座</td><td>Ethan</td><td>VFS/身份/session 存储 SSOT；跨节点一致；不可伪造 from</td></tr>
 <tr><td>''' + repo('nova-gateway') + ''' = SudoRouter</td><td>张帅</td><td>模型/工具/凭证统一出口；<b>核心域只接内部算力，办公/支撑域可接外部，且支撑域 router 可级联核心域 router 借内部算力</b>；每域独占 Key</td></tr>
 <tr><td>''' + repo('moss') + ''' · 中控/控制平面</td><td><b>武鹏</b></td><td>企业 IAM/registry/triggers/cron/channels/wiki；agent 身份/session/registry 与 <b>nexus merge</b> 做 client（不复制 SSOT）；容器执行已上移 k8s+gvisor</td></tr>
 <tr><td>''' + repo('shareone') + ''' · 协同/验收</td><td>孙文龙</td><td>standalone + 在 sudowork/sudocode 内嵌端到端丝滑；签名交付</td></tr>
-<tr><td rowspan="3"><b>Sudo Cloud</b><br>我们托管·同一 Atlas 平台<br>owner 铁锋<br>repo ''' + repo('sudocloud') + '''</td>
+<tr><td>''' + repo('sudocompute') + ''' · 内部 GPU / 推理（planned，可选）</td><td>待定</td><td>复用合格模型配方；客户网络放置与现场验收保留在 Private</td></tr>
+<tr><td rowspan="4"><b>Sudo Cloud</b><br>我们托管·同一 Atlas 平台<br>owner 铁锋<br>repo ''' + repo('sudocloud') + '''</td>
     <td>= Atlas 全部 base（同源装配：sudocode/nexus/moss/shareone）</td><td>—</td><td><b>先在腾讯云跑通</b>完整搭建演练，立即可 demo</td></tr>
 <tr><td>SudoRouter：公有云<b>直接用 <a href="https://sudorouter.ai/">sudorouter.ai</a></b></td><td>张帅</td><td>公有云模型出口；更强模型 / 三方数据</td></tr>
 <tr><td>+ ''' + repo('sudochat') + ''' 多租户 · ''' + repo('sudoevolve') + ''' 验收</td><td>待定</td><td>多租户会话隔离；Rubric 打分与验收裁决</td></tr>
+<tr><td>''' + repo('sudocompute') + ''' · 自有 GPU 推理池（planned，可选）</td><td>待定</td><td>按需复用 GPU / 模型服务能力；外部模型渠道不要求安装</td></tr>
 <tr><td rowspan="4"><b>SudoEdge</b><br>盒子/离线<br>owner Joe<br>repo ''' + repo('sudoedge') + '''</td>
     <td>Atlas（整体，盒内）</td><td>铁锋</td><td>air-gap 完整交付；SudoFDE 盒内不对外</td></tr>
 <tr><td>''' + repo('sudowork') + '''（盒内 UI）</td><td>Joe</td><td>盒内 UI 可用</td></tr>
 <tr><td>本域 SudoRouter（''' + repo('nova-gateway') + '''）</td><td>张帅</td><td>盒内模型出口，随盒子所在域策略</td></tr>
-<tr><td><b>GPU stack · 本地 GPU 算力</b>（盒内自带 DGX/推理卡；SudoRouter 路由到它用内部算力）</td><td>待定</td><td>本地推理吞吐/利用率；断网可跑本地模型</td></tr>
+<tr><td>''' + repo('sudocompute') + ''' · 合格单机 GPU 配方（planned）；当前 GPUStack 链路保留</td><td>待定</td><td>复用 GPU 验收与推理配方；设备启动恢复、联网与实机验收归 Edge</td></tr>
 <tr><td rowspan="2"><b>横向层</b></td>
     <td>''' + repo('sudowork') + ''' · SudoWork 纯 UI</td><td>Joe</td><td>纯 UI（任务/Team/Trace）；Harness=sudocode；内置 ai-dev-browser 工具</td></tr>
 <tr><td>SudoGenius · Agent 集</td><td>各作者（FDE=雪涛）</td><td>领域包：本体/规则/资产/eval + 可跑的 eval</td></tr>
@@ -65,6 +74,7 @@ BODY = '''
 <tr><td><b>多租户控制平面</b></td><td>''' + repo('moss') + '''（身份/token 与 nexus merge）</td><td>moss 真正价值：企业 IAM/orgs/角色/api-key、agentStore 租户注册+审批、event-triggers+cron、channels、wiki/文档、secrets。≈ 早期 Atlas</td></tr>
 <tr><td><b>引擎</b></td><td>''' + repo('sudocode') + '''</td><td>每租户 worker</td></tr>
 <tr><td><b>jail + 调度</b></td><td><b>k8s + gvisor</b></td><td>统一取代 moss 的 docker-CLI、sudochat 的 dockerode、hydra 的 tmux —— 三个各自造的弱 jail</td></tr>
+<tr><td><b>GPU / 模型推理（可选，planned）</b></td><td>''' + repo('sudocompute') + ''' 复用 GPUStack / vLLM / SGLang</td><td>独立于 Agent CPU Pod；每 GPU 池一个分配 owner；现场接入与版本限定待验证</td></tr>
 <tr><td><b>headless spawn / supervise</b></td><td>sudowork ACP + ''' + repo('nexus','nexi-lab') + ''' <code>start_session</code></td><td>hydra 自己文档 §8.2 也是这么分工的</td></tr>
 <tr><td><b>A2A（若需要）</b></td><td>''' + repo('nexus','nexi-lab') + '''-vfs mailbox</td><td>不是 hydra；hydra 只是消费 nexus 的 mailbox</td></tr>
 <tr><td><b>多租户 chatbot 模态</b></td><td>''' + repo('sudochat') + ''' 聊天经纪层（去掉 dockerode）</td><td>坐在上面的前端层（会话/SSE/每租户 prompt·wiki·skill）</td></tr>
@@ -189,15 +199,15 @@ interface TaskExecutionResolution {
 <li><b>Phase D</b>：完整企业治理 + 数据飞轮 —— 委派 DID、撤销/轮换、后训练闭环（Verify+Event-Trace）。</li>
 </ul>
 
-<p class="foot-note">系统架构说明书 v2.2 · 基于武鹏 v1.4 + agent-context-storage-matrix + nexus-auth-architecture + v4.4 命名口径 · 落 sudoprivacy/sudostack · sudowork-win-pc-3</p>
+<p class="foot-note">系统架构说明书 v2.3 · 基于武鹏 v1.4 + agent-context-storage-matrix + nexus-auth-architecture + v4.4 命名口径；2026-11-14 补充 SudoCompute 计划装配关系 · 落 sudoprivacy/sudostack</p>
 '''
 
-BODY = BODY.replace('__DEPLOY__', deploy_svg).replace('__CONS__', cons_svg)
+BODY = BODY.replace('__DEPLOY__', deploy_svg).replace('__COMPUTE__', compute_svg).replace('__CONS__', cons_svg)
 
 TPL = '''<!doctype html>
 <html lang="zh-CN"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sudo 系统架构说明书 v2.2</title><base target="_blank">
+<title>Sudo 系统架构说明书 v2.3</title><base target="_blank">
 <style>
 :root{--bg:#0f141b;--panel:#161d27;--panel2:#1b2430;--text:#e6edf5;--muted:#9fb0c3;--line:#2a3644;--accent:#6ea8fe;--green:#4ade80;--gold:#e0a94b;}
 *{box-sizing:border-box;}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;font-size:16px;}

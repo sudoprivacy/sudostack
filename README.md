@@ -144,7 +144,7 @@ flowchart LR
 |---|---|
 | **Platform** | **Sudo Atlas** —— 服务端平台本身（moss 控制平面 + sudocode 引擎 + nexus 身份/状态 + SudoRouter） |
 | **Mega-product**（面向客户的**托管形态**，同源） | Sudo Cloud（我们托管 · 公有云）· Sudo Private（客户自建 · 内网）· SudoEdge（盒子/离线） |
-| **Base product**（底层 repo，被复用） | sudocode · nexus(+nexus-vfs, `nexi-lab`) · nova-gateway(=SudoRouter) · moss(中控) · hydra(编排/调度) · shareone · ai-dev-browser · password-agent |
+| **Base product**（底层 repo，被复用） | sudocode · nexus(+nexus-vfs, `nexi-lab`) · nova-gateway(=SudoRouter) · moss(中控) · hydra(编排/调度) · shareone · ai-dev-browser · password-agent · **sudocompute（GPU / 推理集成，planned）** |
 | **UI** | SudoWork（纯 UI，repo `sudowork`，Harness=sudocode） |
 | **Agent 集** | SudoGenius（领域包：本体/规则/资产/eval） |
 
@@ -176,6 +176,9 @@ flowchart TB
   EDGE["sudoedge<br/>盒子 / 离线 · DGX"]
 
   STACK["<b>sudostack</b><br/>共享 deploy spine · 装配 · 跨家族架构 SSOT"]
+  COMPUTE["sudocompute · planned Base product<br/>GPU fleet · 推理配方 · 计算验收与运维"]
+  GPUSTACK["GPUStack · 复用候选<br/>GPU 分配 / 模型生命周期"]
+  INFERENCE["vLLM / SGLang<br/>模型推理执行"]
 
   subgraph BASE["Base 产品 — 被 Mega 复用装配"]
     direction LR
@@ -198,8 +201,38 @@ flowchart TB
   PRIVATE -->|引用共享 spine / SSOT| STACK
   EDGE -->|引用共享 spine / SSOT| STACK
   STACK -->|装配复用| BASE
+  STACK -.->|自管 GPU profile 按需装配 · planned| COMPUTE
+  COMPUTE -.->|复用管理组件 · 待验证| GPUSTACK
+  COMPUTE -.->|限定版本与配方 · 待验证| INFERENCE
   STACK -.->|运行时拉取| PACKS
 ```
+
+图中 `sudocompute` 的虚线表示计划集成，尚无已接通的部署依赖；
+共享产品边界见下节。GPUStack 与推理引擎保留各自职责。
+
+## GPU compute and inference
+
+[`sudocompute`](https://github.com/sudoprivacy/sudocompute) 是计划由 Cloud、
+Private、Edge **按需复用**的 GPU / 推理基础组件。仓库目前私有，已实现静态配置/
+容量规划与只读本机 GPU 信息采集；现场接入、版本限定、部署适配与真实推理验收仍待完成。
+
+| Owner | Responsibility |
+|---|---|
+| `sudocompute` | 可复用的 GPU 集群验收、合格模型/引擎配方与计算运维集成 |
+| GPUStack / selected fleet manager | 选定部署模式下的 GPU 分配与模型生命周期；每个 GPU 池只有一个分配 owner |
+| vLLM / SGLang | 模型推理执行；具体版本、并行布局与精度需要验证 |
+| SudoRouter | 客户侧模型访问、路由、Key、配额与用量；消费合格的推理 endpoint |
+| `sudostack` | 跨产品装配、兼容版本组合与交付证据 |
+| `sudocloud` / `sudoprivate` / `sudoedge` | 托管、客户内网或设备的配置、放置与各自验收 |
+
+Cloud 可选择自有 GPU 推理池或外部模型渠道；Private 按客户网络策略接内部推理池；
+Edge 计划复用合格的单机配置，保留设备联网、启动恢复与现场运维职责。
+仅使用外部模型的 profile 不要求安装 SudoCompute。SudoCompute 也可独立交付给算力中心，
+不以完整 Atlas 平台为前提。
+
+这里的 GPU / 模型推理资源与 Agent 会话所在的 CPU VM、gVisor Pod 是不同层次。
+现有 Edge 的 `SudoRouter → GPUStack → 本地模型` 链路仍是其实际验收对象。
+本节记录目标装配关系（`enforced_by: none`），并未新增 submodule、release pin 或部署动作。
 
 ## 装配清单（profile）
 
@@ -221,6 +254,10 @@ flowchart LR
   SPINE ==> CLOUD2["<b>Sudo Cloud</b> · 公有云<br/>＋ 多租户<br/>＋ 编排脑<br/>＋ 三方接入"]
   SPINE ==> PRIVATE2["<b>Sudo Private</b> · 客户自建<br/>＋ 私有化 ShareOne<br/>＋ 内网身份对接"]
   SPINE ==> EDGE2["<b>SudoEdge</b> · 盒子<br/>＋ 本地 GPU 栈<br/>＋ 自签信任域 CA_B<br/>＋ 随盒 ShareOne<br/>＋ FDE 工具箱"]
+  COMPUTE2["sudocompute · planned<br/>可选 GPU / 推理组件 · 经 sudostack 装配"]
+  CLOUD2 -.->|自有 GPU 时按需选用| COMPUTE2
+  PRIVATE2 -.->|内部 GPU 时按需选用| COMPUTE2
+  EDGE2 -.->|复用合格单机配方| COMPUTE2
 ```
 
 盒子形态刻意**不含 hydra 与多租户** —— 前者是开发期编排、后者是云侧租户隔离，都不进交付物。离线形态不是第四个产品，是 SudoEdge 这份清单关掉出站协作后的同一份装配。
@@ -239,6 +276,7 @@ flowchart LR
 ```
 base/sudocode        base/nova-gateway    base/moss        base/hydra
 base/shareone        base/ai-dev-browser  base/password-agent
+base/sudocompute     # planned optional GPU/inference component; not pinned yet
 mega/sudocloud      mega/sudoprivate    mega/sudoedge
 ui/sudowork
 ```
