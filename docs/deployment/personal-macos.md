@@ -46,7 +46,9 @@ Preparation can install/start native services through the existing owner;
 `doctor` does not install, start or enroll them. It diagnoses the deployment
 workspace (or the bundle when no workspace exists), independent of the caller's
 current project. Repeated bootstrap retains the
-account files and refuses a different installed CLI version. The setup wizard
+account files and checks the exact architecture-specific executable SHA-256
+before executing it, including an already installed file. Equal version strings
+do not make different source builds interchangeable. The setup wizard
 asks explicitly before replacing existing configuration and preserves backups.
 The launcher uses workspace-scoped permissions, without root or blanket approvals.
 macOS privacy approvals and Xcode authorization remain operating-system actions.

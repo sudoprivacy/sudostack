@@ -55,6 +55,21 @@ verify_bundle() {
 }
 need_binary() {
   [ -x "$SCODE" ] || { echo 'Run bootstrap first.' >&2; exit 1; }
+  verify_bundle
+  # Version strings can be identical for a release and a feature source build.
+  # Check the selected executable before invoking any of its commands.
+  . "$BUNDLE/release.env"
+  case "$(uname -m)" in
+    x86_64) EXPECTED_SHA="$SCODE_SHA256_X64" ;;
+    arm64|aarch64) EXPECTED_SHA="$SCODE_SHA256_ARM64" ;;
+    *) echo 'Unsupported Mac architecture.' >&2; exit 1 ;;
+  esac
+  ACTUAL_SHA="$(shasum -a 256 "$SCODE" | awk '{print $1}')"
+  [ "$ACTUAL_SHA" = "$EXPECTED_SHA" ] || {
+    echo 'The existing CLI differs from the pinned release executable.' >&2
+    echo 'An explicit owner upgrade is required; nothing has been replaced.' >&2
+    exit 1
+  }
 }
 configure() {
   verify_bundle
@@ -89,6 +104,7 @@ case "$ACTION" in
     # shellcheck source=/dev/null
     . "$BUNDLE/release.env"
     if [ -e "$SCODE" ]; then
+      need_binary
       ACTUAL="$("$SCODE" --version)"
       [ "$ACTUAL" = "scode ${SCODE_VERSION#v}" ] || {
         echo "Existing binary differs from the pinned release: $ACTUAL" >&2
@@ -98,6 +114,7 @@ case "$ACTION" in
     else
       SCODE_INSTALL_DIR="$ROOT/bin" SCODE_VERSION="$SCODE_VERSION" SCODE_MIRROR="$SCODE_MIRROR" \
         /bin/sh "$BUNDLE/install.sh" --no-sudo
+      need_binary
     fi
     if [ ! -f "$SUDO_CODE_CONFIG_HOME/sudocode.json" ] || [ ! -f "$SUDO_CODE_CONFIG_HOME/settings.json" ]; then
       configure
