@@ -14,7 +14,7 @@ for (const [name, expected] of Object.entries(manifest.files)) {
   assert.equal(createHash('sha256').update(bytes).digest('hex'), expected.sha256, name);
 }
 const sdk = require(path.join(config.sdk, 'dist/index.cjs'));
-const owned = new Set(), inbox = new Map(), errors = [], wire = [];
+const owned = new Set(), inbox = new Map(), errors = [], wire = [], httpRequests = [];
 let model, modelCalls = 0;
 function save(file, value) {
   fs.writeFileSync(file, JSON.stringify(value, null, 2) + '\n', {mode: 0o600});
@@ -23,7 +23,7 @@ async function open(actor, resume) {
   const file = path.join(config.root, actor.name + '.profile.json');
   const profile = resume ? JSON.parse(fs.readFileSync(file, 'utf8')) : {
     workspace: actor.workspace, env: actor.env,
-    scodeArgv: [config.scode, '--auth', 'api-key', '--account', 'anthropic', '--model', 'sonnet',
+    scodeArgv: [config.scode, '--auth', 'api-key', '--account', 'anthropic', '--model', 'private-fixture',
       '--permission-mode', 'workspace-write', '--allowedTools', 'agent_list', '--allowedTools', 'send', 'acp'],
     stderrLog: path.join(config.output, actor.name + '.stderr.log')};
   const messages = [];
@@ -69,13 +69,21 @@ async function received(actor, sender, body) {
 }
 async function main() {
   model = http.createServer((request, response) => {
-    modelCalls++;
-    response.writeHead(503); response.end('{}');
+    httpRequests.push({method: request.method, path: request.url});
+    if (request.method === 'GET' && request.url === '/v1/models') {
+      response.writeHead(200, {'content-type': 'application/json'});
+      response.end('{"data":[]}');
+    } else {
+      modelCalls++;
+      response.writeHead(503); response.end('{}');
+    }
   });
   await new Promise(resolve => model.listen(0, '127.0.0.1', resolve));
   for (const actor of config.actors) {
     save(path.join(actor.configHome, 'sudocode.json'), {auth_modes: {'api-key': {
-      anthropic: {baseUrl: `http://127.0.0.1:${model.address().port}`, apiKey: 'fixture-no-inference'}}}});
+      anthropic: {baseUrl: `http://127.0.0.1:${model.address().port}`, apiKey: 'fixture-no-inference'}}},
+      models: {'private-fixture': {alias: 'private-fixture', name: 'Private no-inference fixture',
+        input: ['text'], providers: {'api-key': {provider: 'anthropic', model: 'claude-sonnet-4-6'}}}}});
   }
   const [a, b] = config.actors;
   const sender = await open(a, phase !== 'initial');
@@ -95,15 +103,15 @@ async function main() {
     await received(b.name, a.name, 'OFFLINE ' + body);
   }
   await close(receiver); await close(sender);
-  assert.equal(modelCalls, 0, 'Native enrollment/A2A/resume must not invoke a model');
+  assert.equal(modelCalls, 0, 'Native enrollment/A2A/resume must not invoke a model: ' + JSON.stringify(httpRequests));
   assert(!wire.some(row => row.direction === 'outgoing' && row.message?.method === 'session/prompt'));
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({success: true, phase, authenticatedBidirectionalMessages: true,
     receiverOfflineDelivery: phase === 'initial', originalSessionIdsLoaded: phase !== 'initial',
-    modelCalls, sdkSource: manifest.sourceCommit}));
+    modelCalls, catalogReads: httpRequests.length, sdkSource: manifest.sourceCommit}));
 }
 main().catch(error => {console.error(error); process.exitCode = 1;}).finally(async () => {
   await Promise.allSettled([...owned].map(connection => connection.close()));
   if (model) await new Promise(resolve => model.close(resolve));
-  save(path.join(config.output, phase + '.protocol.json'), {wire, errors, modelCalls});
+  save(path.join(config.output, phase + '.protocol.json'), {wire, errors, modelCalls, httpRequests});
 });

@@ -87,8 +87,9 @@ python tools/deploy/private_agents_acceptance.py \
 
 The journey grants two exact workspaces, creates separate native credentials,
 checks authenticated bidirectional messages and receiver-offline delivery, then
-restarts its own TLS Node and loads the saved ACP session IDs. Model traffic is
-redirected to a refusing loopback endpoint and must remain zero. The private
+restarts its own TLS Node and loads the saved ACP session IDs. Provider traffic
+uses a loopback endpoint: catalog reads are recorded, inference is refused and
+inference requests must remain zero. The private
 fixture's Node records never replace the operating-system user's record.
 Receipts, protocol and process logs survive; only fixture keys and databases are
 removed. A passing fixture does not qualify product enrollment, OS startup,
