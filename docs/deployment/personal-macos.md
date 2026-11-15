@@ -43,7 +43,9 @@ Do not bypass Gatekeeper or describe this candidate as the official download.
 
 `configure`, `prepare`, `doctor` and `run` are separate resumable actions.
 Preparation can install/start native services through the existing owner;
-`doctor` does not install, start or enroll them. Repeated bootstrap retains the
+`doctor` does not install, start or enroll them. It diagnoses the deployment
+workspace (or the bundle when no workspace exists), independent of the caller's
+current project. Repeated bootstrap retains the
 account files and refuses a different installed CLI version. The setup wizard
 asks explicitly before replacing existing configuration and preserves backups.
 The launcher uses workspace-scoped permissions, without root or blanket approvals.

@@ -65,13 +65,20 @@ prepare() {
   "$SCODE" setup --mode shared --output-format json
   echo 'Runtime preparation is not authenticated Agent enrollment or A2A acceptance.'
 }
-doctor() {
+doctor() (
   need_binary
+  # Diagnose the deployment, not an unrelated project in the caller's directory.
+  # Keep diagnostics read-only when the workspace has not been created yet.
+  if [ -d "$ROOT/workspace" ]; then
+    cd "$ROOT/workspace"
+  else
+    cd "$BUNDLE"
+  fi
   "$SCODE" --version
   "$SCODE" setup --check --output-format json
   "$SCODE" --auth proxy --account sudorouter doctor
   echo 'Inspect pending authentication and perform the live task/restart checks in PROFILE.md.'
-}
+)
 
 case "$ACTION" in
   bootstrap)
