@@ -22,14 +22,22 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('nexus-repo', 'sdk', 'scode', 'daemon', 'operator', 'output'):
         parser.add_argument('--' + name, type=Path, required=True)
+    for name in ('scode', 'daemon', 'operator'):
+        parser.add_argument('--' + name + '-sha256', required=True)
+    parser.add_argument('--daemon-source', required=True)
     args = parser.parse_args()
+    for name in ('scode', 'daemon', 'operator'):
+        assert digest(getattr(args, name)) == getattr(args, name + '_sha256'), name + ' artifact differs'
     spec = importlib.util.spec_from_file_location('native_enrollment',
         args.nexus_repo / 'scripts/e2e/operator_agent_enrollment.py')
     native = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(native)
     fixture = native.Journey(args)
     fixture.proof.update(journey='private-named-agents', scodeSha256=digest(args.scode),
-                         sdkManifestSha256=digest(args.sdk / 'manifest.json'))
+                         sdkManifestSha256=digest(args.sdk / 'manifest.json'),
+                         daemonSource=args.daemon_source,
+                         assemblyRunnerSha256=digest(__file__),
+                         assemblyDriverSha256=digest(Path(__file__).with_suffix('.cjs')))
     # Only this fixture's subprocesses receive the isolated discovery/config.
     environment = {key: value for key, value in os.environ.items() if key.upper() in {
         'PATH', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'PATHEXT', 'TEMP', 'TMP',

@@ -79,7 +79,10 @@ python tools/deploy/private_agents_acceptance.py \
   --nexus-repo /absolute/nexus-vfs \
   --sdk /absolute/sudocode/sdk/typescript \
   --scode /absolute/scode --daemon /absolute/nexusd-cluster \
-  --operator /absolute/nexus-agent-enroll --output /absolute/fresh/evidence
+  --operator /absolute/nexus-agent-enroll \
+  --scode-sha256 SCODE_SHA256 --daemon-sha256 DAEMON_SHA256 \
+  --operator-sha256 OPERATOR_SHA256 --daemon-source DAEMON_SOURCE_COMMIT \
+  --output /absolute/fresh/evidence
 ```
 
 The journey grants two exact workspaces, creates separate native credentials,
