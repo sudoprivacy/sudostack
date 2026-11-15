@@ -53,10 +53,10 @@ def main():
     provenance = {'qualification': 'candidate', 'deploymentVerified': False,
                   'profileCommit': args.profile_commit, 'stackCommit': args.stack_commit,
                   'setupCommit': lock['setup']['commit'], 'scodeVersion': lock['scode']['version']}
-    (args.output / 'provenance.json').write_text(json.dumps(provenance, indent=2) + '\n', encoding='utf-8')
+    (args.output / 'provenance.json').write_text(json.dumps(provenance, indent=2) + '\n', encoding='utf-8', newline='\n')
     names = sorted(path.name for path in args.output.iterdir())
     (args.output / 'SHA256SUMS').write_text(''.join(
-        checksum(args.output / name) + '  ' + name + '\n' for name in names), encoding='utf-8')
+        checksum(args.output / name) + '  ' + name + '\n' for name in names), encoding='utf-8', newline='\n')
     for name in names:
         (args.output / name).chmod(0o755 if name.endswith(('.sh', '.command')) else 0o600)
     print('Staged candidate only: ' + str(args.output))
