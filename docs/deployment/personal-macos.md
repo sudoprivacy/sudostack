@@ -17,6 +17,9 @@ under `~/.local/share/sudoprivate/personal-macos`. It does not edit the user's
 default SudoCode account files or shell startup. Native service ownership remains
 shared with existing frontends. `SUDO_PRIVATE_HOME` can select another dedicated
 absolute directory; it does not isolate the operating-system user's Nexus identity.
+The path is resolved before mutation. HOME and its parents, symlink roots and
+existing directories owned by another user are refused. A trailing slash does
+not bypass those checks.
 
 ## Stage an engineering candidate
 

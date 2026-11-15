@@ -16,7 +16,28 @@ case "$ACTION" in bootstrap|configure|prepare|doctor|run) ;; *) echo 'Unknown ac
 BUNDLE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="${SUDO_PRIVATE_HOME:-$HOME/.local/share/sudoprivate/personal-macos}"
 case "$ROOT" in /*) ;; *) echo 'SUDO_PRIVATE_HOME must be absolute.' >&2; exit 1 ;; esac
-[ "$ROOT" != / ] && [ "$ROOT" != "$HOME" ] && [ ! -L "$ROOT" ] || { echo 'Choose a dedicated, non-symlink deployment directory.' >&2; exit 1; }
+while [ "$ROOT" != / ] && [ "${ROOT%/}" != "$ROOT" ]; do ROOT="${ROOT%/}"; done
+[ ! -L "$ROOT" ] || { echo 'Choose a non-symlink deployment directory.' >&2; exit 1; }
+# Resolve existing ancestors before rejecting HOME and its parents. This also
+# handles a nonexistent leaf under a symlinked macOS /tmp or user directory.
+resolve_directory() {
+  local ancestor="$1" suffix="" leaf
+  while [ ! -d "$ancestor" ]; do
+    [ ! -e "$ancestor" ] && [ ! -L "$ancestor" ] || return 1
+    leaf="$(basename "$ancestor")"
+    case "$leaf" in .|..|/) return 1 ;; esac
+    suffix="/$leaf$suffix"
+    ancestor="$(dirname "$ancestor")"
+  done
+  (cd "$ancestor" && printf '%s%s\n' "$(pwd -P)" "$suffix")
+}
+ROOT="$(resolve_directory "$ROOT")" || { echo 'Invalid deployment directory.' >&2; exit 1; }
+USER_HOME="$(cd "$HOME" && pwd -P)"
+case "$ROOT" in /) echo 'Choose a dedicated deployment directory.' >&2; exit 1 ;; esac
+case "$USER_HOME/" in "$ROOT/"*) echo 'The deployment directory cannot be HOME or one of its parents.' >&2; exit 1 ;; esac
+if [ -d "$ROOT" ] && [ "$(stat -f '%u' "$ROOT")" != "$EUID" ]; then
+  echo 'The existing deployment directory must belong to the desktop user.' >&2; exit 1
+fi
 for name in bin config workspace; do
   [ ! -L "$ROOT/$name" ] || { echo "Refusing symlink: $ROOT/$name" >&2; exit 1; }
 done
