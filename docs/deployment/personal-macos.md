@@ -162,3 +162,28 @@ and both Agents' actual messages and original ACP sessions. Only its own Node
 and service owner are stopped; receipts survive fixture cleanup. This is the
 integration gate for the activation entry, separate from public package and
 first-founder installation acceptance.
+
+## Fresh founder handoff
+
+`private_node_bootstrap.py --declaration PRIVATE.json --bash /bin/bash` adds
+the first-founder step on POSIX hosts. The declaration also pins
+`launcherSha256` and `launcherCommonSha256` for Nexus's existing
+`scripts/cluster/start-founder.sh` and `start-common.sh`. Data and identity may
+initially be absent; their parent deployment root must already exist and be
+owned by the desktop user. The entry refuses an unrelated existing Node or
+changed declaration, and an OS file lock serializes installer attempts.
+
+The bounded installer starts the native founder, enrolls and publishes through
+the activation entry, stops only that initial child, and restores the same Node
+through SudoCode's registered owner. It adds no resident process or supervisor.
+Retries preserve the original data, identity, grant and operation claims.
+Native initial logs are private because they can contain enrollment tokens.
+Windows fresh bootstrap is explicitly unsupported here: Git Bash does not
+provide POSIX process replacement semantics for native child termination.
+Windows prepared-Node activation remains separately testable.
+
+Add `--bootstrap-bash /bin/bash` to `private_activation_acceptance.py` to exercise
+the fresh entry, owner handoff, repeated activation and recovery with real
+messages. This engineering entry still needs qualified package artifacts,
+runtime bundling, OS startup, Apple Silicon qualification and signing before it
+can replace `Start.command`'s current preparation action.

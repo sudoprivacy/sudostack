@@ -18,6 +18,8 @@ def main():
                         help='Exact binary/source pins; fixture substitutes placement paths only')
     parser.add_argument('--sdk', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--bootstrap-bash', type=Path,
+                        help='Exercise fresh founder installation through the native POSIX launcher')
     args = parser.parse_args()
     spec = json.loads(args.declaration.read_bytes())
     for name in ('scode', 'daemon', 'operator', 'grpcurl'):
@@ -47,11 +49,47 @@ def main():
         'PATH', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'PATHEXT', 'TEMP', 'TMP', 'SYSTEMDRIVE'}}
     fixture.node.env = env | {key: value for key, value in fixture.node.env.items() if key.startswith('NEXUS_')}
     fixture.node.env.update(HOME=str(home), USERPROFILE=str(home), NEXUS_HOSTNAME='localhost', RUST_LOG='info')
+    def stop_owner(label):
+        owner = deployment / 'service-owner'
+        profile = json.loads((owner / 'run/local-box.json').read_bytes())
+        stopped = subprocess.run([spec['scode']['path'], 'service', 'stop-local-box',
+            '--owner-root', str(owner), '--node-id', profile['nodeId'],
+            '--binary-sha256', profile['binarySha256'], '--acknowledge-shared-outage'],
+            env=env | {'HOME': str(home), 'USERPROFILE': str(home)}, cwd=fixture.root,
+            capture_output=True, timeout=90)
+        (fixture.output / (label + '.stdout.log')).write_bytes(stopped.stdout)
+        (fixture.output / (label + '.stderr.log')).write_bytes(stopped.stderr)
+        return stopped.returncode == 0
+
+    activate = run
+    if args.bootstrap_bash:
+        from private_node_bootstrap import bootstrap
+        activate = lambda declaration: bootstrap(declaration, args.bootstrap_bash)
+        fixture.proof['bootstrapSha256'] = digest(Path(__file__).with_name('private_node_bootstrap.py'))
     try:
-        fixture.node.start()
-        first = run(spec)
-        assert first['activated'] and first['publication'] == 'published'
-        assert first['owner']['managed'] is False
+        if args.bootstrap_bash:
+            managed = True
+            from unittest.mock import patch
+            # Interrupt after real founder readiness, before credential issuance.
+            # The installer must stop its own child and resume the same identity.
+            with patch('private_node_bootstrap.run', side_effect=RuntimeError('injected pre-activation interruption')):
+                try:
+                    activate(spec)
+                except RuntimeError as error:
+                    assert str(error) == 'injected pre-activation interruption'
+                else:
+                    raise AssertionError('Interruption was not exercised')
+            identity_files = [fixture.data / name for name in ('.node_id', 'tls/ca.pem', 'tls/node.pem')]
+            identity_before = [digest(path) for path in identity_files]
+        else:
+            fixture.node.start()
+        first = activate(spec)
+        assert first['activated']
+        assert first['owner']['managed'] is bool(args.bootstrap_bash)
+        fixture.proof['freshFounderNativeHandoff'] = bool(args.bootstrap_bash)
+        if args.bootstrap_bash:
+            assert identity_before == [digest(path) for path in identity_files]
+            fixture.proof['interruptedFounderRetryPreservesIdentity'] = True
         fixture.proof['realMintAgentRpc'] = True
         activation = deployment / 'activation'
         before = {str(path.relative_to(activation)): digest(path)
@@ -66,7 +104,7 @@ def main():
             else:
                 changed['hostname'] = 'another-host'
             try:
-                run(changed)
+                activate(changed)
             except ValueError as error:
                 refusals.append({'case': label, 'error': str(error)})
             else:
@@ -76,7 +114,7 @@ def main():
         fixture.proof['refusedChangesWithoutEnrollment'] = refusals
         hashes = {str(path.relative_to(fixture.data)): digest(path)
                   for path in (fixture.data / 'agents').rglob('*') if path.is_file()}
-        second = run(spec)
+        second = activate(spec)
         assert second['publication'] == 'already-published' and second['actors'] == first['actors']
         assert hashes == {name: digest(fixture.data / name) for name in hashes}
         fixture.proof['idempotentNativeActivation'] = True
@@ -92,9 +130,12 @@ def main():
         for phase in ('initial', 'node-restart'):
             fixture.proof['stage'] = phase
             if phase == 'node-restart':
-                fixture.node.stop()
+                if args.bootstrap_bash:
+                    assert stop_owner('stop-before-recovery')
+                else:
+                    fixture.node.stop()
                 managed = True
-                restored = run(spec)
+                restored = activate(spec)
                 assert restored['owner']['managed'] and restored['actors'] == first['actors']
                 assert hashes == {name: digest(fixture.data / name) for name in hashes}
                 fixture.proof['activationRestoresOriginalOwner'] = True
@@ -106,20 +147,11 @@ def main():
             assert result.returncode == 0, result.stderr.decode(errors='replace')
             fixture.proof[phase] = json.loads(result.stdout)
         fixture.proof.update(success=True, stage='complete', credentialsUnchanged=True,
-                             limits=['prepared native Node; factory/bootstrap package not qualified',
+                             limits=['engineering entry; signed distribution package not qualified',
                                      'fixture accounts; no real model inference, OS login or roaming'])
     finally:
-        if managed:
-            owner = deployment / 'service-owner'
-            profile = json.loads((owner / 'run/local-box.json').read_bytes())
-            stopped = subprocess.run([spec['scode']['path'], 'service', 'stop-local-box',
-                '--owner-root', str(owner), '--node-id', profile['nodeId'],
-                '--binary-sha256', profile['binarySha256'], '--acknowledge-shared-outage'],
-                env=env | {'HOME': str(home), 'USERPROFILE': str(home)}, cwd=fixture.root,
-                capture_output=True, timeout=90)
-            (fixture.output / 'stop-owner.stdout.log').write_bytes(stopped.stdout)
-            (fixture.output / 'stop-owner.stderr.log').write_bytes(stopped.stderr)
-            if stopped.returncode != 0:
+        if managed and (deployment / 'service-owner/run/local-box.json').exists():
+            if not stop_owner('stop-owner'):
                 fixture.proof.update(success=False, cleanup='Owner stop unconfirmed; private state retained')
                 (fixture.output / 'receipt.json').write_text(json.dumps(fixture.proof, indent=2))
                 raise RuntimeError('Owned service stop was not confirmed; state retained')
@@ -131,6 +163,11 @@ def main():
         for directory in activation.glob('run-*'):
             target = fixture.output / 'activation' / directory.name
             shutil.copytree(directory, target)
+        for source in activation.glob('bootstrap-*.log'):
+            # Native initial logs can contain enrollment tokens: retain privately.
+            target = fixture.output / 'bootstrap-private'
+            target.mkdir(mode=0o700, exist_ok=True)
+            shutil.copy2(source, target / source.name)
         fixture.finish()
 
 

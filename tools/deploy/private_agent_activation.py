@@ -27,8 +27,8 @@ def write_new(path, value):
         os.fsync(stream.fileno())
 
 
-def run(spec):
-    """Consume the package's reviewed, exact artifact/placement declaration."""
+def validate(spec, fresh=False):
+    """Validate placement and pins before creating native deployment state."""
     if spec.get('schemaVersion') != 1:
         raise ValueError('Unsupported private activation declaration')
     paths = {}
@@ -36,19 +36,22 @@ def run(spec):
         value = Path(spec[name])
         if not value.is_absolute() or value.is_symlink():
             raise ValueError('An absolute non-symlink path is required: ' + name)
-        paths[name] = value.resolve(strict=True)
+        paths[name] = value.resolve(strict=not (fresh and name in ('dataDir', 'identityDir')))
     root, home, data = paths['root'], paths['home'], paths['dataDir']
     if root == home or root in home.parents or root == Path(root.anchor):
         raise ValueError('Choose a dedicated deployment root')
     for directory in (home / '.nexus', home / '.nexus/run'):
         if directory.is_symlink():
             raise ValueError('Refusing redirected Node discovery')
-    if os.name != 'nt' and any(paths[name].stat().st_uid != os.getuid()
+    if os.name != 'nt' and any(paths[name].exists() and paths[name].stat().st_uid != os.getuid()
                               for name in ('root', 'home', 'dataDir', 'identityDir')):
         raise ValueError('The deployment and Node must belong to the current OS user')
     for name in ('dataDir', 'identityDir'):
         if root not in paths[name].parents:
             raise ValueError('Only this deployment owns the selected Node: ' + name)
+    identity = paths['identityDir']
+    if identity == data or identity in data.parents or data in identity.parents:
+        raise ValueError('Node data and identity require separate persistent directories')
     binaries = {}
     for name in ('scode', 'daemon', 'operator', 'grpcurl'):
         value = spec[name]
@@ -72,6 +75,25 @@ def run(spec):
         raise ValueError('Refusing redirected Node discovery')
     if discovery.exists() and json.loads(discovery.read_bytes()) != record:
         raise ValueError('Another Node is selected; its owner must handle reuse explicitly')
+    return paths, binaries
+
+
+def environment(home, root):
+    env = {key: value for key, value in os.environ.items() if key.upper() in {
+        'PATH', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'PATHEXT', 'TEMP', 'TMP', 'SYSTEMDRIVE'}}
+    env.update(HOME=str(home), USERPROFILE=str(home), SUDO_CODE_CONFIG_HOME=str(root / 'config'),
+               SCODE_SERVICE_ROOT=str(root / 'service-owner'))
+    return env
+
+
+def run(spec):
+    """Consume the package's reviewed, exact artifact/placement declaration."""
+    paths, binaries = validate(spec)
+    root, home, data = paths['root'], paths['home'], paths['dataDir']
+    endpoint = spec['endpoint']
+    discovery = home / '.nexus/run/node.json'
+    publisher = paths['publisherRepo'] / 'scripts/cluster/publish-node-record.py'
+    proto = paths['nexusRepo'] / 'proto/nexus/grpc/vfs/vfs.proto'
     owner = root / 'service-owner'
     for relative in ('activation', 'config', 'workspaces', 'service-owner'):
         directory = root / relative
@@ -89,10 +111,8 @@ def run(spec):
         write_new(declaration, spec)
     # Same-user installer retry reuses the native operator's original claims.
     # The operator itself serializes issuance and refuses Unknown outcomes.
-    env = {key: value for key, value in os.environ.items() if key.upper() in {
-        'PATH', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'PATHEXT', 'TEMP', 'TMP', 'SYSTEMDRIVE'}}
-    env.update(HOME=str(home), USERPROFILE=str(home), SUDO_CODE_CONFIG_HOME=str(root / 'config'),
-               SCODE_SERVICE_ROOT=str(owner), NEXUS_IDENTITY_DIR=str(paths['identityDir']))
+    env = environment(home, root)
+    env['NEXUS_IDENTITY_DIR'] = str(paths['identityDir'])
     attempts = state / ('run-' + uuid.uuid4().hex)
     attempts.mkdir(mode=0o700)
 
