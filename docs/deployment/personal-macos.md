@@ -269,3 +269,15 @@ released all owned processes/ports and removed fixture credentials; the shared
 desktop environment was unchanged. The bundle used pinned source builds and
 had no quarantine attribute, so this evidence covers neither the release
 artifact set nor Gatekeeper, signing, Apple Silicon or OS startup.
+
+The same bundle subsequently passed its real `install` wizard and both
+interactive role entries on the Intel Mac. Each `/status` showed the expected
+account, model, workspace, independent Agent name, same Node namespace and
+healthy receiver; both `/exit` commands returned zero. The loopback provider
+accepted the wizard's Bearer catalog request and the Anthropic client's
+`x-api-key` catalog request, with zero inference. An earlier failed run is
+retained: its test driver had not paged the real `less` output and accepted only
+one catalog authentication form. The corrected driver handled real paging and
+normal exit without changing deadlines, assertions or product behavior. This
+qualifies interactive configuration and attachment, not funded inference or
+autonomous Agent coordination.
