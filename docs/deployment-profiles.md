@@ -56,6 +56,12 @@ process activation alone does not establish those properties.
 
 ## Profiles
 
+The [personal macOS bootstrap](deployment/personal-macos.md) starts a Sudo Private
+deployment on a customer-operated Mac. Additional Macs and GPU nodes remain in
+that same private deployment. Edge means the whole environment is delivered as
+one appliance, rather than the presence of a GPU. The first bootstrap candidate
+composes existing SudoCode owners; full multi-agent product acceptance is pending.
+
 | Form | Placement and control | Execution |
 |---|---|---|
 | Sudo Cloud | Hosted Moss and cluster control services, per-user sandbox placement | Moss connects with owner-delegated identity directly to the selected allocation's cohost ManagedAgentService |
