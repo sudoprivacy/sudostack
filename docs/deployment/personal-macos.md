@@ -95,3 +95,20 @@ Receipts, protocol and process logs survive; only fixture keys and databases are
 removed. A passing fixture does not qualify product enrollment, OS startup,
 roaming, Apple Silicon or signed delivery. Preserve any failed receipt and use
 a new output directory for the next run.
+
+Add `--activate-owner --publisher-repo /absolute/nexus-publication-source
+--grpcurl /absolute/grpcurl --grpcurl-sha256 GRPCURL_SHA256` to qualify the
+activation handoff too. The publisher source must support an explicit loopback
+port ([nexus-vfs#572](https://github.com/nexi-lab/nexus-vfs/pull/572)). Each isolated
+HOME then receives its record through the native publisher after six real mTLS
+mount probes; repeated publication must preserve the record. SudoCode registers
+the existing Node declaration, reuses the still-running external process, and
+subsequently restores the stopped Node through its native service owner. The
+same session and credential checks run after this handoff. Cleanup stops only
+that registered fixture owner using its exact Node ID and binary hash. If that
+stop cannot be confirmed, the private state is retained for inspection.
+
+The official SudoCode v0.2.42 archive advertises peerInput v1, so it does not meet
+this SDK journey's v2 requirement. A passing source-build journey must not be
+reported as acceptance of the stable archive. Pin and qualify compatible CLI,
+SDK and enrollment artifacts together before adding the flow to the package.
