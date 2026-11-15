@@ -65,3 +65,29 @@ same qualified package and checksum. Cloud pairing remains optional and separate
 from a SudoRouter account. Signing, notarization, native Mac acceptance and both
 download integrations are release gates; no current production deployment is
 changed by this candidate implementation.
+
+## Native two-Agent engineering journey
+
+`tools/deploy/private_agents_acceptance.py` composes the existing Nexus real-Node
+fixture with a clean, manifest-verified SudoCode TypeScript SDK build and actual
+CLI binaries. It requires the named-Agent operator client, currently proposed
+in [nexus-vfs#571](https://github.com/nexi-lab/nexus-vfs/pull/571). This is an
+explicit engineering test, not an installer action:
+
+```sh
+python tools/deploy/private_agents_acceptance.py \
+  --nexus-repo /absolute/nexus-vfs \
+  --sdk /absolute/sudocode/sdk/typescript \
+  --scode /absolute/scode --daemon /absolute/nexusd-cluster \
+  --operator /absolute/nexus-agent-enroll --output /absolute/fresh/evidence
+```
+
+The journey grants two exact workspaces, creates separate native credentials,
+checks authenticated bidirectional messages and receiver-offline delivery, then
+restarts its own TLS Node and loads the saved ACP session IDs. Model traffic is
+redirected to a refusing loopback endpoint and must remain zero. The private
+fixture's Node records never replace the operating-system user's record.
+Receipts, protocol and process logs survive; only fixture keys and databases are
+removed. A passing fixture does not qualify product enrollment, OS startup,
+roaming, Apple Silicon or signed delivery. Preserve any failed receipt and use
+a new output directory for the next run.
