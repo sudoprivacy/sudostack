@@ -21,7 +21,7 @@ The path is resolved before mutation. HOME and its parents, symlink roots and
 existing directories owned by another user are refused. A trailing slash does
 not bypass those checks.
 
-## Stage an engineering candidate
+## Stage the release-installer candidate
 
 Python and Git are producer prerequisites only; the target Mac uses the bundled
 shell files and macOS utilities. All three source revisions are explicit:
@@ -112,8 +112,9 @@ stop cannot be confirmed, the private state is retained for inspection.
 
 The official SudoCode v0.2.42 archive advertises peerInput v1, so it does not meet
 this SDK journey's v2 requirement. A passing source-build journey must not be
-reported as acceptance of the stable archive. Pin and qualify compatible CLI,
-SDK and enrollment artifacts together before adding the flow to the package.
+reported as acceptance of the stable archive. The native candidate below can
+stage independently pinned source builds, but compatible CLI, SDK and enrollment
+artifacts must be released and qualified together for customer distribution.
 
 ## Resumable native activation entry
 
@@ -184,6 +185,74 @@ Windows prepared-Node activation remains separately testable.
 
 Add `--bootstrap-bash /bin/bash` to `private_activation_acceptance.py` to exercise
 the fresh entry, owner handoff, repeated activation and recovery with real
-messages. This engineering entry still needs qualified package artifacts,
-runtime bundling, OS startup, Apple Silicon qualification and signing before it
-can replace `Start.command`'s current preparation action.
+messages. The native candidate below composes this entry with its runtime. OS
+startup, Apple Silicon qualification and signed distribution remain separate
+gates; a passing engineering fixture does not satisfy them.
+
+## Stage the native Mac candidate
+
+`private_macos_candidate.py` stages the complete native first-founder path,
+account wizard and executor/verifier instructions. This is a separate candidate
+from `macos_candidate.py`; it does not silently replace that profile's official
+v0.2.42 pin. The producer requires Python and Git. The target entry uses macOS
+utilities and a checksum-pinned relocatable Python archive supplied in the
+bundle, rather than a preinstalled Python, Node, Rust or package manager.
+
+```sh
+python tools/deploy/private_macos_candidate.py \
+  --profile-repo ../sudoprivate --profile-commit PRIVATE_COMMIT \
+  --scode-repo ../sudocode --scode-commit WIZARD_COMMIT \
+  --nexus-repo ../nexus-vfs --nexus-commit NEXUS_COMMIT \
+  --publisher-repo ../nexus-publication --publisher-commit PUBLISHER_COMMIT \
+  --stack-commit STACK_COMMIT --components /absolute/private/components.json \
+  --output /absolute/fresh/native-macos-candidate
+```
+
+All source revisions are full commit hashes. `components.json` contains local
+artifact paths and provenance, not account credentials:
+
+| Field | Required value |
+| --- | --- |
+| `platform` | `macos-x64` or `macos-arm64` |
+| `scode`, `daemon`, `operator`, `grpcurl` | Each has `path`, exact `sha256`, and a truthful `source` identifying the build or release |
+| `grpcurl.licensePath` | The license from the same grpcurl release archive |
+| `python.url`, `python.sha256` | An architecture-matching `install_only_stripped.tar.gz` asset from `astral-sh/python-build-standalone`, with its exact checksum |
+
+The producer checks each Mach-O architecture, binary checksum, exact source
+content and Python archive paths. It includes component notices, file checksums
+and an `engineering-candidate` manifest. The source revision for the account
+wizard and the provenance of the executable are distinct facts: a source-built
+CLI must not be labeled as the official release merely because its version text
+matches. `--port` can declare a different loopback port for an isolated test; the
+default is 2126, and both that port and its native enrollment neighbour must be
+free. Changing an installed declaration is an explicit upgrade, not a retry.
+
+Transfer the entire candidate through the approved engineering test channel,
+preserve executable modes, and verify `shasum -a 256 -c SHA256SUMS`. Run the
+following as the desktop user, without sudo:
+
+| Action | Behavior |
+| --- | --- |
+| `bash Start.command` | Install immutable payload, configure a missing model account interactively, then prepare the native Node and two Agents |
+| `bash Start.command prepare` | Install and prepare without requesting a model key or inference |
+| `bash Start.command configure` | Run the existing account wizard; replacement requires its explicit confirmation and keeps backups |
+| `bash Start.command doctor` | Verify installed payload and inspect the selected configuration without starting or enrolling a Node |
+| `bash Start.command executor` / `verifier` | Restore the registered owner if needed and open SudoCode in that Agent's workspace |
+
+`SUDO_PRIVATE_HOME` selects a dedicated absolute deployment root. The installed
+payload is immutable, configuration is private, and existing workspace
+instructions are preserved. Publication uses the desktop user's native Nexus
+discovery record: an existing different Node is refused before installation,
+and requires integration by its original owner. An isolated test therefore uses
+both a separate HOME and a separate deployment root, with an unused port pair.
+The bundled Python runtime is extracted to a private temporary directory for
+each command and removed on exit; SudoCode's native service owner retains Node
+lifetime after the installer exits.
+
+No Gatekeeper bypass, OS login job, signing or notarization is supplied by this
+candidate. Whole-bundle acceptance must separately cover a minimal PATH, first
+preparation, idempotent repetition, diagnostics, actual Agent messages and
+cleanup. A model-backed joint journey additionally needs recorded inference
+and tool evidence; a controller sending native A2A messages does not establish
+autonomous model coordination. Preserve failed runs, including checker failures,
+and identify any later offline reassessment separately from a fresh execution.
