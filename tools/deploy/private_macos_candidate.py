@@ -26,7 +26,11 @@ def main():
     parser.add_argument('--components', type=Path, required=True,
                         help='Private paths, exact hashes/provenance and pinned Python archive URL')
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--port', type=int, default=2126,
+                        help='Declared loopback port; isolated engineering tests may select another free pair')
     args = parser.parse_args()
+    if not 0 < args.port < 65535:
+        raise ValueError('Select a Node port with room for the native enrollment neighbour')
     components = json.loads(args.components.read_bytes())
     platform = components['platform']
     if platform not in ('macos-x64', 'macos-arm64'):
@@ -97,7 +101,7 @@ def main():
                     'launcherSha256': 'native/scripts/cluster/start-founder.sh',
                     'launcherCommonSha256': 'native/scripts/cluster/start-common.sh'}
     manifest = {'schemaVersion': 1, 'qualification': 'engineering-candidate', 'platform': platform,
-                'endpoint': '127.0.0.1:2126', 'zone': 'private', 'artifacts': artifacts,
+                'endpoint': '127.0.0.1:' + str(args.port), 'zone': 'private', 'artifacts': artifacts,
                 'sourcePins': {key: digest(args.output / name) for key, name in source_names.items()},
                 'python': runtime, 'sources': {name: getattr(args, name + '_commit')
                     for name in ('profile', 'stack', 'scode', 'nexus', 'publisher')},
