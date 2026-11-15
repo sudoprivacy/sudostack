@@ -256,3 +256,16 @@ cleanup. A model-backed joint journey additionally needs recorded inference
 and tool evidence; a controller sending native A2A messages does not establish
 autonomous model coordination. Preserve failed runs, including checker failures,
 and identify any later offline reassessment separately from a fresh execution.
+
+The `5a8e242` native candidate with Private `0abdca0` passed an isolated Intel
+Mac run on 2026-11-15 UTC. All 21 checksums matched. First and repeated `prepare`
+commands ran with an empty environment and only the macOS system PATH; process
+observations confirmed the bundled interpreter also ran the native publisher.
+Retry retained the Node ID, certificates, owner profile and owner processes.
+`doctor` left 75 inspected state items unchanged. The installed workspaces then
+passed authenticated bidirectional and receiver-offline messages using the
+existing SDK driver, with zero inference calls. Native exact-owner cleanup
+released all owned processes/ports and removed fixture credentials; the shared
+desktop environment was unchanged. The bundle used pinned source builds and
+had no quarantine attribute, so this evidence covers neither the release
+artifact set nor Gatekeeper, signing, Apple Silicon or OS startup.
