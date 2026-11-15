@@ -114,3 +114,51 @@ The official SudoCode v0.2.42 archive advertises peerInput v1, so it does not me
 this SDK journey's v2 requirement. A passing source-build journey must not be
 reported as acceptance of the stable archive. Pin and qualify compatible CLI,
 SDK and enrollment artifacts together before adding the flow to the package.
+
+## Resumable native activation entry
+
+`private_agent_activation.py --declaration /absolute/private/activation.json`
+composes the verified native steps for a **prepared local founder Node**. It
+creates separate executor/verifier workspaces, delegates named credentials to
+the native operator, registers the existing Node with SudoCode, publishes
+discovery through the native authenticated publisher, and selects that owner.
+It does not start the first founder process, configure a model, supervise an
+Agent or install an OS startup job. Python 3.10+ is an engineering prerequisite;
+the public package must supply its runtime dependencies before distribution.
+
+The private declaration contains:
+
+| Field | Required value |
+| --- | --- |
+| `schemaVersion` | `1` |
+| `root`, `home` | Absolute existing dedicated deployment root and desktop user's HOME |
+| `dataDir`, `identityDir` | Existing native Node persistence inside that deployment, in separate directories |
+| `endpoint`, `hostname`, `zone`, `acceptEnrollments` | Actual prepared founder declaration; endpoint is `127.0.0.1:PORT` |
+| `scode`, `daemon`, `operator`, `grpcurl` | Each an object with absolute `path` and exact lowercase `sha256` |
+| `publisherRepo`, `nexusRepo` | Directories containing the pinned native publisher and public VFS schema |
+| `publisherSha256`, `protoSha256` | Exact hashes of `scripts/cluster/publish-node-record.py` and `proto/nexus/grpc/vfs/vfs.proto` |
+
+The producer supplies these values from qualified artifacts; version strings
+alone are insufficient. Runtime source directories can be staged from those
+revisions without Git. All placement paths and tool pins are checked before
+enrollment. An existing different OS-user Node record is refused. A second
+installation must not silently adopt or replace its owner.
+
+The original declaration and per-Agent operation claims are retained under
+`root/activation/`; they are installation recovery receipts, not an identity
+registry. Repeating the same declaration replays the native operator's original
+result. An Unknown issuance remains Unknown: no new name, operation or key is
+chosen. Changed declarations require an explicit transition. Once discovery
+exists, retry first uses the registered owner to restore an offline Node, then
+repeats authenticated publication. Run logs remain private. The result keeps
+inference and A2A acceptance false because activation alone proves neither.
+
+`private_activation_acceptance.py --declaration ARTIFACT_PINS.json --sdk SDK_DIR
+--output FRESH_EVIDENCE_DIR` exercises this entry against a fresh native fixture.
+It substitutes only placement paths, retaining the exact tool/source pins. It
+checks first activation, unchanged credentials on retry, refusal of changed
+artifacts/Node/declaration, native recovery after stopping the original process,
+and both Agents' actual messages and original ACP sessions. Only its own Node
+and service owner are stopped; receipts survive fixture cleanup. This is the
+integration gate for the activation entry, separate from public package and
+first-founder installation acceptance.
