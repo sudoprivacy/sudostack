@@ -154,6 +154,25 @@ macOS ARM64 qualification remains a separate acceptance item on SudoCode #1458.
 The plugin can progress with metadata and explicit refusal before #579, but that
 intermediate version does not complete the password-library requirement.
 
+The selected extension also needs a qualified activation and permission path.
+At SudoCode `6382e2aa`, configuration/plugin MCP tools require
+`experimental.mcpConfigServers`, which defaults off; enabling a plugin alone
+does not expose its tools. The delivered artifact must declare and test its
+supported activation path through a real PTY. Do not silently enable unrelated
+workspace-configured MCP servers to activate Vault. The current Private launchers
+use `workspace-write`; elevated installer privileges do not change that baseline.
+
+MCP permission classification at that revision uses tool annotations. Correct
+annotations and native tool approval are necessary, but neither replaces the
+backend credential-use grant. Vault operation policy comes from trusted deployment
+configuration, not project overrides or model arguments. An outside-workspace
+path alone is not an authority boundary: acceptance must attempt configuration
+changes through the Agent's actual available tools and confirm that native grants
+cannot widen. Secret handling and result filtering remain inside the credential
+executor; HTTP operations expose only their declared response shape. Test these
+properties in the delivered runtime rather than relying on the plugin's presence
+or a successful metadata listing.
+
 ## Default journey: one Cloud account
 
 The intended managed experience is:
