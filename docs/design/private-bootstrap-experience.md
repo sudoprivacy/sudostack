@@ -1,6 +1,6 @@
 # Private bootstrap, Cloud sign-in and desktop delivery
 
-Status: integration design, updated 2026-11-16. This records the requested product
+Status: integration design, updated 2026-11-17. This records the requested product
 direction and remaining composition work; it does not qualify unimplemented
 login, secret delegation or installer behavior. Measured coverage stays in
 [personal macOS acceptance](../deployment/personal-macos.md).
@@ -67,6 +67,26 @@ SudoCode owner 7 accepted implementation; owner 8 reviews. The integration is no
 yet shipped. Acceptance includes a real PTY/plugin entry, disposable Vault,
 authorized target-side use, denied other-owner access, restart and canary-leak
 checks. Do not equate the facade or a successful mock with that acceptance.
+
+The first reviewable implementation is
+[SudoCode PR #1472](https://github.com/sudoprivacy/sudocode/pull/1472), inspected at
+`0e212b1ed0aedf435bc18f7bdc4b98312678560b`. It adds `vault@builtin`, disabled by
+default. `vault_list` returns locally configured operations and their metadata
+availability, explicitly labelled `configured-unqualified`; availability does
+not establish a per-Agent grant. `vault_use` validates the request and then
+refuses with `use_unavailable`, without reading credentials or contacting a
+target. Vault settings are accepted only from the user settings layer; project
+settings cannot add operations. No Private bundle is upgraded by this PR alone.
+
+The maintainer reports six live Linux cases against real `serve-user` and the
+signed Vault plugin, plus a real REPL test of hot enable/disable and the native
+permission prompt. Those cases cover metadata, isolation, per-call credential
+reload and persistence, not successful credential use or revocation. The source
+review also requested a deterministic mid-read bundle replacement case: checking
+unchanged manifest bytes alone does not detect a directory swap that retains the
+same manifest. Qualification must use the maintained generation-publication
+contract below. macOS ARM64 and the final released component remain separate
+gates; keep customer Vault integration disabled until the applicable gates pass.
 
 Mosswork supplies the human UI, policy authoring and adapters where qualified.
 Its human entry/item checks are additional consumer constraints, not replacement
@@ -160,6 +180,7 @@ Native dependency tracking, verified open on 2026-11-16:
 | [Nexus #579: scoped credential use](https://github.com/nexi-lab/nexus-vfs/issues/579) | Required before normal deployments enable `vault_use`; configured operations alone are not authorization |
 | [Nexus #580: durable/delegated identity](https://github.com/nexi-lab/nexus-vfs/issues/580) | Design question, not a prerequisite imposed on the first plugin |
 | [Nexus #581: access audit](https://github.com/nexi-lab/nexus-vfs/issues/581) | Record use and outcome at the grant boundary without secret values |
+| [Nexus #584: runtime revocation](https://github.com/nexi-lab/nexus-vfs/issues/584) | Confined `serve-user` must reject revoked credentials and bound stale revocation data; a current expiry date alone is insufficient |
 
 macOS ARM64 qualification remains a separate acceptance item on SudoCode #1458.
 The plugin can progress with metadata and explicit refusal before #579, but that
