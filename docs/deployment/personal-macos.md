@@ -21,6 +21,13 @@ The path is resolved before mutation. HOME and its parents, symlink roots and
 existing directories owned by another user are refused. A trailing slash does
 not bypass those checks.
 
+The personal profile preserves SudoCode's instruction discovery: workspace and
+ancestor `AGENTS.md` / `.nexus/sudocode/AGENTS.md` files still apply. At the default
+location this can include the desktop user's global instructions. A separate
+model configuration directory does not isolate those instructions or create an
+OS security boundary. Do not remove user instructions to make an acceptance
+run pass; use a dedicated fixture outside HOME and check its ancestors instead.
+
 ## Stage the release-installer candidate
 
 Python and Git are producer prerequisites only; the target Mac uses the bundled
@@ -115,6 +122,13 @@ this SDK journey's v2 requirement. A passing source-build journey must not be
 reported as acceptance of the stable archive. The native candidate below can
 stage independently pinned source builds, but compatible CLI, SDK and enrollment
 artifacts must be released and qualified together for customer distribution.
+
+That version requirement belongs to this client-owned input journey. Native
+model-owned A2A does not request `peerInput`: SudoCode receives a message and
+starts its own model turn. Both v0.2.42 and the tested source build contain that
+path, but source presence is not artifact acceptance. Qualify any stable-artifact
+substitution in a separate candidate; do not relax the v2 driver or treat a
+controller's successful send as proof that a model performed the handoff.
 
 ## Resumable native activation entry
 
