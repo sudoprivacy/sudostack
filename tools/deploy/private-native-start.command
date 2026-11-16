@@ -14,5 +14,5 @@ cleanup() {
 }
 trap cleanup EXIT
 /usr/bin/tar -xzf python-runtime.tar.gz -C "$runtime_dir"
-if [ "$#" -eq 0 ]; then set -- install; fi
+if [ "$#" -eq 0 ]; then set -- start; fi
 "$runtime_dir/python/bin/python3" -E -s -B private_macos_entry.py "$@"

@@ -6,21 +6,41 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 
 from private_agent_activation import digest
 from private_node_bootstrap import bootstrap
 
 
+def agent_command(executable, workspace, env, *, resume=False, recover=False):
+    """Use the native session catalogue; never keep a second session index."""
+    command = [str(executable), '--auth', 'proxy', '--account', 'sudorouter',
+               '--permission-mode', 'workspace-write']
+    if recover:
+        result = subprocess.run([str(executable), '--resume', 'list', '--output-format', 'json'],
+                                env=env, cwd=workspace, capture_output=True, text=True,
+                                check=True, timeout=15)
+        catalogue = json.loads(result.stdout)
+        if not isinstance(catalogue, dict) or not isinstance(catalogue.get('sessions'), list):
+            raise ValueError('The native session catalogue is unavailable; no new session was opened')
+        resume = bool(catalogue['sessions'])
+    if resume:
+        command.extend(('--resume', 'latest'))
+    return command
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=('install', 'prepare', 'configure', 'doctor', 'executor', 'verifier'),
+    parser.add_argument('action', choices=('start', 'install', 'prepare', 'configure', 'doctor', 'executor', 'verifier'),
                         default='install', nargs='?')
     parser.add_argument('--resume', action='store_true',
                         help='Resume the latest native session in the selected Agent workspace')
     args = parser.parse_args()
     if args.resume and args.action not in ('executor', 'verifier'):
         parser.error('--resume requires executor or verifier')
+    if args.action == 'start' and not (sys.stdin.isatty() and sys.stdout.isatty()):
+        parser.error('Open Start.command in Terminal; automation can use install or prepare')
     if os.uname().sysname != 'Darwin' or os.getuid() == 0:
         raise ValueError('Run this Mac bundle as the desktop user, without sudo')
     bundle = Path(__file__).resolve().parent
@@ -104,7 +124,7 @@ def main():
         'ANTHROPIC_', 'OPENAI_', 'PROXY_', 'CLAUDE_CODE_OAUTH', 'NEXUS_', 'SCODE_', 'SUDO_CODE_'))}
     env.update(SUDO_CODE_CONFIG_HOME=str(config), SCODE_SERVICE_ROOT=str(root / 'service-owner'))
     configured = all((config / name).is_file() for name in ('sudocode.json', 'settings.json'))
-    if args.action == 'configure' or (args.action == 'install' and not configured):
+    if args.action == 'configure' or (args.action in ('start', 'install') and not configured):
         subprocess.run(['/bin/bash', str(root / 'scode-setup.sh'), '--config-dir', str(config)],
                        env=env, cwd=root, check=True)
         configured = all((config / name).is_file() for name in ('sudocode.json', 'settings.json'))
@@ -126,16 +146,18 @@ def main():
                        env=env, cwd=(root / 'workspaces/executor') if (root / 'workspaces/executor').is_dir() else root,
                        check=True)
         return
-    if args.action in ('executor', 'verifier') and not configured:
+    if args.action in ('start', 'executor', 'verifier') and not configured:
         raise ValueError('Run Start.command configure before opening an Agent')
     result = bootstrap(spec, Path('/bin/bash'))
-    if args.action in ('executor', 'verifier'):
-        os.chdir(root / 'workspaces' / args.action)
+    if args.action in ('start', 'executor', 'verifier'):
+        role = 'executor' if args.action == 'start' else args.action
+        workspace = root / 'workspaces' / role
         executable = str(root / 'bin/scode')
-        command = [executable, '--auth', 'proxy', '--account', 'sudorouter',
-                   '--permission-mode', 'workspace-write']
-        if args.resume:
-            command.extend(('--resume', 'latest'))
+        command = agent_command(executable, workspace, env, resume=args.resume,
+                                recover=args.action == 'start')
+        if args.action == 'start':
+            print('环境已准备好。现在可以直接与部署助手对话，例如：帮我检查当前环境，继续下一步。', flush=True)
+        os.chdir(workspace)
         os.execve(executable, command, env)
     print(json.dumps({'prepared': result['activated'], 'modelConfigured': configured,
                       'root': str(root), 'qualification': 'engineering-candidate',

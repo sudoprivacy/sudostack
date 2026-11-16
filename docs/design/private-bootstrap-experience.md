@@ -68,10 +68,21 @@ yet shipped. Acceptance includes a real PTY/plugin entry, disposable Vault,
 authorized target-side use, denied other-owner access, restart and canary-leak
 checks. Do not equate the facade or a successful mock with that acceptance.
 
-Mosswork
-supplies human/organization policy and credential selection where its adapters
-are qualified. Starting the entire Mosswork server solely to obtain a password
-store is not a prerequisite for the first CLI Agent.
+Mosswork supplies the human UI, policy authoring and adapters where qualified.
+Its human entry/item checks are additional consumer constraints, not replacement
+Nexus grants. SudoCode #1458 is the sole Agent-facing secret-use path; Mosswork
+must not add an Agent executor, interim Agent secret endpoint or independent
+credential issuer. It can orchestrate maintained Nexus SDK/issuer operations.
+Starting the entire Mosswork server solely to obtain a password store is not a
+prerequisite for the first CLI Agent.
+
+The current Mosswork `organization_vault` reader is a human-only adapter. Keep
+that surface: it requires the canonical human principal and current entry policy,
+and does not authorize an Agent. The Ladder owner, SudoCode owner 7 and reviewer
+8 confirmed this division on 2026-11-16. Native Agent grants remain Nexus #579;
+any Mosswork grant UI must call that native API, not author a parallel policy
+store. The #1458 consumer has no Mosswork dependency. That agreement
+does not establish a shipped plugin or installed production Vault provider.
 
 The current Mac candidate does not bundle or qualify Vault. Integration gates:
 
@@ -89,7 +100,7 @@ Its standalone loopback deployment has a different trust boundary. Do not expose
 that interface or copy its entire collection into Private. The manual model wizard
 currently writes private account files, not qualified Vault-backed custody.
 
-### Vault integration contract under review
+### Native Vault integration gates
 
 The #1458 implementation direction is a first-party SudoCode plugin with
 grant-limited metadata discovery and tool-side credential use. It must not expose
@@ -377,3 +388,11 @@ one executor claimed a verdict before the real reply. Assistant-generated
 mailbox-shaped text is not authenticated input. A task stays pending until actual
 peer evidence and independent checks justify completion. Later receipt does not
 erase an earlier false claim. Two examples do not establish model reliability.
+
+[SudoCode #1466](https://github.com/sudoprivacy/sudocode/issues/1466) tracks the
+premature peer-completion claim as a Private delivery blocker. SudoCode owner 8
+owns the native investigation and fix; owner 7 remains on Vault #1458. Required
+coverage includes delayed or missing replies, wrong peers, duplicate delivery,
+session recovery and a normal authenticated response. Output provenance,
+pending delegation and authoritative completion must be assessed separately.
+Role instructions and an offline checker alone do not clear this gate.

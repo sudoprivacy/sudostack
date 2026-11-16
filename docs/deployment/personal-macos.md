@@ -255,7 +255,8 @@ following as the desktop user, without sudo:
 
 | Action | Behavior |
 | --- | --- |
-| `bash Start.command` | Install immutable payload, configure a missing model account interactively, then prepare the native Node and two Agents |
+| Double-click `Start.command`, or `bash Start.command` in Terminal | Install and configure as needed, prepare the native Node and two Agents, then open the bootstrap executor for conversation; resume its latest native session when one exists |
+| `bash Start.command install` | Perform installation, account configuration and native preparation, then return the machine-readable result without opening a conversation |
 | `bash Start.command prepare` | Install and prepare without requesting a model key or inference |
 | `bash Start.command configure` | Run the existing account wizard; replacement requires its explicit confirmation and keeps backups |
 | `bash Start.command doctor` | Verify installed payload and inspect the selected configuration without starting or enrolling a Node |
@@ -267,6 +268,12 @@ the role workspace. Native SudoCode owns session lookup, persistence and loading
 the launcher keeps no parallel session index. If there is no saved session,
 SudoCode reports that condition rather than silently creating a replacement.
 Use the role entry without `--resume` for a first or deliberately new session.
+The default interactive `start` entry first queries `scode --resume list
+--output-format json` in the executor workspace. An empty native catalogue opens
+a first session; a nonempty one delegates to `--resume latest`. A failed or
+unreadable catalogue stops the launch instead of silently losing continuity.
+Automation uses the explicit `install` or `prepare` action; `start` requires a
+terminal and does not submit a model prompt on the owner's behalf.
 This is an explicit interactive recovery entry, not unattended process restart
 or OS login acceptance. These source changes require a newly staged candidate;
 they do not alter the immutable bundles or acceptance receipts below.
