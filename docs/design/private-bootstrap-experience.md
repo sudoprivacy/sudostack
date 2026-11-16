@@ -89,6 +89,58 @@ Its standalone loopback deployment has a different trust boundary. Do not expose
 that interface or copy its entire collection into Private. The manual model wizard
 currently writes private account files, not qualified Vault-backed custody.
 
+### Vault integration contract under review
+
+The #1458 implementation direction is a first-party SudoCode plugin with
+grant-limited metadata discovery and tool-side credential use. It must not expose
+the existing facade's plaintext `vault.get` or `vault.batchGet` to the model.
+Private/Stack supplies deployment bindings; Nexus remains the custody and identity
+authority. The plugin proposal and these source checks are not runtime acceptance.
+
+Keep the following bindings distinct:
+
+| Binding | Existing owner | Required deployment behavior |
+| --- | --- | --- |
+| Human/organization and selected Agent | Trusted application policy and native identity | Resolve current grants; never infer owner authority from a model-supplied name |
+| `serve-user` server identity | Nexus issuer and runtime | Match the signed owner and server name; replace the native credential bundle atomically |
+| Calling session identity | Nexus issuer and client | Authenticate independently; renewal retains the signed subject and owner |
+| Secret and permitted operation | Native Vault policy and approved executor | Enforce Agent, namespace/key, purpose and target scope at the authority boundary |
+
+At Nexus `b338cd306dcc0753a509694c192a05b8bdef6d5e`, the Node client already
+provides `mintSessionAgent`, `mintUserRuntime`, `renewSessionAgent` and
+`createUserRuntimeCredentialBundle`. The server verifies renewal proof and retains
+the existing subject and owner. `serve-user` runtime credentials have a native
+300-second maximum; session-Agent certificates do not have that same maximum in
+the inspected signer. A shorter session lifetime can be deployment policy, not a
+claim about that signer. Re-minting a different Agent on each renewal is not needed.
+Named device admission alone does not provide an owner-bound session credential;
+retain the native distinction rather than substituting a named certificate for
+the delegated client identity. Any durable-device/session binding needs its own
+native contract.
+
+The actual issuer coordinator, artifact versions, configuration schema and renewal
+lifecycle still need qualification. Private/Stack must consume that native path,
+not implement its own issuer or identity store. An initial endpoint and credential
+file alone do not complete this contract. Expiry, revocation and failed renewal
+must stop credential use without falling back to `serve-local` or open access.
+Bundle publication uses generation-specific files and an atomic manifest switch;
+replacing several fixed filenames separately can mix credential generations.
+
+Two-owner isolation is insufficient for scoped delegation: acceptance also needs
+two Agents of the same owner with different secret/use grants. Plugin-side filters
+do not establish backend authorization. If those native grants or an executor-only
+use operation are absent, record them as prerequisites to scoped delivery.
+
+Credential injection targets a fixed approved operation. HTTP use binds the
+origin, method, header, body schema and redirect behavior; subprocess use binds
+the executable, permitted argument shape, working directory, environment and
+stdin. Arbitrary model-selected commands or destinations are not such an
+operation, and output scrubbing alone does not establish secrecy.
+Canary acceptance covers actual tool results and subprocess output. Linux PTY
+coverage is an initial gate; the delivered macOS ARM64 plugin/runtime path also
+needs qualification. These checks require synthetic secrets, not the user's
+personal collection.
+
 ## Default journey: one Cloud account
 
 The intended managed experience is:
@@ -178,6 +230,31 @@ engineering SSH loopback transport was not tested for restart or roaming.
 Payload, identity and session are retained; the test session has stopped and
 no personal model credential remains. Durable hosting and scoped long-term
 model entitlement remain delivery work.
+
+### Persistent device session
+
+Use an existing SudoCode session host and the operating system's lifecycle owner.
+An attached interactive `scode` session in a persistent terminal is one candidate;
+the native ACP session path is another when hosted by an accepted existing
+controller. The Intel acceptance already observed native inbound peer turns with
+no client `session/prompt` to the receiver. ACP client-owned notifications and
+native session-owned input are different modes, not proof that ACP always lacks
+inbound handling. Neither result qualifies a permanent Singapore service.
+
+Persist the selected Agent, workspace and session reference, then recover that
+same session through the host's native resume/load entry. Starting a fresh session
+on every reconnect, forwarding peer messages as new prompts, or adding a Stack
+mailbox scheduler would change the tested contract. Availability of an
+`acp managed` child entry alone does not provide its required hosting and
+credential lifecycle.
+
+The next acceptance must cover owned-process restart, same-session recovery,
+authenticated delivery across a transport interruption, and orderly shutdown.
+Login/reboot survival is a separate check. Keep the model entitlement explicit:
+the temporary personal key has been removed, so retain a prepared installation
+rather than silently reconnecting that key for unattended inference. Hosting and
+transport checks can use a local non-inference fixture while long-term entitlement
+is integrated.
 
 ## Desktop and artifact reuse
 
