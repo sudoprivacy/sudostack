@@ -154,7 +154,9 @@ proof=values['inspection' if verb=='--inspect-existing' else 'model']
         self.assertEqual(result['outcome'], 'unknown')
         self.assertFalse(result['selectionAccepted'])
         self.assertEqual(self.fixture.calls, [])
-        self.assertEqual(device_operation.execute(self.registry_path, 'one')['status'], 'completed')
+        completed = device_operation.execute(self.registry_path, 'one')
+        failures = [path.read_text() for path in self.state.rglob('failure.private.txt')]
+        self.assertEqual(completed['status'], 'completed', {'receipt': completed, 'failures': failures})
         with self.assertRaises(FileExistsError):
             device_operation.execute(self.registry_path, 'two')
         self.assertEqual(len((self.home / 'calls').read_text().splitlines()), 2)

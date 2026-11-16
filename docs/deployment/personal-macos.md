@@ -390,3 +390,38 @@ receipt retains the commands, hashes and observations. No model account was used
 This establishes ARM64 engineering preparation and diagnostics, not an A2A task,
 funded inference, Gatekeeper, signing/notarization, login/reboot or roaming. The
 older role files in this immutable candidate are unchanged by later design edits.
+## Remote enrolled-device canaries
+
+`tools/deploy/private_remote_a2a_acceptance.cjs` uses the existing SudoCode
+TypeScript SDK against an already enrolled client. Its JSON input pins `sdk`,
+`sdkSource`, `scode`, `scodeSha256`, an existing `workspace`, a fresh `output`,
+the enrolled `actor`, an authorized `peer` and a random 32-character hexadecimal
+`nonce`. Run it with an existing Node.js runtime:
+
+```sh
+node tools/deploy/private_remote_a2a_acceptance.cjs /absolute/private/canary.json
+```
+
+After `ready.json`, the authorized peer sends exactly `SG-A2A-CHALLENGE NONCE`.
+Only that authenticated sender and exact nonce produce a single native reply.
+The peer must independently verify the authenticated `SG-A2A-RETURN NONCE`;
+the sender's submission receipt alone does not prove delivery. The canary
+allows five minutes, invokes no model, and closes its own native session.
+Client-owned peer input version 1 is intentional for official SudoCode 0.2.42;
+this transport fixture is not an autonomous Agent host.
+
+`private_remote_model_acceptance.cjs` accepts the same pins plus an existing
+`sessionId` and a private disposable `modelConfigHome`. The latter must contain
+an explicitly authorized SudoRouter account named `sudorouter`, model
+`claude-sonnet-4-6` and `maxSteps: 4`. It submits one prompt with a 180-second
+cap and only permits file writing, reading and native sending. It removes the
+disposable credential copy after closing its own connection. An outer operator
+must also verify cleanup and absence of key bytes; never point it at the user's
+original configuration. Keep all inputs and evidence outside version control.
+Use real file/tool output and the peer's authenticated delivery to assess the
+task, and retain shutdown diagnostics independently of the task result.
+
+The 2026-11-16 ARM64 run passed both task/transport checks. The model run's ACP
+close timed out after one second before child cleanup; independent inspection
+found no remaining owned process or temporary key. The artifact and session
+were retained. This is not reboot, roaming, uptime or signed-installer acceptance.

@@ -154,6 +154,31 @@ cross-domain collaboration contract; neither a shared CA client nor an SSH
 transport tunnel qualifies it. Do not add a Raft voter just to make an Agent
 visible.
 
+On 2026-11-16, an ARM64 Mac mini joined the existing authority as a distinct
+native Agent client. Its own certificate was issued by the existing online
+MintAgent path; no Node, CA key or Raft voter was added. Six mTLS discovery
+checks and idempotent publication passed. The existing deployment reports
+`root` for `/agents` Stat metadata and `sharedzone` for the other two subtrees;
+the native publisher's explicit client subtree declaration retained that
+discrepancy instead of changing the existing topology.
+
+A bounded native SDK canary received the Windows owner's exact authenticated
+challenge, returned it as the enrolled Agent, and the Windows owner received
+the authenticated response. It made no model calls. A separate single Claude
+task loaded the same native session, executed `write_file`, `read_file` and
+model-originated `send`, and produced the exact expected file and authenticated
+return message. The temporary personal model credential was removed and the
+owned tree scanned; existing application services retained their PIDs. The
+SDK recorded a one-second `session/close` timeout during cleanup, although its
+child exited and independent inspection found no residual test process.
+
+These observations qualify that bounded same-authority cross-network path,
+not an always-running device service or separate-Private federation. The
+engineering SSH loopback transport was not tested for restart or roaming.
+Payload, identity and session are retained; the test session has stopped and
+no personal model credential remains. Durable hosting and scoped long-term
+model entitlement remain delivery work.
+
 ## Desktop and artifact reuse
 
 Reuse Mosswork's Wails desktop shell, packaging and update UX, preserving its
