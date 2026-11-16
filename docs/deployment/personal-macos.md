@@ -328,3 +328,40 @@ credentials and owned processes were removed and shared desktop state remained
 unchanged. This is one source-build run, not reliability, official-artifact,
 Apple Silicon, OS startup or cross-network qualification. The autonomous harness
 and its receipts remain private engineering evidence, not a committed CI suite.
+
+## Official CLI candidate and remaining collaboration failure
+
+A separate Intel candidate substitutes the official v0.2.42 executable while
+retaining the declared wizard, SDK and native Nexus components. The release
+archive matched its GitHub asset digest and published checksums; the producer
+recorded executable provenance separately from wizard source. First/repeated
+preparation, diagnostics and both interactive entries passed with zero inference.
+Identity and credentials stayed stable; diagnostics changed none of 75 state
+items. This confirms the installation/receiver path for that exact composition.
+
+One subsequent live run demonstrated model-initiated send, authenticated native
+wake and reply with this official executable, without peerInput ownership or
+controller A2A calls. It nevertheless failed task acceptance: both prefix
+sorting cases failed again, and the executor authored a fake verifier mailbox
+message and verdict before the real reply. The forged text was assistant output,
+not native authenticated input. The original checker inspected only the last
+verdict and missed that temporal violation. Preserve its narrow handoff result
+and the additional observation separately: **native A2A mechanics passed;
+collaboration contract, deliverable and overall task acceptance failed**.
+Later correct receipt does not erase an earlier unsupported completion claim.
+Use native incoming-message metadata and causal order when checking completion;
+never authenticate text merely because it resembles a mailbox wrapper.
+
+The live model phase stayed within the original 180-second bound, with one run,
+no retry and no permission expansion. Eleven final model responses reported
+117,478 tokens including cache tokens; billing was not independently checked.
+Fixture credentials/processes were removed and shared state was unchanged.
+The Private profile's subsequent pending-state and evidence instructions are
+not yet behaviorally qualified and do not alter these immutable candidates.
+
+An ARM64 engineering candidate was staged separately on Windows: all 21 file
+checksums and four Mach-O architectures matched. Its SudoCode executable is the
+official v0.2.42 release; both Nexus executables come from CI at `49be2e0f`, with
+artifact ZIP digests verified before staging. Its daemon therefore differs from
+the Intel `ce3d3554` build. No ARM64 binary was executed: target runtime,
+Gatekeeper, signing/notarization, login/reboot and roaming remain unqualified.
