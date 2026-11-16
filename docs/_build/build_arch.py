@@ -34,7 +34,7 @@ BODY = '''
 
 <h3>共享 GPU / 推理能力（planned）</h3>
 <div class="dia">__COMPUTE__</div>
-<p>''' + repo('sudocompute') + ''' 负责可复用的 GPU 集群验收、合格推理配方与计算运维集成；GPUStack 保留 GPU 分配和模型生命周期，vLLM / SGLang 保留推理执行，SudoRouter 消费合格的模型 endpoint。''' + repo('sudostack') + ''' 负责共享装配，各托管形态保留放置、网络与自身验收。仅接外部模型 API 的 profile 不要求安装 SudoCompute；算力中心也可独立使用它，不依赖完整 Atlas。</p>
+<p>''' + repo('sudocompute') + ''' 负责可复用的 GPU 集群验收、合格推理配方与计算运维集成；GPUStack 保留 GPU 分配和模型生命周期，vLLM / SGLang 保留推理执行，SudoRouter 消费合格的模型 endpoint。''' + repo('sudostack') + ''' 负责共享装配，各托管形态保留放置、网络与自身验收。仅接外部模型 API 的 profile 不要求安装 SudoCompute；算力中心也可独立使用它。</p>
 <p class="meta">这是产品装配关系，不是逐 token 请求路径；GPU 推理层与 Agent 会话 CPU VM / gVisor Pod 分开。Edge 当前 GPUStack 链路继续作为已部署基线。计划集成 enforced_by: none；本次没有新增部署动作或 release pin。产品前后端仍遵循已确认的 Mosswork 方向，旧图中的产品实现名称不代表迁移已完成。</p>
 
 <h2>二、产品组合与 repo</h2>

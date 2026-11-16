@@ -9,4 +9,4 @@
 - **构建**：`python docs/_build/build_arch.py`（读 `arch_deploy.svg` / `arch_compute.svg` / `arch_consolidate.svg` → `architecture.html`）；不要直接改生成 HTML。
 - **更新**：改源后重建，`publish.js <architecture.html> --share-id TXVzG3RUMCYk2gJO --filename sudo-product-architecture.html` 原地回推同一 URL。
 - **B0 客户演示基线清单**：[`inventory/b0-customer-demo-baseline.md`](inventory/b0-customer-demo-baseline.md)——装配前的版本、制品、配置、数据库、smoke 与回退证据模板；不是部署声明或第二套 Contract SSOT。
-- **GPU / 推理组件（2026-11-14）**：[`README.md` 的依赖图与职责表](../README.md#gpu-compute-and-inference)及生成视图中的 SudoCompute 图；Cloud / Private / Edge 按需复用，现场接入与 release pin 待验证。ShareOne 镜像是否更新以发布回执为准。
+- **GPU / 推理组件（2026-11-14）**：[部署形态的仓库职责](deployment-profiles.md#repository-ownership)及生成视图中的 SudoCompute 图；Cloud / Private / Edge 按需复用，现场接入与 release pin 待验证。ShareOne 镜像是否更新以发布回执为准。

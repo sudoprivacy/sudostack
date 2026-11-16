@@ -131,15 +131,9 @@ flowchart TB
 
 <!-- /cloud-plan:first-diagram -->
 
-**共享 GPU / 推理组件（2026-11-14，计划集成）：**
-[`sudocompute`](https://github.com/sudoprivacy/sudocompute)（当前私有）计划经 `sudostack`
-装配，供 `sudocloud / sudoprivate / sudoedge` 按需复用 GPU 验收、合格模型配方与计算运维。
-GPUStack 保留 GPU 分配与模型生命周期，vLLM / SGLang 负责推理执行；SudoRouter 仍负责
-模型访问、Key、配额与用量。图中新虚线区分配置/管理关系及候选模型上游，均未声明已部署。
-仅调用外部模型的 profile 可不安装它。该层与 Agent 会话 CPU VM / gVisor Pod 分开；
-现有盒子 GPUStack 链路及其验收记录继续保留。
-完整依赖图与职责表见 [sudostack 产品概览](https://github.com/sudoprivacy/sudostack/blob/main/README.md#gpu-compute-and-inference)。
-本轮为架构补充，现场接入、版本限定及真实验收仍待完成（`enforced_by: none`）。
+**共享 GPU / 推理组件（计划集成，未接入现有部署）：** 图中虚线为
+[`sudocompute`](https://github.com/sudoprivacy/sudocompute) 的计划关系，职责划分见
+[部署形态的仓库职责](https://github.com/sudoprivacy/sudostack/blob/main/docs/deployment-profiles.md#repository-ownership)。
 
 <details>
 <summary>总图补充：客户端、计算与控制链路</summary>

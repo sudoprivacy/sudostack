@@ -89,14 +89,9 @@ a compatible local service or attach to an existing one. For cohost, the
 selected executable already contains Nexus and the scode engine; starting an
 Agent creates a session task in that daemon. A browser profile additionally
 prepares the existing Moss/WebUI application services. Reusable GPU/inference
-qualification is planned in
-[SudoCompute](https://github.com/sudoprivacy/sudocompute), consumed through shared
-assembly by Cloud, Private and Edge profiles with managed GPUs. Edge retains
-device-specific GPU selection, bootstrap and acceptance; its deployed GPUStack
-path remains the baseline. SudoCompute live integration and release pins are
-pending (`enforced_by: none`). This layer is separate from Agent session CPU
-placement and from obtaining an Agent identity. The optional dependency graph
-and complete ownership map live in the [product overview](../../README.md#gpu-compute-and-inference).
+qualification is a separate, planned layer owned by SudoCompute; see
+[repository ownership](../deployment-profiles.md#repository-ownership). It is
+independent from Agent session placement and from obtaining an Agent identity.
 
 The lifecycle owner records the runtime and state roots it controls. An
 existing listener is inspected and authenticated before reuse. A conflicting
