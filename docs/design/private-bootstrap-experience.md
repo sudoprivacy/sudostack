@@ -54,7 +54,21 @@ grants; it does not need another complete human IAM.
 
 ## Secret custody without a new password store
 
-Reuse Nexus Vault and SudoCode's existing service-host Vault capability. Mosswork
+Reuse Nexus Vault and SudoCode's existing service-host Vault capability. This
+facade is not an Agent-facing tool. At SudoCode main `57e2d80f`, source inspection
+found no Vault registration in the tools, runtime, CLI or bundled plugins. On the
+official v0.2.42 ARM64 binary, an isolated `scode mcp serve` catalog query returned
+30 built-in tools and no Vault/secret/password entry. This check covers built-ins,
+not every separately installed extension; it made no model or Vault request.
+
+[SudoCode #1458](https://github.com/sudoprivacy/sudocode/issues/1458) requests a
+first-party extension using the existing plugin/tool lifecycle and native custody.
+SudoCode owner 7 accepted implementation; owner 8 reviews. The integration is not
+yet shipped. Acceptance includes a real PTY/plugin entry, disposable Vault,
+authorized target-side use, denied other-owner access, restart and canary-leak
+checks. Do not equate the facade or a successful mock with that acceptance.
+
+Mosswork
 supplies human/organization policy and credential selection where its adapters
 are qualified. Starting the entire Mosswork server solely to obtain a password
 store is not a prerequisite for the first CLI Agent.
@@ -107,6 +121,38 @@ Preferred models are versioned configuration selected using tool success, task
 correctness, latency and cost on the actual allowed catalog. The test owner's
 Claude-only key is not a general GPT limitation or a release blocker by itself.
 Each supported model/protocol still needs real acceptance for its scope.
+
+## A consistent installation contract
+
+Installer behavior comes from a versioned deployment profile and native owner
+records. A strong model helps explain and execute supported steps; it does not
+choose identity boundaries or improvise an installer for each customer.
+
+The managed entry must distinguish these explicit journeys:
+
+- **Create Private:** select its human/organization owner, create native identity
+  once, and retain the resulting deployment and device references.
+- **Join Private:** select an existing environment and use its native invitation
+  or enrollment grant. A new network location must not create a new environment.
+- **Resume or upgrade:** inspect the existing owner record, resume the same
+  installation on a retry, or run the owner's explicit version upgrade. Refuse
+  unrelated existing state without silently replacing it.
+
+Record profile/artifact version, authority and owner references, device identity,
+model policy and completed checks. Re-running a completed step verifies its state
+rather than creating a duplicate. The same profile must lead to the same supported
+operations across customers; authorized optional capabilities may differ. The
+current engineering package implements fresh local preparation and retry, and
+refuses unrelated existing discovery. It does not yet implement this complete
+managed create/join UI or remote-device admission.
+
+For the Singapore Mac mini, the first target is a managed device in the same
+Private authority across networks. Payload staging and successful local ARM64
+preparation are recorded separately from persistent Agent enrollment, session
+lifetime and bidirectional A2A. Separate-Private federation requires the native
+cross-domain collaboration contract; neither a shared CA client nor an SSH
+transport tunnel qualifies it. Do not add a Raft voter just to make an Agent
+visible.
 
 ## Desktop and artifact reuse
 
@@ -167,6 +213,21 @@ running Mosswork public server, with authenticated version lookup still pending.
 It explicitly did not establish a cutover of the existing Cloud deployment.
 The migration ledger remains incomplete; an available server or desktop release
 is not evidence of accepted production migration.
+
+Full Tencent production migration is **not** a prerequisite for Ji Ye's deployment.
+Use an independently pinned Mosswork test deployment while the production owner
+retains the old service. Keep its tenant, data, version, operator and upgrade path
+explicit. The required gates depend on the stage being delivered:
+
+- The first SudoCode/Nexus CLI development loop can be accepted without Mosswork.
+- The Mosswork workbench stage must verify its actual native execution and A2A
+  integration, retained sessions and current human/organization permissions.
+- The one-login managed experience additionally needs device enrollment, actual
+  Router model entitlement/quota and scoped credential custody. A healthy test
+  homepage does not establish any of these contracts.
+
+This avoids making the old production cutover a dependency while keeping test
+deployment availability distinct from integration acceptance.
 
 Task acceptance has three independent results: authenticated A2A mechanics,
 compliance with the collaboration task, and executable deliverable correctness.
