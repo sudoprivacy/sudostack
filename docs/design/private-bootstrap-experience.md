@@ -213,6 +213,19 @@ implementation is invented here. Mosswork's machine-credential exchange is not a
 Router-key or billing provisioner; credential-reference readers alone do not
 complete steps 3–4.
 
+The first managed demonstration can reuse an existing paid account without
+waiting for new-account funding. The Mosswork business owner delivered
+`SudorouterReadClient` on 2026-11-16: exact bound-account balance/status reads and
+inference-key model discovery, with current binding assertions before and after
+HTTP waits. Its 41 fixture tests passed; no real account or model request was
+part of that delivery. This is an observation adapter, not an entitlement writer
+or proof that a supplied key belongs to the logged-in owner. The trusted product
+factory must still resolve the canonical account/organization/member, its
+original model-secret reference and current permissions. Keep management and
+inference credentials separate; never pass the human session bearer to a child
+Agent. Preserve zero balance, debt, disabled accounts and unavailable bindings as
+actionable states rather than silently granting credit or changing the owner.
+
 Independent Private deployments retain manual provider configuration and an
 offline/local-model option. Cloud is not a permanent prerequisite for local A2A.
 Cloud inference still needs connectivity and valid entitlement. Keep the manual
