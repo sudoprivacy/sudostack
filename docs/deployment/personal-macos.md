@@ -467,6 +467,21 @@ The corrected detector selected the Agent command and all stages then passed.
 The same distribution, Cloud-login and lifecycle limitations stated for ARM64
 apply; neither Terminal test qualifies the final signed desktop installer.
 
+A targeted Intel regression subsequently passed with Stack
+`e2faf64aa23e0e45fe8138d832532afecdfaa22b` and the same profile/components.
+Its manifest SHA-256 is
+`df705758ca52a747e3cbd0784c331daa12b8c74a942b66a2f1c0e3b4bfeb6ebe`;
+the receipt SHA-256 is
+`7d1f50344484e29236151c270ddccb3453bcd254184c95bcd0a83a62d780a6cb`.
+After a fixture-only first open, denying access to the saved-session directory
+produced exit 1 and one `SudoPrivate:` recovery line, with no traceback or new
+interactive Agent. Restoring access exposed the same single session, whose bytes
+were unchanged. Inference requests were zero; cleanup and shared-state checks
+passed. The receipt's original raw-output assertion checked only native stderr,
+while the native error was JSON on stdout. A separate offline inspection of the
+same PTY log found none of those stdout error markers; retain that distinction
+rather than claiming the original assertion covered both streams.
+
 ## Remote enrolled-device canaries
 
 `tools/deploy/private_remote_a2a_acceptance.cjs` uses the existing SudoCode
