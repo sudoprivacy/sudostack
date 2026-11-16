@@ -141,6 +141,19 @@ coverage is an initial gate; the delivered macOS ARM64 plugin/runtime path also
 needs qualification. These checks require synthetic secrets, not the user's
 personal collection.
 
+Native dependency tracking, verified open on 2026-11-16:
+
+| Item | Delivery relevance |
+| --- | --- |
+| [Nexus #578: credential bundle publication](https://github.com/nexi-lab/nexus-vfs/issues/578) | Renewable credentials for an external Agent process; reuse the existing renewal owner |
+| [Nexus #579: scoped credential use](https://github.com/nexi-lab/nexus-vfs/issues/579) | Required before normal deployments enable `vault_use`; configured operations alone are not authorization |
+| [Nexus #580: durable/delegated identity](https://github.com/nexi-lab/nexus-vfs/issues/580) | Design question, not a prerequisite imposed on the first plugin |
+| [Nexus #581: access audit](https://github.com/nexi-lab/nexus-vfs/issues/581) | Record use and outcome at the grant boundary without secret values |
+
+macOS ARM64 qualification remains a separate acceptance item on SudoCode #1458.
+The plugin can progress with metadata and explicit refusal before #579, but that
+intermediate version does not complete the password-library requirement.
+
 ## Default journey: one Cloud account
 
 The intended managed experience is:
