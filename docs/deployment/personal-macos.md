@@ -295,3 +295,36 @@ one catalog authentication form. The corrected driver handled real paging and
 normal exit without changing deadlines, assertions or product behavior. This
 qualifies interactive configuration and attachment, not funded inference or
 autonomous Agent coordination.
+
+## Native autonomous handoff and task correctness
+
+On 2026-11-16 UTC the same native bundle completed one live Claude Sonnet 4.6
+handoff on the Intel Mac. The controller sent one task prompt to the executor,
+none to the verifier, and no A2A messages. SudoCode retained native ownership of
+incoming messages. The executor wrote three inventory-report files and called
+`agent_list` and `send`; the authenticated message woke the verifier, which read
+the files and sent its own computed verdict. The reply woke the executor, which
+recorded it without replying again. Both directions had matching message bodies,
+correct sender identities and `verified=true`. Attribution uses actual model
+tool calls/results and receiver metadata, not the controller's direct-send audit.
+
+The original runner exited zero, but a separate offline reassessment found a
+real task defect. The generated script sorted complete `location,total` lines
+instead of the location field: `A+` appeared before `A`, and `Bay 2` before `Bay`.
+Both inputs satisfy the original task requirements. The verifier's sample totals
+were correct, but its code review missed this defect; the independent checker's
+initial fixtures missed it too. The unchanged script failed both counterexamples
+under the same write/network-denying sandbox. Preserve the original passing
+execution and the later reassessment separately: **autonomous handoff passed;
+deliverable correctness and overall task acceptance failed**. A second Agent's
+agreement is not a substitute for executable checks of the declared behavior.
+
+The model phase took 117.3 seconds within its 180-second bound, with no permission
+requests, cap hits or retries. Nine final model responses reported 88,575 tokens,
+including cache creation/read tokens; Router billing was not independently
+checked. Both Agents used the same model/account. The verifier read and reasoned
+about the files; only the independent checker executed the script. Temporary
+credentials and owned processes were removed and shared desktop state remained
+unchanged. This is one source-build run, not reliability, official-artifact,
+Apple Silicon, OS startup or cross-network qualification. The autonomous harness
+and its receipts remain private engineering evidence, not a committed CI suite.
