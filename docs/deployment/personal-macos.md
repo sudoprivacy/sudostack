@@ -437,6 +437,36 @@ They do not qualify a Finder/browser download, Gatekeeper, signing/notarization,
 Cloud login, actual model inference, OS startup or unattended service lifecycle.
 The harness and raw receipts remain private; no customer credential was used.
 
+The Intel Mac also completed the default-entry PTY journey on 2026-11-16,
+using the same Stack/Private source pins and its own pinned x64 components.
+Its manifest SHA-256 is
+`cfef5b57eb284104877d589974e7cb3198acf6b5df34564e40d347d3b1def13a`;
+the private acceptance receipt is
+`d694bcf9185805ee587c28873ba85cf3c1400bf4b3b4c29bb775e9470de78ad2`.
+The official SudoCode v0.2.42 x64 executable was unchanged. First open ran the
+fixture account wizard and opened a native executor session in 46.3 seconds.
+Reopening took 18.7 seconds, selected `--resume latest`, and retained exactly the
+same session, configuration and Node identity without another wizard. These
+single-run times are observations, not an architecture performance comparison.
+
+Invalid `--resume` combinations and a non-PTY default start refused before
+creating the deployment root. Explicit verifier resume on an empty catalogue
+refused without creating a session; fresh verifier start and subsequent resume
+retained that verifier's own identity/session. Making the executor catalogue
+unreadable also stopped startup without opening or creating another session.
+Restoring fixture access revealed the original single saved session. This
+candidate surfaced the expected catalogue failure as a Python traceback; a
+subsequent entry change presents recovery guidance instead. Its focused unit
+checks do not alter or retroactively qualify this immutable Mac candidate.
+
+Only two model-catalog GETs occurred and inference requests were zero. Exact-owner
+shutdown, fixture credential cleanup and shared-state comparison passed. Two
+earlier harness runs are retained as failures: their process detector mistook
+an activation child for the interactive CLI and wrote to an already closed PTY.
+The corrected detector selected the Agent command and all stages then passed.
+The same distribution, Cloud-login and lifecycle limitations stated for ARM64
+apply; neither Terminal test qualifies the final signed desktop installer.
+
 ## Remote enrolled-device canaries
 
 `tools/deploy/private_remote_a2a_acceptance.cjs` uses the existing SudoCode

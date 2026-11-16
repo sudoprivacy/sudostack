@@ -18,12 +18,24 @@ def agent_command(executable, workspace, env, *, resume=False, recover=False):
     command = [str(executable), '--auth', 'proxy', '--account', 'sudorouter',
                '--permission-mode', 'workspace-write']
     if recover:
-        result = subprocess.run([str(executable), '--resume', 'list', '--output-format', 'json'],
-                                env=env, cwd=workspace, capture_output=True, text=True,
-                                check=True, timeout=15)
-        catalogue = json.loads(result.stdout)
-        if not isinstance(catalogue, dict) or not isinstance(catalogue.get('sessions'), list):
-            raise ValueError('The native session catalogue is unavailable; no new session was opened')
+        guidance = ('No new session was opened. Check access to ' + str(workspace / '.scode/sessions')
+                    + ' and run Start.command doctor before trying again.')
+        try:
+            result = subprocess.run([str(executable), '--resume', 'list', '--output-format', 'json'],
+                                    env=env, cwd=workspace, capture_output=True, text=True,
+                                    check=True, timeout=15)
+        except subprocess.TimeoutExpired as exc:
+            raise ValueError('Reading saved sessions timed out. ' + guidance) from exc
+        except subprocess.CalledProcessError as exc:
+            raise ValueError('Could not read saved sessions (exit ' + str(exc.returncode) + '). '
+                             + guidance) from exc
+        try:
+            catalogue = json.loads(result.stdout)
+            if not isinstance(catalogue, dict) or not isinstance(catalogue.get('sessions'), list):
+                raise ValueError('Invalid catalogue shape')
+        except ValueError as exc:
+            raise ValueError('The saved-session catalogue returned an invalid response. '
+                             + guidance) from exc
         resume = bool(catalogue['sessions'])
     if resume:
         command.extend(('--resume', 'latest'))
@@ -164,5 +176,15 @@ def main():
                       'next': ['Start.command executor', 'Start.command verifier']}))
 
 
+def cli():
+    """Present expected installation/runtime failures without a Python traceback."""
+    try:
+        main()
+    except (ValueError, OSError, subprocess.SubprocessError) as exc:
+        print('SudoPrivate: ' + str(exc), file=sys.stderr)
+        return 1
+    return 0
+
+
 if __name__ == '__main__':
-    main()
+    sys.exit(cli())
