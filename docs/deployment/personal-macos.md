@@ -407,6 +407,36 @@ receipt retains the commands, hashes and observations. No model account was used
 This establishes ARM64 engineering preparation and diagnostics, not an A2A task,
 funded inference, Gatekeeper, signing/notarization, login/reboot or roaming. The
 older role files in this immutable candidate are unchanged by later design edits.
+
+A new ARM64 candidate built from Stack `f0ae67c831376e4efd859b5eeee7a626490928ca`
+and Private `0b72f058f505e092517612a0981893575a47791c` was tested on the same
+host later that day. Its manifest SHA-256 is
+`37ae023e119393ddd88447bd2144e025f4d208a3e6d86d0da11b2f6c9b0f0073`.
+It retains the official SudoCode v0.2.42 ARM64 and the declared Nexus components;
+the newer source supplies the default interactive entry and role instructions.
+All 21 checksums passed. First/repeated `prepare` and `doctor` exited zero in
+14.90, 1.15 and 0.96 seconds respectively. Identity/configuration stayed stable,
+and diagnostics changed none of 39 inspected stable files.
+
+The same immutable bundle then passed a fresh PTY journey with no action argument:
+the account wizard configured a loopback synthetic provider, `Start.command`
+entered the executor's real interactive prompt, and `/exit` closed it. Reopening
+the entry recovered the original native session, with exactly one saved session,
+without repeating the wizard or changing identity/configuration. First open took
+16.65 seconds and reopen 3.57 seconds in this bounded run. Only two model-catalog
+GETs occurred; model POSTs were zero. The wizard used Bearer authentication and
+native Claude discovery used `x-api-key`. An earlier harness incorrectly rejected
+the latter and failed to propagate its server-thread exceptions; its original
+receipt is retained as incomplete, not counted as a qualified pass. The corrected
+harness records provider errors and rejects them in its final assertion.
+
+Exact-owner shutdown and fixture credential cleanup completed; shared host files
+and service observations were unchanged. These measurements qualify the default
+ARM64 Terminal entry and native session recovery for this engineering bundle.
+They do not qualify a Finder/browser download, Gatekeeper, signing/notarization,
+Cloud login, actual model inference, OS startup or unattended service lifecycle.
+The harness and raw receipts remain private; no customer credential was used.
+
 ## Remote enrolled-device canaries
 
 `tools/deploy/private_remote_a2a_acceptance.cjs` uses the existing SudoCode
