@@ -154,16 +154,23 @@ macOS ARM64 qualification remains a separate acceptance item on SudoCode #1458.
 The plugin can progress with metadata and explicit refusal before #579, but that
 intermediate version does not complete the password-library requirement.
 
-The selected extension also needs a qualified activation and permission path.
-At SudoCode `6382e2aa`, configuration/plugin MCP tools require
-`experimental.mcpConfigServers`, which defaults off; enabling a plugin alone
-does not expose its tools. The delivered artifact must declare and test its
-supported activation path through a real PTY. Do not silently enable unrelated
-workspace-configured MCP servers to activate Vault. The current Private launchers
-use `workspace-write`; elevated installer privileges do not change that baseline.
+The selected extension uses the existing native `PluginTools` path, not MCP.
+At SudoCode `28ef36898c3bfa24750c3d0848a892d470944e6b`,
+`engine-host/src/runtime_build.rs` registers aggregated plugin tools through
+`GlobalToolRegistry::with_plugin_tools` independently of the MCP experiment.
+The proposed `vault@builtin` plugin therefore does not require
+`experimental.mcpConfigServers`; keep that flag off. This verifies the existing
+extension mechanism, not a shipped Vault plugin.
 
-MCP permission classification at that revision uses tool annotations. Correct
-annotations and native tool approval are necessary, but neither replaces the
+The delivered release must demonstrate `/plugins enable vault@builtin` in a
+real PTY and show the actual tool catalog before and after activation. Qualify
+hot reload, or state that a restart is required. The current Private launchers
+use `workspace-write`; elevated installer privileges do not change that baseline.
+The proposed `vault_use` tool declares `danger-full-access` as its required native
+permission, so that baseline must produce the native prompt or refusal rather
+than silently widening the entire Agent's permissions.
+
+Plugin permission declarations and native tool approval do not replace the
 backend credential-use grant. Vault operation policy comes from trusted deployment
 configuration, not project overrides or model arguments. An outside-workspace
 path alone is not an authority boundary: acceptance must attempt configuration
