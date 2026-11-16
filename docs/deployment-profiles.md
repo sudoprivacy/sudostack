@@ -39,7 +39,7 @@ process activation alone does not establish those properties.
   adapter creates scode session tasks in the daemon process. A cohost daemon
   is started by systemd or a container orchestrator; spawning an agent session
   does not start another cohost daemon.
-- **Mosswork** is the selected frontend and UX for the production migration.
+- **Mosswork** is the selected product frontend and backend for the production migration.
   Its integration must reuse the existing Moss/SudoCode/Nexus management,
   identity, session and A2A contracts. Adapter and product acceptance remain
   required; current Sudowork deployment receipts describe their tested runtime.
@@ -61,6 +61,12 @@ deployment on a customer-operated Mac. Additional Macs and GPU nodes remain in
 that same private deployment. Edge means the whole environment is delivered as
 one appliance, rather than the presence of a GPU. The first bootstrap candidate
 composes existing SudoCode owners; full multi-agent product acceptance is pending.
+
+The [bootstrap experience design](design/private-bootstrap-experience.md) defines
+the Cloud sign-in, Vault and desktop integration still to qualify. Private is a
+customer-operated policy domain, not a LAN identifier; it can span networks.
+Cloud hosts the same contracts and can optionally federate Private deployments.
+Network locality does not grant authority or replace native authentication.
 
 | Form | Placement and control | Execution |
 |---|---|---|

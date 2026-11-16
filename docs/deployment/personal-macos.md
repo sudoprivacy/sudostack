@@ -12,6 +12,12 @@ the owner of Nexus discovery and lifetime. An existing Box is reused under its
 original authority; a pending Agent credential does not permit a replacement CA.
 The wrapper adds no identity store, session manager, scheduler or model routing.
 
+The [bootstrap experience design](../design/private-bootstrap-experience.md)
+records the next integration: an ordinary bootstrap Agent, per-device operations
+Agents, existing Vault custody, one Cloud sign-in for scoped model access, and
+reuse of the Mosswork desktop installer. These are separate acceptance gates;
+the current manual-account candidate below does not implement that managed flow.
+
 The candidate stages per-deployment binaries, model configuration and a workspace
 under `~/.local/share/sudoprivate/personal-macos`. It does not edit the user's
 default SudoCode account files or shell startup. Native service ownership remains
@@ -70,8 +76,10 @@ and A2A harnesses. No product two-Agent enrollment or OS autostart is supplied b
 this wrapper yet. Model-list visibility is not funded inference acceptance.
 
 The website and authenticated SudoCloud entry should eventually distribute the
-same qualified package and checksum. Cloud pairing remains optional and separate
-from a SudoRouter account. Signing, notarization, native Mac acceptance and both
+same qualified package and checksum. Independent Private deployments retain
+manual provider configuration. The intended managed flow links Cloud sign-in to
+Router entitlement without manual key entry; it is not present in this candidate.
+Signing, notarization, native Mac acceptance and both
 download integrations are release gates; no current production deployment is
 changed by this candidate implementation.
 
@@ -363,5 +371,22 @@ An ARM64 engineering candidate was staged separately on Windows: all 21 file
 checksums and four Mach-O architectures matched. Its SudoCode executable is the
 official v0.2.42 release; both Nexus executables come from CI at `49be2e0f`, with
 artifact ZIP digests verified before staging. Its daemon therefore differs from
-the Intel `ce3d3554` build. No ARM64 binary was executed: target runtime,
-Gatekeeper, signing/notarization, login/reboot and roaming remain unqualified.
+the Intel `ce3d3554` build. Staging alone did not qualify target execution.
+
+On 2026-11-16 the unchanged ARM64 candidate subsequently ran on an authorized
+Singapore Mac mini (macOS 27.0, 16 GiB). Its manifest SHA-256 was
+`c23faa12b3edc3bde7df6609c5743f809d4648e9f1d289013be0abf2699821e8`.
+All 21 bundle checksums and four executable architectures matched. With isolated
+HOME, deployment root and ports, first preparation took 14.89 seconds, repeated
+preparation 1.15 seconds, and doctor 0.95 seconds; all exited zero. Native
+enrollment created executor/verifier credentials and authenticated publication
+handed the founder to the SudoCode owner. Retry retained its identity and
+configuration; doctor changed none of 39 inspected stable files.
+
+Exact-owner cleanup returned `stopped=true` with `child_kill_and_wait`; no fixture
+listener or service remained, and generated credentials were removed. Existing
+Merlion jobs and the inspected user configuration remained unchanged. The private
+receipt retains the commands, hashes and observations. No model account was used.
+This establishes ARM64 engineering preparation and diagnostics, not an A2A task,
+funded inference, Gatekeeper, signing/notarization, login/reboot or roaming. The
+older role files in this immutable candidate are unchanged by later design edits.
