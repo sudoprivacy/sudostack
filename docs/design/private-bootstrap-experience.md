@@ -428,5 +428,14 @@ premature peer-completion claim as a Private delivery blocker. SudoCode owner 8
 owns the native investigation and fix; owner 7 remains on Vault #1458. Required
 coverage includes delayed or missing replies, wrong peers, duplicate delivery,
 session recovery and a normal authenticated response. Output provenance,
-pending delegation and authoritative completion must be assessed separately.
+whether a reply has arrived and task completion must be assessed separately.
 Role instructions and an offline checker alone do not clear this gate.
+
+The earlier proposal for a local request ledger and ACP delegation notifications
+was withdrawn. The current candidate changes only the system-message framing
+template and `send` tool description; it changes no A2A wire, transport or send
+semantics. The literal mailbox example in the old prompt is a possible
+contributor to the fabricated text, not an experimentally established cause.
+Before/after comparison must use the same task requirements, retain incomplete
+and failed runs, and distinguish authenticated input from assistant-authored
+text. The revised paid comparison has not run; this blocker remains open.
