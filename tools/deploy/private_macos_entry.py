@@ -16,7 +16,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=('install', 'prepare', 'configure', 'doctor', 'executor', 'verifier'),
                         default='install', nargs='?')
+    parser.add_argument('--resume', action='store_true',
+                        help='Resume the latest native session in the selected Agent workspace')
     args = parser.parse_args()
+    if args.resume and args.action not in ('executor', 'verifier'):
+        parser.error('--resume requires executor or verifier')
     if os.uname().sysname != 'Darwin' or os.getuid() == 0:
         raise ValueError('Run this Mac bundle as the desktop user, without sudo')
     bundle = Path(__file__).resolve().parent
@@ -128,8 +132,11 @@ def main():
     if args.action in ('executor', 'verifier'):
         os.chdir(root / 'workspaces' / args.action)
         executable = str(root / 'bin/scode')
-        os.execve(executable, [executable, '--auth', 'proxy', '--account', 'sudorouter',
-                              '--permission-mode', 'workspace-write'], env)
+        command = [executable, '--auth', 'proxy', '--account', 'sudorouter',
+                   '--permission-mode', 'workspace-write']
+        if args.resume:
+            command.extend(('--resume', 'latest'))
+        os.execve(executable, command, env)
     print(json.dumps({'prepared': result['activated'], 'modelConfigured': configured,
                       'root': str(root), 'qualification': 'engineering-candidate',
                       'next': ['Start.command executor', 'Start.command verifier']}))

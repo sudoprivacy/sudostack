@@ -259,7 +259,17 @@ following as the desktop user, without sudo:
 | `bash Start.command prepare` | Install and prepare without requesting a model key or inference |
 | `bash Start.command configure` | Run the existing account wizard; replacement requires its explicit confirmation and keeps backups |
 | `bash Start.command doctor` | Verify installed payload and inspect the selected configuration without starting or enrolling a Node |
-| `bash Start.command executor` / `verifier` | Restore the registered owner if needed and open SudoCode in that Agent's workspace |
+| `bash Start.command executor` / `verifier` | Restore the registered owner if needed and open a new SudoCode session in that Agent's workspace |
+| `bash Start.command executor --resume` / `verifier --resume` | Restore the registered owner if needed and resume that workspace's latest saved native SudoCode session |
+
+The resume option delegates directly to `scode --resume latest` after selecting
+the role workspace. Native SudoCode owns session lookup, persistence and loading;
+the launcher keeps no parallel session index. If there is no saved session,
+SudoCode reports that condition rather than silently creating a replacement.
+Use the role entry without `--resume` for a first or deliberately new session.
+This is an explicit interactive recovery entry, not unattended process restart
+or OS login acceptance. These source changes require a newly staged candidate;
+they do not alter the immutable bundles or acceptance receipts below.
 
 `SUDO_PRIVATE_HOME` selects a dedicated absolute deployment root. The installed
 payload is immutable, configuration is private, and existing workspace
