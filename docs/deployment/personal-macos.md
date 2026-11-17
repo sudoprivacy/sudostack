@@ -68,6 +68,43 @@ macOS privacy approvals and Xcode authorization remain operating-system actions.
 
 ## Acceptance boundary
 
+### Existing Cloud account handoff
+
+The native bundle includes a `configure-cloud` action for the maintained desktop
+login owner. It consumes the original authenticated Cloud
+`GET /api/v1/client/local-runtime` projection on stdin, then publishes the same
+SudoCode account/settings format as the qualified setup wizard. The desktop
+supplies the current member and organization IDs with `--cloud-user` and
+`--cloud-organization`; they must match the projection. Model selection comes
+from `scode_auto_model` in the returned catalogue. SudoCode still owns protocol
+and capability discovery.
+
+The parent must obtain a fresh response through its existing login authority,
+retain its human access/refresh tokens, and bind the selected account to the
+installation. The action is a local configuration consumer, not an authentication
+endpoint or a device enrollment grant. Never forward browser-supplied JSON as
+an authenticated projection. Never pass a key in argv, URLs or model messages.
+
+Only a `ready` projection with `execution.isLocalAllowed == true` is accepted.
+Policy denial, unavailable models, account mismatch or malformed input leaves
+configuration unchanged. A first configuration is published as a complete
+directory; an identical retry preserves it. An existing different configuration
+is retained for an explicit desktop-managed account transition. Refresh,
+logout, account switching and stopping old sessions remain the login owner's
+responsibility; this first-login consumer does not implement them.
+
+After successful configuration the desktop opens the ordinary `Start.command`
+entry, which skips the manual key wizard and uses native session recovery.
+The existing browser login, desktop IPC integration and clean-Mac journey still
+require acceptance before this can be described as one-login installation.
+
+Focused checks:
+
+```sh
+python -m unittest discover -s tools/deploy -p test_private_cloud_config.py -v
+python -m unittest discover -s tools/deploy -p test_private_macos_entry.py -v
+```
+
 Staging, configuration and `setup --check` are not product acceptance. The product
 profile requires live tool use, two separate persistent Agent identities, restart
 and offline delivery, authenticated access over a non-LAN path, and preservation
