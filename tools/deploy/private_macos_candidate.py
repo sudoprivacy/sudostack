@@ -55,7 +55,8 @@ def main():
         raise ValueError('Pin an official standalone Python release archive')
     stack = Path(__file__).resolve().parents[2]
     files = {}
-    for filename in ('private_agent_activation.py', 'private_node_bootstrap.py', 'private_macos_entry.py'):
+    for filename in ('private_agent_activation.py', 'private_node_bootstrap.py', 'private_macos_entry.py',
+                     'private_cloud_config.py'):
         files[filename] = committed(stack, args.stack_commit, 'tools/deploy/' + filename)
     files['Start.command'] = committed(stack, args.stack_commit, 'tools/deploy/private-native-start.command')
     files['scode-setup.sh'] = committed(args.scode_repo, args.scode_commit, 'packaging/macos/scode-setup.sh')

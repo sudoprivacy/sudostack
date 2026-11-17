@@ -10,6 +10,7 @@ import sys
 import tempfile
 
 from private_agent_activation import digest
+from private_cloud_config import install_configuration, read_projection
 from private_node_bootstrap import bootstrap
 
 
@@ -44,11 +45,21 @@ def agent_command(executable, workspace, env, *, resume=False, recover=False):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=('start', 'install', 'prepare', 'configure', 'doctor', 'executor', 'verifier'),
+    parser.add_argument('action', choices=('start', 'install', 'prepare', 'configure', 'configure-cloud', 'doctor', 'executor', 'verifier'),
                         default='install', nargs='?')
     parser.add_argument('--resume', action='store_true',
                         help='Resume the latest native session in the selected Agent workspace')
+    parser.add_argument('--cloud-user', help='Current member ID from the native desktop login')
+    parser.add_argument('--cloud-organization', help='Current organization ID from the native desktop login')
     args = parser.parse_args()
+    cloud_files = None
+    if args.action == 'configure-cloud':
+        if sys.stdin.isatty() or not args.cloud_user or not args.cloud_organization:
+            parser.error('configure-cloud requires the native login parent and a projection on stdin')
+        cloud_files = read_projection(sys.stdin.buffer, user_id=args.cloud_user,
+                                      organization_id=args.cloud_organization)
+    elif args.cloud_user or args.cloud_organization:
+        parser.error('Cloud account arguments require configure-cloud')
     if args.resume and args.action not in ('executor', 'verifier'):
         parser.error('--resume requires executor or verifier')
     if args.action == 'start' and not (sys.stdin.isatty() and sys.stdout.isatty()):
@@ -115,6 +126,10 @@ def main():
     config = root / 'config'
     if config.is_symlink():
         raise ValueError('Refusing redirected model configuration')
+    if cloud_files is not None:
+        install_configuration(config, cloud_files)
+        print(json.dumps({'modelConfigured': True, 'source': 'cloud-local-runtime'}))
+        return
     if args.action == 'doctor' and not config.is_dir():
         raise ValueError('No installed private configuration directory')
     config.mkdir(mode=0o700, exist_ok=True)
