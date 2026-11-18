@@ -7,6 +7,8 @@ from pathlib import Path, PurePosixPath
 import posixpath
 import re
 import shutil
+import subprocess
+import sys
 import tarfile
 
 from artifacts import download
@@ -15,6 +17,22 @@ from macos_candidate import committed
 
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def sign_staged_component(path, identity, team, *, run=subprocess.run):
+    """Sign a staged, input-pinned Mach-O before computing its delivery pins."""
+    inspect = ['codesign', '--display', '--verbose=4', str(path)]
+    before = run(inspect, capture_output=True, text=True)
+    metadata = ['--preserve-metadata=identifier,entitlements'] if before.returncode == 0 else []
+    run(['codesign', '--force', '--timestamp', '--options', 'runtime', *metadata,
+         '--sign', identity, str(path)], check=True)
+    run(['codesign', '--verify', '--strict', str(path)], check=True)
+    signature = run(inspect, capture_output=True, text=True, check=True).stderr
+    if (not re.search(r'^Authority=Developer ID Application:', signature, re.M)
+            or not re.search(r'^TeamIdentifier=' + re.escape(team) + r'$', signature, re.M)
+            or not re.search(r'^CodeDirectory .*flags=.*\bruntime\b', signature, re.M)
+            or not re.search(r'^Timestamp=.+$', signature, re.M)):
+        raise ValueError('The staged binary lacks the required Developer ID signature: ' + path.name)
 
 
 def main():
@@ -26,9 +44,15 @@ def main():
     parser.add_argument('--components', type=Path, required=True,
                         help='Private paths, exact hashes/provenance and pinned Python archive URL')
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--sign-identity', help='Developer ID Application identity in the Mac Keychain')
+    parser.add_argument('--team-id', help='Expected Apple team for signed native components')
     parser.add_argument('--port', type=int, default=2126,
                         help='Declared loopback port; isolated engineering tests may select another free pair')
     args = parser.parse_args()
+    if bool(args.sign_identity) != bool(args.team_id):
+        parser.error('--sign-identity and --team-id are required together')
+    if args.sign_identity and (sys.platform != 'darwin' or not re.fullmatch(r'[A-Z0-9]{10}', args.team_id)):
+        parser.error('Component signing requires macOS and a ten-character Apple team ID')
     if not 0 < args.port < 65535:
         raise ValueError('Select a Node port with room for the native enrollment neighbour')
     components = json.loads(args.components.read_bytes())
@@ -82,6 +106,12 @@ def main():
         target = args.output / artifact['file']
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(components[name]['path'], target)
+        if digest(target) != artifact['sha256']:
+            raise ValueError('Component changed while staging: ' + name)
+        if args.sign_identity:
+            sign_staged_component(target, args.sign_identity, args.team_id)
+            artifact['sourceSha256'] = artifact['sha256']
+            artifact['sha256'] = digest(target)
     archive = args.output / 'python-runtime.tar.gz'
     download(runtime['url'], archive, runtime['sha256'])
     # The consumer uses macOS tar before Python is available. Inspect the pinned
@@ -116,6 +146,7 @@ def main():
         relative = path.relative_to(args.output).as_posix()
         path.chmod(0o700 if path.is_dir() else 0o755 if relative.startswith('bin/') or path.suffix in ('.sh', '.command') else 0o600)
     print(json.dumps({'staged': True, 'output': str(args.output), 'platform': platform,
+                      'componentsSigned': bool(args.sign_identity),
                       'signed': False, 'notarized': False, 'deploymentVerified': False}))
 
 

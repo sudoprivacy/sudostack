@@ -250,6 +250,14 @@ gates; a passing engineering fixture does not satisfy them.
 
 ## Stage the native Mac candidate
 
+The macOS release operator can pass `--sign-identity` and `--team-id` to the
+producer on a Mac with the team's Developer ID Application identity. It checks
+the input pins, signs staged copies of the four native binaries with hardened
+runtime and timestamping, and verifies the team before writing the manifest.
+The signed component's `sourceSha256` identifies the original input and
+`sha256` identifies the bytes that Mosswork must embed. Mosswork signs and
+notarizes the outer application and installer separately.
+
 `private_macos_candidate.py` stages the complete native first-founder path,
 account wizard and executor/verifier instructions. This is a separate candidate
 from `macos_candidate.py`; it does not silently replace that profile's official
