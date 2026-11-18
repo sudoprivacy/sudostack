@@ -79,6 +79,11 @@ flowchart TB
   end
 
   ROUTER["云端 SudoRouter · new-api<br/>sudorouter.ai / api / hk"]
+  subgraph GPUFUTURE["共享 GPU / 推理能力 · planned · 未接入现有部署"]
+    SUDOCOMPUTE["sudocompute · Cloud / Private / Edge 按需复用<br/>GPU 验收 · 合格推理配方 · 计算运维集成<br/>静态规划 / 本机采集已实现 · 现场接入与 release pin 待验证"]
+    GPUPOOL["可选自管 GPU 推理池 · planned<br/>GPUStack 管理 · vLLM / SGLang 执行<br/>与 Agent CPU VM / gVisor Pod 分开"]
+    SUDOCOMPUTE -.->|合格配置与管理集成 · 待验证| GPUPOOL
+  end
   LLM["云模型 provider · LLM"]
   CCEXIT["CC 账号绑定的 HTTP CONNECT 出口<br/>managed home IP / 不回退直连"]
 
@@ -99,6 +104,8 @@ flowchart TB
   SCODE -->|Bash · Pod 本地项目 I/O| UPVC
   CNEXUS -->|模型请求与回复 · Nexus driver-ai<br/>实际 owner 的独立 SudoRouter Key| ROUTER
   ROUTER --> LLM
+  ROUTER -.->|可选自有 GPU 模型 endpoint · 待接入| GPUPOOL
+  SUDOCOMPUTE -.->|合格单机配置复用 · 未迁移现有链路| GPUSTACK
   NETPOL -.->|DNS · 控制平面 · 公网 443| POD
   CNEXUS <-->|mTLS · 身份与跨域服务| NEXUSD
 
@@ -123,6 +130,10 @@ flowchart TB
 ```
 
 <!-- /cloud-plan:first-diagram -->
+
+**共享 GPU / 推理组件（计划集成，未接入现有部署）：** 图中虚线为
+[`sudocompute`](https://github.com/sudoprivacy/sudocompute) 的计划关系，职责划分见
+[部署形态的仓库职责](https://github.com/sudoprivacy/sudostack/blob/main/docs/deployment-profiles.md#repository-ownership)。
 
 <details>
 <summary>总图补充：客户端、计算与控制链路</summary>

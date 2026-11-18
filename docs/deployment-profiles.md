@@ -152,6 +152,15 @@ repository's runbook for current evidence.
 - **sudoedge**: appliance install, GPU configuration, networking, startup and diagnostics.
 - **new-api**: shared Router implementation; deployments select and record its revision.
 - **moss / sudocode / nexus-vfs / sudowork**: implementation of their own services and clients.
+- **sudocompute** (planned, optional): reusable GPU fleet acceptance, qualified
+  inference recipes and compute operations. The selected fleet manager
+  (GPUStack first) keeps GPU allocation and model lifecycle, with one
+  allocation owner per GPU pool; vLLM/SGLang execute inference; Router consumes
+  the qualified endpoints. Cloud, Private and Edge keep placement and their own
+  acceptance, and profiles that only call external model APIs do not install
+  it. GPU inference is a separate layer from the CPU VMs and gVisor Pods that
+  run Agent sessions. No release pin or deployment integration exists yet
+  (`enforced_by: none`); Edge's GPUStack path remains its accepted baseline.
 
 Shared design belongs here; implementation fixes remain in the component that
 owns the behavior. Deployment repositories consume those fixes and record

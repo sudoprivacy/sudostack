@@ -19,6 +19,7 @@ authentication protocol, mailbox implementation or credential issuer.
 | CA verification, current peer classification, revocation, authorization, durable A2A objects | nexus-vfs |
 | Resolved managed Agent, session execution, send/list/receiver, ACP | sudocode |
 | Shared release composition, deploy/join sequencing and evidence | sudostack |
+| Reusable GPU acceptance, qualified inference recipes and compute operations | sudocompute (planned optional integration) |
 | Appliance service/GPU/network selection and deployment record | sudoedge |
 | Cloud tenant/allocation/Kubernetes selection | sudocloud / existing Moss adapter |
 
@@ -87,8 +88,10 @@ in-process Kernel. Selecting persistent or network collaboration can prepare
 a compatible local service or attach to an existing one. For cohost, the
 selected executable already contains Nexus and the scode engine; starting an
 Agent creates a session task in that daemon. A browser profile additionally
-prepares the existing Moss/WebUI application services. GPU/model provisioning
-is an Edge placement concern, independent from obtaining an Agent identity.
+prepares the existing Moss/WebUI application services. Reusable GPU/inference
+qualification is a separate, planned layer owned by SudoCompute; see
+[repository ownership](../deployment-profiles.md#repository-ownership). It is
+independent from Agent session placement and from obtaining an Agent identity.
 
 The lifecycle owner records the runtime and state roots it controls. An
 existing listener is inspected and authenticated before reuse. A conflicting
