@@ -14,7 +14,7 @@
 **阅读顺序：** 先看总图，再按主题查正文。当前验收只在「交付与验收」集中说明；带日期的旧状态和完整技术记录保留在折叠附录。设计已确认、代码合入、正式发布、生产部署和真实验收分别记录。
 
 <nav class="topic-nav" aria-label="文档目录">
-<a href="#architecture">总图</a><a href="#identity">身份与权限</a><a href="#runtime">运行与会话</a><a href="#deployment">版本与升级</a><a href="#channels">客户端、IM与计费</a><a href="#edge">跨域与盒子</a><a href="#ontology">业务本体</a><a href="#delivery">交付与验收</a><a href="#history">历史证据</a>
+<a href="#architecture">总图</a><a href="#identity">身份与权限</a><a href="#runtime">运行与会话</a><a href="#deployment">版本与升级</a><a href="#channels">客户端、IM与计费</a><a href="#edge">跨域与盒子</a><a href="#ontology">业务本体</a><a href="#security">安全设计</a><a href="#delivery">交付与验收</a><a href="#history">历史证据</a>
 </nav>
 
 <a id="architecture"></a>
@@ -984,6 +984,70 @@ flowchart LR
 
 **代价是故障域。** 同进程意味着一个会话把进程带走，该信任域内其余会话一起没；爆炸半径因此正好等于信任域本身，这也是把作用域单位钉在信任域上的另一个理由。
 
+
+---
+
+<a id="security"></a>
+## 安全设计
+
+三种部署形态共用同一套安全机制。行为由所属组件实现（nexus-vfs、sudocode、Moss），共享装配在 [`sudostack/security/`](https://github.com/sudoprivacy/sudostack/tree/main/security)，各部署 repo 只做本形态的接线。本章按特性列出机制与落点；各项的验收与当前状态见 §6.1 的验收边界表与 §9。
+
+### 身份与认证
+
+- **传输**：Nexus 节点之间、客户端与节点之间均为 mTLS。节点证书由 zone CA 签发、到期前自动续签，私钥不离开节点（[nexus-vfs #546](https://github.com/nexi-lab/nexus-vfs/pull/546)）；调用方自持私钥，CA 只签 CSR（[#461](https://github.com/nexi-lab/nexus-vfs/pull/461)）。
+- **吊销**：CRL 与当前签发者、单调序号在同一个 Raft 事务中持久化；TLS 准入读取持久化的签发者与吊销状态，拒绝吊销回退和整 CA 替换（[#582](https://github.com/nexi-lab/nexus-vfs/pull/582)、[#538](https://github.com/nexi-lab/nexus-vfs/pull/538)）。
+- **调用者身份**：请求中的 bearer token 优先于连接证书身份，无 token 时取证书身份（[#418](https://github.com/nexi-lab/nexus-vfs/pull/418)）；`sk-` API key 由 `NEXUS_API_KEY_SECRET` 启用。
+- **agent 身份**：agent 证书只表达身份（`nexus://agent/{name}`），zone 授权由 user／service key 与权限策略承载；在线签发走 `MintAgent／MintKey`。
+- **用户运行时凭据**：cohost 持 owner 绑定的短期 TLS 凭据，只能以客户端身份访问本 owner 的受限端点，不持有集群节点凭据或 CA 私钥（[#425](https://github.com/nexi-lab/nexus-vfs/pull/425)、[#431](https://github.com/nexi-lab/nexus-vfs/pull/431)）。同进程 co-host 成立的两条前提见 §8。
+- **集群控制面**：Raft、ZoneApi、witness 与凭据管理 RPC 只接受本地 CA 签发且当前有效的 Node 证书，agent 与外域证书只能使用 VFS（[#472](https://github.com/nexi-lab/nexus-vfs/pull/472)）；复制发送方身份绑定到连接证书（[#482](https://github.com/nexi-lab/nexus-vfs/pull/482)、[#521](https://github.com/nexi-lab/nexus-vfs/pull/521)）。
+- **人类身份**：登录、企业成员与飞书身份绑定由 Moss 承载（§2）；会话连接以 owner 身份认证，经委派租约续期（`@sudo/session-runtime`）。
+- **跨组织信任**：盒子自签 CA_B，作为外域锚点注册进 broker（热加载）；盒子固定 CA_A 校验 broker。盒子不加入集群，只向外拨出（§6）。
+- **发件人不可伪造**：信箱写入时 `from` 改写为认证身份 `{trust_domain}/agent/{name}`；启用认证时，无身份的信箱写入被拒绝。
+
+### 授权与隔离
+
+- **单一授权入口**：原生调用与 RPC 共用同一元数据授权边界（[#498](https://github.com/nexi-lab/nexus-vfs/pull/498)）；元数据与 VFS 控制 RPC 以认证主体调用已安装的权限提供者，目录读取按权限过滤子项（[#417](https://github.com/nexi-lab/nexus-vfs/pull/417)）。
+- **ReBAC**（`--enable-rebac`）：资源授权在线性一致快照上检查（[#585](https://github.com/nexi-lab/nexus-vfs/pull/585)）；经 HTTP 管理授权元组需管理员权限；搜索插件 RPC 需认证并按权限过滤结果。zone 与租户模型见 [ADR-002](https://github.com/sudoprivacy/sudostack/blob/main/docs/adr/ADR-002-zone-and-tenancy-model.md)。
+- **外域身份围栏**：带 `trust_domain` 的调用方只能触达 A2A 信箱路径，读位置只读；启用 ReBAC 时同样生效（[#399](https://github.com/nexi-lab/nexus-vfs/pull/399)）。跨域会话的成员、身份与读者归属由 `/collaboration/v1` 空间与配对准入，属实验特性 `experimental-domain-join`（[#468](https://github.com/nexi-lab/nexus-vfs/pull/468)）。
+- **owner 隔离**：owner 副本凭据只能对已准入且在当前 Raft 成员中的租户 zone 调用数据 RPC（[#519](https://github.com/nexi-lab/nexus-vfs/pull/519)）；owner zone 操作在排队、权限检查与回包时重新校验原调用方（[#569](https://github.com/nexi-lab/nexus-vfs/pull/569)）；托管会话的读取与取消按委派 owner 校验（[#420](https://github.com/nexi-lab/nexus-vfs/pull/420)），PID 复用不继承授权（[#507](https://github.com/nexi-lab/nexus-vfs/pull/507)）。
+- **工作区边界**：`/proc/{pid}/workspace/` 只允许所属 agent 写入。
+- **执行沙箱**：scode 运行在 gVisor 中，云端每个 owner allocation 独立 Pod、PVC 与 daemon，盒子同样运行在 gVisor；控制平面不进 gVisor（§8）。运行时检查点先隔离挂接进程与执行容器，再复制持久状态（[sudostack #138](https://github.com/sudoprivacy/sudostack/pull/138)）。
+- **Pod 网络边界**：用户 Pod 出站按标签白名单放行集群 DNS、控制平面服务端口与公网 443，其余拒绝（§8）。
+- **业务数据读治理**：读必须经过 Nexus（§7.9）；人工复核读取复用当前项目绑定、成员资格、精确读取审批与撤销检查（[Moss #491](https://github.com/sudoprivacy/moss/pull/491)）。
+
+### 出境控制
+
+- **出口**：跨界通道是 A2A 消息与 ShareOne 制品；模型调用是第三个出口。三者各自受控。
+- **模型选择**：接触客户原始数据的任务使用本地模型。Router 的本地与外部模型分属 `local`／`external` 两组，各用独立 token，不跨组重试；能到达外部模型的凭据只配给受闸挂载。
+- **内容闸**：`egress_gate` 是 kernel 写入接缝上的单一 hook，检查经过本机 kernel 且被部署列为出口的写入，即外发模型挂载上的 `.prompt` 与跨域挂载下的会话 transcript；本机会话与本地 GPU 挂载保留原文。机制见 §6.1，组件与准入见 [COMPOSITION.md](https://github.com/sudoprivacy/sudostack/blob/main/security/egress-gate/COMPOSITION.md)。
+- **检测**：校验位规则（身份证、银行卡、手机号、统一社会信用代码），凭据规则（私钥、JWT、云厂商 AccessKey、API key、密码赋值），本机回环 Presidio（人名、地点、机构，只读正文字段），以及部署方配置的业务策略（受保护词与记录标记）。
+- **处置**：允许、脱敏或拒绝；脱敏保持 JSON 结构；识别服务不可用或结果非法时拒绝该次写入，被拒写入不产生下游请求。
+- **策略管理**：平台默认与组织覆盖由 Moss API／UI 管理，动态送达运行时，revision 单调递增；替换无效时保留上一份已准入策略并拒绝受闸写入；初始配置错误阻止启动。策略文件位于 agent 不可写的只读目录。
+- **纯本地模式**：`sudoedge connectivity local` 同时阻断主机与容器的公网出口，保留局域网访问与本地推理。
+- **盒子运维**：盒子只向外拨出；部署与运维以 A2A 任务下发，由盒子侧工具执行。
+
+### 机密与凭据
+
+- **系统机密**：存于 Nexus vault 插件，Moss 经 mTLS 读取。Moss 凭据中心按系统与部门命名空间管理机密，读取走认证并审计的 secret API；设备启动时经同一 API 恢复控制器机密（[sudostack #140](https://github.com/sudoprivacy/sudostack/pull/140)），盒子 Router 的云渠道凭据由此恢复，Router 状态保存在内存盘（[sudoedge #28](https://github.com/sudoprivacy/sudoedge/pull/28)）。
+- **密钥文件**：CA、节点与 agent 私钥、API key 密钥和加入令牌统一由一个写入器落盘，Unix 为 0600，Windows 为仅属主 DACL（[nexus-vfs #456](https://github.com/nexi-lab/nexus-vfs/pull/456)）。
+- **人员凭据**：站点登录等凭据存于 password-agent vault，自动登录时明文不进入 LLM。
+
+### 供应链与发布
+
+- **插件**：加载时校验签名，信任根编译期固定、由 CI 锁定清单；签名、ABI 或加载错误阻止启动。
+- **构建输入**：Rust 工具链按 `rust-toolchain.toml` 固定版本；分析器镜像固定到多架构 digest；sudostack 以精确固定的源版本与 checksum 校验装配输入，macOS 组件在冻结私有化 bundle 之前签名。
+
+### 审计
+
+- **内容闸**：审计行只记路径、调用方、类别与数量，不含命中内容；策略状态查询不返回业务值。
+- **信箱**：盖章后的 `from` 随 Raft 复制持久化。
+- **机密**：secret API 的读取进入审计。
+
+### 形态差异
+
+- **Sudo Cloud**：我们托管的多租户控制面，每个 owner allocation 独立 Pod／PVC／cohost；模型端点在节点外，出境策略由平台默认与组织覆盖决定，平台默认关闭。
+- **Sudo Private**：同一套服务运行在客户网络，身份对接客户环境；出境挂载与模型端点按客户批准的边界配置。
+- **SudoEdge**：自签信任域 CA_B；本地 GPU 挂载不闸，外部模型挂载受闸；DLP 默认关闭、由 Moss 开启；支持一键纯本地。
 
 ---
 
