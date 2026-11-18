@@ -1,13 +1,38 @@
 """Exercise signing and verification before the producer freezes component pins."""
+import json
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
-from private_macos_candidate import sign_staged_component
+from private_macos_candidate import digest, sign_staged_component, sign_verified_staging_copy, write_bundle_pins
 
 
 class ComponentSigningTests(unittest.TestCase):
+    def test_final_manifest_and_checksums_cover_signed_bytes_and_record_input(self):
+        with tempfile.TemporaryDirectory() as temp:
+            stage = Path(temp)
+            (stage / 'bin').mkdir()
+            artifacts = {}
+            for name, file in (('scode','scode'), ('daemon','nexusd-cluster'),
+                               ('operator','nexus-agent-enroll'), ('grpcurl','grpcurl')):
+                p = stage / 'bin' / file
+                p.write_bytes(b'input')
+                artifacts[name] = {'file': 'bin/' + file, 'sha256': digest(p)}
+            write_bundle_pins(stage, {'artifacts': artifacts})
+            with patch('private_macos_candidate.sign_staged_component',
+                       side_effect=lambda p, identity, team: p.write_bytes(b'signed')):
+                sign_verified_staging_copy(stage, 'identity', 'ABCDEFGHIJ')
+            manifest = json.loads((stage / 'native-bundle.json').read_bytes())
+            for name, record in manifest['artifacts'].items():
+                self.assertEqual(record['sourceSha256'], artifacts[name]['sha256'])
+                self.assertEqual(record['sha256'], digest(stage / record['file']))
+                self.assertEqual(manifest['files'][record['file']], record['sha256'])
+            sums = (stage / 'SHA256SUMS').read_text().splitlines()
+            self.assertIn(digest(stage / 'native-bundle.json') + '  native-bundle.json', sums)
+            self.assertEqual(len(sums), 5)
+
     def results(self, team, existing):
         signature = ('Authority=Developer ID Application: Example\nTeamIdentifier=' + team
                      + '\nCodeDirectory v=20500 flags=0x10000(runtime)\nTimestamp=an Apple timestamp\n')
