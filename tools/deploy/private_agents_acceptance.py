@@ -26,12 +26,21 @@ def main():
     for name in ('scode', 'daemon', 'operator'):
         parser.add_argument('--' + name + '-sha256', required=True)
     parser.add_argument('--daemon-source', required=True)
-    parser.add_argument('--activate-owner', action='store_true',
+    journeys = parser.add_mutually_exclusive_group()
+    journeys.add_argument('--activate-owner', action='store_true',
                         help='Also qualify native discovery publication and SudoCode owner recovery')
+    journeys.add_argument('--live-peer-review', action='store_true',
+                          help='Run one real model review with the verifier held unread, then resumed')
     parser.add_argument('--publisher-repo', type=Path)
     parser.add_argument('--grpcurl', type=Path)
     parser.add_argument('--grpcurl-sha256')
     args = parser.parse_args()
+    model_env = {}
+    if args.live_peer_review:
+        for key in ('SUDOROUTER_BASE_URL', 'SUDOROUTER_MODEL', 'SUDOROUTER_API_KEY'):
+            if not os.environ.get(key):
+                parser.error('--live-peer-review requires ' + key)
+            model_env[key] = os.environ[key]
     if args.activate_owner and not all((args.publisher_repo, args.grpcurl, args.grpcurl_sha256)):
         parser.error('--activate-owner requires --publisher-repo, --grpcurl and --grpcurl-sha256')
     for name in ('scode', 'daemon', 'operator'):
@@ -48,6 +57,8 @@ def main():
                          daemonSource=args.daemon_source,
                          assemblyRunnerSha256=digest(__file__),
                          assemblyDriverSha256=digest(Path(__file__).with_suffix('.cjs')))
+    if args.live_peer_review:
+        fixture.proof['reviewDriverSha256'] = digest(Path(__file__).with_name('private_peer_review.cjs'))
     # Only this fixture's subprocesses receive the isolated discovery/config.
     environment = {key: value for key, value in os.environ.items() if key.upper() in {
         'PATH', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'PATHEXT', 'TEMP', 'TMP',
@@ -161,7 +172,8 @@ def main():
         file = fixture.root / 'driver.json'
         file.write_text(json.dumps(config), encoding='utf-8')
         driver = Path(__file__).with_suffix('.cjs')
-        for phase in ('initial', 'node-restart'):
+        phases = ('live-review',) if args.live_peer_review else ('initial', 'node-restart')
+        for phase in phases:
             fixture.proof['stage'] = phase
             if phase == 'node-restart':
                 fixture.node.stop()
@@ -173,7 +185,7 @@ def main():
                     fixture.proof['nativeOwnerRecovery'] = True
                 else:
                     fixture.node.start()
-            result = subprocess.run(['node', str(driver), str(file), phase], env=environment,
+            result = subprocess.run(['node', str(driver), str(file), phase], env=environment | model_env,
                                     cwd=fixture.root, capture_output=True, timeout=180)
             (fixture.output / (phase + '.stdout.log')).write_bytes(result.stdout)
             (fixture.output / (phase + '.stderr.log')).write_bytes(result.stderr)
@@ -185,7 +197,8 @@ def main():
             fixture.proof[phase] = json.loads(result.stdout)
         fixture.proof.update(success=True, stage='complete', credentialsUnchanged=True,
                              limits=['isolated fixture, not OS-user installation',
-                                     'no model inference or network-roaming acceptance',
+                                     ('single real model review on loopback, no Cloud relay qualification'
+                                      if args.live_peer_review else 'no model inference or network-roaming acceptance'),
                                      'no macOS login/reboot or ARM64 qualification'])
     finally:
         if managed_attempted:

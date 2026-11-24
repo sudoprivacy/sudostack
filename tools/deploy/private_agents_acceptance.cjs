@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const {createHash, randomUUID} = require('node:crypto');
 const config = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const phase = process.argv[3];
-assert(['initial', 'node-restart'].includes(phase));
+assert(['initial', 'node-restart', 'live-review'].includes(phase));
 const manifest = JSON.parse(fs.readFileSync(path.join(config.sdk, 'manifest.json')));
 assert.equal(manifest.dirty, false, 'Use a clean committed SDK build');
 for (const [name, expected] of Object.entries(manifest.files)) {
@@ -68,6 +68,11 @@ async function received(actor, sender, body) {
   throw new Error('No authenticated exact message received by ' + actor);
 }
 async function main() {
+  if (phase === 'live-review') {
+    const review = await require('./private_peer_review.cjs')(config, sdk);
+    console.log(JSON.stringify(review));
+    return;
+  }
   model = http.createServer((request, response) => {
     httpRequests.push({method: request.method, path: request.url});
     if (request.method === 'GET' && request.url === '/v1/models') {
@@ -113,5 +118,7 @@ async function main() {
 main().catch(error => {console.error(error); process.exitCode = 1;}).finally(async () => {
   await Promise.allSettled([...owned].map(connection => connection.close()));
   if (model) await new Promise(resolve => model.close(resolve));
-  save(path.join(config.output, phase + '.protocol.json'), {wire, errors, modelCalls, httpRequests});
+  if (phase !== 'live-review') {
+    save(path.join(config.output, phase + '.protocol.json'), {wire, errors, modelCalls, httpRequests});
+  }
 });
