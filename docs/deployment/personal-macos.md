@@ -150,6 +150,17 @@ removed. A passing fixture does not qualify product enrollment, OS startup,
 roaming, Apple Silicon or signed delivery. Preserve any failed receipt and use
 a new output directory for the next run.
 
+For one model-driven review, use the same command with `--live-peer-review`
+and a new output directory. Set `SUDOROUTER_BASE_URL`, `SUDOROUTER_MODEL`
+and `SUDOROUTER_API_KEY` in the test process environment. This opt-in journey
+uses the test account for inference. Only the requester receives a user prompt.
+The verifier first holds its native inbox unread. After the requester reports
+a pending decision, the verifier resumes its original session and replies.
+The run checks both authenticated senders and the order of events, including
+the decision reference returned to the user. `live-review.protocol.json`
+retains the synthetic conversation for review. This exercises a single
+same-domain pair on the temporary Node.
+
 Add `--activate-owner --publisher-repo /absolute/nexus-publication-source
 --grpcurl /absolute/grpcurl --grpcurl-sha256 GRPCURL_SHA256` to qualify the
 activation handoff too. The publisher source must support an explicit loopback
