@@ -232,10 +232,9 @@ The following are selected design constraints, not claims about deployed code.
    for a new cross-domain shape, and explicitly refuse unsupported peers.
    No slash replacement, ambiguous concatenation or unannounced ID migration.
 
-The concrete principal encoding, grant fields, participant binding and native
-operation capability must be reviewed in nexus-vfs before producing generated
-cross-repo contracts. This document deliberately does not freeze another JSON
-schema alongside that semantic owner.
+Nexus owns principal encoding, participant binding and capability negotiation.
+Product adapters consume its [pair contract](https://github.com/nexi-lab/nexus-vfs/blob/a9767d2936867da6e6012668924cc8b5ed631b62/docs/collaboration-pair-contract.md)
+and [cross-domain authorization rules](https://github.com/nexi-lab/nexus-vfs/blob/a9767d2936867da6e6012668924cc8b5ed631b62/docs/cross-domain-agent-join.md).
 
 ## Data and recovery boundary
 
@@ -284,11 +283,21 @@ continue to apply to managed and standalone consumers.
    fresh cold copy, installs exact prepared unit bytes, reloads the manager,
    and checks actual executable/application-entry hashes. Executable activation
    is separate from authenticated product readiness and domain joining.
-5. Establish the explicit join and scoped grant through supported native APIs;
-   reuse an identical existing enrollment and reject conflicting bindings.
-   Ambiguous mutation responses are reconciled, not interpreted as absence.
-6. Verify authenticated readiness and actual collaboration, then write a
-   source-bound deployment/acceptance receipt. A pre-selection failure restores
+5. Before changing trust, verify the authenticated pair and data-plane
+   capabilities on every node that can serve the hosting zone. Verify that both
+   local Box consumers support the same contract. On a compatible deployment,
+   use the native registry to enroll or read back the issuer with the
+   collaboration-only scope. Reuse an existing enrollment only when its issuer
+   and scope both match. The v0.8.26 foreign-CA registration grants legacy
+   mailbox access and cannot select or attest this scope. Stop at this step
+   when the deployment cannot express or confirm the required scope.
+6. Authorize the two existing Agent principals under the native space policy
+   and provision their pair in the authoritative replicated zone. Reconcile an
+   ambiguous result against the original operation before proceeding. Have
+   each original session independently send and receive a distinct message.
+   Record the authenticated senders, delivery IDs, each receiver's own reader
+   commit and the model usage observed in each real session.
+7. Save the source-bound deployment and acceptance receipt. A pre-selection failure restores
    original services. After possible selection/migration, stop the declared
    services and preserve new data plus the cold backup for native inspection;
    do not automatically restore an old database over newer writes.
