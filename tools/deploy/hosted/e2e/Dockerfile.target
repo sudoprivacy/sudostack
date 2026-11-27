@@ -1,0 +1,12 @@
+# Disposable Linux amd64 deployment target for the hosted-linux e2e test.
+# Mimics a fresh Ubuntu server: SSH, a passwordless-sudo operator, no Docker.
+FROM ubuntu:24.04
+RUN apt-get update -qq \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+      openssh-server sudo curl ca-certificates iproute2 iptables procps tar \
+ && rm -rf /var/lib/apt/lists/* \
+ && useradd -m -s /bin/bash ops \
+ && echo 'ops ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/ops \
+ && mkdir -p /run/sshd
+COPY target-entrypoint.sh /usr/local/sbin/target-entrypoint.sh
+ENTRYPOINT ["/bin/bash", "/usr/local/sbin/target-entrypoint.sh"]
