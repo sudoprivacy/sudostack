@@ -10,9 +10,14 @@ permissions:
 jobs:
   unit:
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        python: ['3.9', '3.12']
+        include:
+          # macOS Command Line Tools ship Python 3.9, the oldest control host we support.
+          - {os: macos-latest, python: '3.9'}
+          - {os: macos-latest, python: '3.12'}
+          - {os: ubuntu-latest, python: '3.10'}
+          - {os: ubuntu-latest, python: '3.12'}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
