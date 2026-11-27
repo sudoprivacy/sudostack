@@ -1,0 +1,6 @@
+{
+  "target": { "mode": "ssh", "host": "10.0.0.20", "user": "ubuntu", "port": 22 },
+  "mosswork": { "port": 8088, "bind": "0.0.0.0" },
+  "model": "",
+  "enableAllModels": false
+}

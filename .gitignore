@@ -7,3 +7,6 @@ __pycache__/
 /dist/
 /docs/deployment/evidence/
 /docs/deployment/10.0.1.180*-acceptance.md
+
+# Local hosted-bootstrap e2e state (contains test credentials).
+/.e2e-work/

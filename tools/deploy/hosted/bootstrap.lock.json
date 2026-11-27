@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "profile": "hosted-linux",
+  "qualification": "mvp",
+  "routerMode": "hosted",
+  "sudocloud": {
+    "origin": "https://agent.sudoprivacy.com"
+  },
+  "router": {
+    "baseUrl": "https://hk.sudorouter.ai/v1"
+  },
+  "scode": {
+    "version": "v0.2.44",
+    "sources": [
+      "https://sudowork-release-1309794936.cos.ap-beijing.myqcloud.com/sudocode/release/v0.2.44",
+      "https://github.com/sudoprivacy/sudocode/releases/download/v0.2.44"
+    ],
+    "archiveSha256": {
+      "linux-x64": "ad5ebd5fbc320fc34a0c78e075a4c0f3b3602f0f4ef0fb1aedb25bb0198a2d67",
+      "linux-arm64": "4c8efb5d2ecf2bde16bde601e652c564a2f6caa856ba9a7beb45f7d19767e065",
+      "macos-x64": "0935165a6aa31f60d334a43de228cb03de566bcca03f5738da2967dba606f5e7",
+      "macos-arm64": "8c7d1b242243cd7e786e6ac84b29389d6b48010e53ef1638d0784531b15ab667"
+    }
+  },
+  "mosswork": {
+    "version": "v0.0.11",
+    "installerUrl": "https://github.com/sudoprivacy/mosswork/releases/download/v0.0.11/install-moss-server.sh",
+    "installerSha256": "3e6464d23653f5f1f269656b5f72ab38eca48ac18e6a81b91e0da63535949414",
+    "installDir": "/opt/moss-server",
+    "defaultPort": 8088,
+    "targetArch": ["x86_64", "amd64"]
+  },
+  "docker": {
+    "installerUrl": "https://get.docker.com"
+  }
+}

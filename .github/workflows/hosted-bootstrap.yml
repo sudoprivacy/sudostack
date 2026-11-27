@@ -1,0 +1,49 @@
+name: Hosted bootstrap
+on:
+  pull_request:
+    paths: ['tools/deploy/hosted/**', '.github/workflows/hosted-bootstrap.yml']
+  push:
+    branches: [main]
+    paths: ['tools/deploy/hosted/**', '.github/workflows/hosted-bootstrap.yml']
+permissions:
+  contents: read
+jobs:
+  unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS Command Line Tools ship Python 3.9, the oldest control host we support.
+          - {os: macos-latest, python: '3.9'}
+          - {os: macos-latest, python: '3.12'}
+          - {os: ubuntu-latest, python: '3.10'}
+          - {os: ubuntu-latest, python: '3.12'}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Unit tests
+        working-directory: tools/deploy/hosted
+        run: python -m unittest discover -s tests -v
+      - name: Lock file pins match the published releases
+        working-directory: tools/deploy/hosted
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          scode=$(python -c "import json;print(json.load(open('bootstrap.lock.json'))['scode']['version'])")
+          mw=$(python -c "import json;print(json.load(open('bootstrap.lock.json'))['mosswork']['version'])")
+          gh release download "$scode" -R sudoprivacy/sudocode -p SHA256SUMS.txt -O scode-sums.txt
+          gh release download "$mw" -R sudoprivacy/mosswork -p SHA256SUMS.txt -O mosswork-sums.txt
+          python - <<'EOF'
+          import json
+          lock = json.load(open('bootstrap.lock.json'))
+          sums = dict(reversed(l.split()) for l in open('scode-sums.txt') if l.strip())
+          for key, digest in lock['scode']['archiveSha256'].items():
+              assert sums[f'scode-{key}.tar.gz'] == digest, key
+          mw = dict(reversed(l.split()) for l in open('mosswork-sums.txt') if l.strip())
+          assert mw['install-moss-server.sh'] == lock['mosswork']['installerSha256']
+          print('pins ok')
+          EOF
